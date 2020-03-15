@@ -12,7 +12,7 @@ class Destination {
 }
 
 const List<Destination> allDestinations = <Destination>[
-  Destination('Actions', Icons.flash_on, Dropdowns()),
-  Destination('Dashboard', Icons.dashboard, DashboardPage()),
+  Destination('Actions', Icons.flash_on, ActionsPage()),
+  Destination('Dashboard', Icons.dashboard, null),
   Destination('Data', MyCustomIcons.database, null),
 ];
