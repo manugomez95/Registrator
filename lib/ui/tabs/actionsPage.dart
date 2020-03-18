@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:postgres/postgres.dart';
 import 'package:registrator/bloc/database_model/bloc.dart';
 import 'package:registrator/model/databaseModel.dart';
 import 'package:registrator/model/property.dart';
 import 'package:registrator/model/table.dart' as my;
+import 'package:registrator/ui/date_picker.dart';
 
 class ActionsPage extends StatefulWidget {
   const ActionsPage({Key key}) : super(key: key);
@@ -47,7 +49,8 @@ class ActionsPageState extends State<ActionsPage> {
     );
   }
 
-  Widget buildColumn(DatabaseModel dbModel) { // TODO change name
+  Widget buildColumn(DatabaseModel dbModel) {
+    // TODO change name
     return Scaffold(
       appBar: ActionsDropdown(),
       body: TablesDropdown(dbModel),
@@ -119,7 +122,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
 class TablesDropdown extends StatefulWidget {
   TablesDropdown(this.dbModel);
 
-  final DatabaseModel dbModel; // TODO This db model is null
+  final DatabaseModel dbModel;
 
   @override
   _TablesDropdownState createState() => _TablesDropdownState();
@@ -177,25 +180,25 @@ class _TablesDropdownState extends State<TablesDropdown> {
   }
 }
 
-class PropertiesForm extends StatefulWidget {
+class PropertiesForm extends StatelessWidget {
   PropertiesForm(this.properties);
 
   final List<Property> properties;
+  final _formKey = GlobalKey<FormState>();
 
-  @override
-  State<StatefulWidget> createState() => _PropertiesFormState();
-}
-
-class _PropertiesFormState extends State<PropertiesForm> {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return Form(
+      key: _formKey,
+      child: ListView.separated(
+        itemCount: properties.length,
         padding: new EdgeInsets.all(8.0),
-        child: Column(
-          children: widget.properties.map<PropertyView>((Property property) {
-            return PropertyView(property);
-          }).toList(),
-        ));
+        separatorBuilder: (BuildContext context, int index) => Divider(),
+        itemBuilder: (BuildContext context, int index) {
+          return PropertyView(properties[index]);
+        },
+      ),
+    );
   }
 }
 
@@ -209,21 +212,60 @@ class PropertyView extends StatefulWidget {
 }
 
 class _PropertyViewState extends State<PropertyView> {
+  var value = false;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: <Widget>[
-        Text(
-          widget.property.name,
-          style: new TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 19.0,
-          ),
+        Row(
+          children: <Widget>[
+            Text(
+              widget.property.name,
+              style: new TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 19.0,
+              ),
+            ),
+            SizedBox(width: 50),
+            Text(widget.property.type.toString().split(".").last)
+          ],
         ),
-        SizedBox(width: 50),
-        Text(widget.property.type.toString().split(".").last)
+        buildInput(widget.property.type)
       ],
     );
+  }
+
+  Widget buildInput(PostgreSQLDataType dataType) {
+    if (dataType == PostgreSQLDataType.text) {
+      return TextField(
+        controller: TextEditingController(text: ""),
+      );
+    } else if ([
+      PostgreSQLDataType.real,
+      PostgreSQLDataType.smallInteger,
+      PostgreSQLDataType.integer,
+      PostgreSQLDataType.bigInteger
+    ].contains(dataType)) {
+      return TextField(keyboardType: TextInputType.number);
+    } else if (dataType == PostgreSQLDataType.boolean) {
+      return Checkbox(
+        value: value,
+        onChanged: (bool newValue) {
+          setState(() {
+            value = newValue;
+          });
+        },
+      );
+    }
+    else if (dataType == PostgreSQLDataType.date) {
+      return DatePicker(showDate: true);
+    }
+    else if ([PostgreSQLDataType.timestampWithTimezone, PostgreSQLDataType.timestampWithoutTimezone].contains(dataType)) {
+      return DatePicker(showDate: true, showTime: true,);
+    }
+    else
+      return TextFormField();
   }
 }

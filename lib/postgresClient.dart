@@ -3,7 +3,7 @@ import 'package:registrator/model/databaseModel.dart';
 import 'package:registrator/model/property.dart';
 import 'package:registrator/model/table.dart' as my;
 
-// TODO complete
+// TODO complete and add short name field and flutter input type
 var postgresTypes = {
   "timestamp without time zone": PostgreSQLDataType.timestampWithoutTimezone,
   "timestamp with time zone": PostgreSQLDataType.timestampWithTimezone,
