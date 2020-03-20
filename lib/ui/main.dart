@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stack/stack.dart' as dataStack;
 
 import 'destination.dart';
 import 'destinationView.dart';
+
+GetIt getIt = GetIt.asNewInstance();
 
 void main() {
   runApp(MyApp());

@@ -6,7 +6,13 @@ import 'package:registrator/bloc/database_model/bloc.dart';
 import 'package:registrator/model/databaseModel.dart';
 import 'package:registrator/model/property.dart';
 import 'package:registrator/model/table.dart' as my;
+import 'package:registrator/postgresClient.dart';
 import 'package:registrator/ui/date_picker.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:get_it/get_it.dart';
+import 'package:tuple/tuple.dart';
+
+GetIt getIt = GetIt.instance;
 
 class ActionsPage extends StatefulWidget {
   const ActionsPage({Key key}) : super(key: key);
@@ -16,11 +22,13 @@ class ActionsPage extends StatefulWidget {
 }
 
 class ActionsPageState extends State<ActionsPage> {
+  final actions = Actions();
   final dbModelBloc = DatabaseModelBloc();
 
   @override
   void initState() {
     super.initState();
+
     dbModelBloc.add(GetDatabaseModel("my_data")); // TODO this will change
   }
 
@@ -36,7 +44,7 @@ class ActionsPageState extends State<ActionsPage> {
             } else if (state is DatabaseModelLoading) {
               return buildLoading();
             } else if (state is DatabaseModelLoaded) {
-              return buildColumn(state.dbModel);
+              return buildActionsPage(state.dbModel);
             } else
               throw Exception;
           },
@@ -49,11 +57,10 @@ class ActionsPageState extends State<ActionsPage> {
     );
   }
 
-  Widget buildColumn(DatabaseModel dbModel) {
-    // TODO change name
+  // TODO review
+  Widget buildActionsPage(DatabaseModel dbModel) {
     return Scaffold(
-      appBar: ActionsDropdown(),
-      body: TablesDropdown(dbModel),
+      body: ActionsDropdown(actions, dbModel),
     );
   }
 
@@ -64,8 +71,25 @@ class ActionsPageState extends State<ActionsPage> {
   }
 }
 
+class Actions {
+  static const list = <String>[
+    'INSERT INTO',
+    'EDIT LAST FROM',
+    'CREATE WIDGET FROM'
+  ];
+  BehaviorSubject _selectedAction = BehaviorSubject.seeded(list[0]);
+  Stream get stream$ => _selectedAction.stream;
+  String get current => _selectedAction.value;
+  select(value) {
+    _selectedAction.add(value);
+  }
+}
+
 class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
-  ActionsDropdown({Key key}) : super(key: key);
+  ActionsDropdown(this.actions, this.dbModel);
+
+  final DatabaseModel dbModel;
+  final Actions actions;
 
   @override
   _ActionsDropdownState createState() => _ActionsDropdownState();
@@ -75,53 +99,64 @@ class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _ActionsDropdownState extends State<ActionsDropdown> {
-  String dropdownValue = 'INSERT INTO';
+  @override
+  void initState() {
+    super.initState();
+    getIt.registerSingleton<Actions>(widget.actions);
+  }
 
   @override
+  // TODO change with actions class
   Widget build(BuildContext context) {
-    return DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-            value: dropdownValue,
-            iconSize: 0,
-            elevation: 0,
-            isExpanded: true,
-            onChanged: (String newValue) {
-              setState(() {
-                dropdownValue = newValue;
-              });
-            },
-            items: [
-          DropdownMenuItem<String>(
-              value: 'INSERT INTO',
-              child: Container(
-                  child: Center(
-                      child: Text('INSERT INTO',
-                          style: TextStyle(color: Colors.white))),
-                  color: Colors.blue,
-                  height: kToolbarHeight)),
-          DropdownMenuItem<String>(
-              value: 'EDIT LAST FROM',
-              child: Container(
-                  child: Center(
-                      child: Text('EDIT LAST FROM',
-                          style: TextStyle(color: Colors.black))),
-                  color: Colors.amber,
-                  height: kToolbarHeight)),
-          DropdownMenuItem<String>(
-              value: 'CREATE WIDGET FROM',
-              child: Container(
-                  child: Center(
-                      child: Text('CREATE WIDGET FROM',
-                          style: TextStyle(color: Colors.white))),
-                  color: Colors.green,
-                  height: kToolbarHeight))
-        ]));
+    return Column(
+      children: <Widget>[
+        DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+                value: widget.actions.current,
+                iconSize: 0,
+                elevation: 0,
+                isExpanded: true,
+                onChanged: (String newValue) {
+                  setState(() {
+                    widget.actions.select(newValue);
+                  });
+                },
+                items: [
+              DropdownMenuItem<String>(
+                  value: Actions.list[0],
+                  child: Container(
+                      child: Center(
+                          child: Text(Actions.list[0],
+                              style: TextStyle(color: Colors.white))),
+                      color: Colors.blue,
+                      height: kToolbarHeight)),
+              DropdownMenuItem<String>(
+                  value: Actions.list[1],
+                  child: Container(
+                      child: Center(
+                          child: Text(Actions.list[1],
+                              style: TextStyle(color: Colors.black))),
+                      color: Colors.amber,
+                      height: kToolbarHeight)),
+              DropdownMenuItem<String>(
+                  value: Actions.list[2],
+                  child: Container(
+                      child: Center(
+                          child: Text(Actions.list[2],
+                              style: TextStyle(color: Colors.white))),
+                      color: Colors.green,
+                      height: kToolbarHeight))
+            ])),
+        TablesDropdown(widget.actions.current, widget.dbModel)
+      ],
+    );
   }
 }
 
 class TablesDropdown extends StatefulWidget {
-  TablesDropdown(this.dbModel);
+  TablesDropdown(this.action, this.dbModel);
 
+  final String action; // TODO will be a class
   final DatabaseModel dbModel;
 
   @override
@@ -129,28 +164,43 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class _TablesDropdownState extends State<TablesDropdown> {
-  var _tables = <my.Table>[];
+  var tables = <my.Table>[];
   my.Table selectedTable;
+  PropertiesForm form;
 
   @override
   void initState() {
     super.initState();
-    _tables = widget.dbModel.tables;
-    selectedTable = _tables[0];
+    tables = widget.dbModel.tables;
+    selectedTable = tables[0];
+    buildPropertiesForm(selectedTable, widget.action);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: buildAppBar(),
-      body: PropertiesForm(selectedTable.properties),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.check),
+    return Expanded(
+      child: Scaffold(
+        appBar: buildTablesDropdown(),
+        body: buildPropertiesForm(selectedTable, widget.action),
+        floatingActionButton: Builder(
+          builder: (context) => FloatingActionButton(
+            tooltip: "${widget.action} ${selectedTable.name}",
+            child: Icon(Icons.check),
+            onPressed: () {
+              form.submit(context, selectedTable, widget.action);
+            },
+          ),
+        ),
       ),
     );
   }
 
-  Widget buildAppBar() {
+  PropertiesForm buildPropertiesForm(selectedTable, action) {
+    form = PropertiesForm(selectedTable, action);
+    return form;
+  }
+
+  Widget buildTablesDropdown() {
     return PreferredSize(
       preferredSize: Size(double.infinity, kToolbarHeight),
       child: DropdownButtonHideUnderline(
@@ -161,12 +211,12 @@ class _TablesDropdownState extends State<TablesDropdown> {
               isExpanded: true,
               onChanged: (String newValue) {
                 setState(() {
-                  selectedTable = _tables
+                  selectedTable = tables
                       .where((t) => t.name == newValue)
                       .first; // TODO not very clean
                 });
               },
-              items: _tables.map<DropdownMenuItem<String>>((my.Table table) {
+              items: tables.map<DropdownMenuItem<String>>((my.Table table) {
                 return DropdownMenuItem<String>(
                     value: table.name,
                     child: Container(
@@ -181,41 +231,77 @@ class _TablesDropdownState extends State<TablesDropdown> {
 }
 
 class PropertiesForm extends StatelessWidget {
-  PropertiesForm(this.properties);
+  PropertiesForm(this.table, this.action);
 
-  final List<Property> properties;
+  final my.Table table;
+  final String action;
+
   final _formKey = GlobalKey<FormState>();
+
+  // Name, value
+  final Map<String, String> propertiesForm = {};
+
+  void tableUpdater(Tuple2<String, String> newProperty) {
+    propertiesForm[newProperty.item1] = newProperty.item2;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
       child: ListView.separated(
-        itemCount: properties.length,
+        itemCount: table.properties.length,
         padding: new EdgeInsets.all(8.0),
         separatorBuilder: (BuildContext context, int index) => Divider(),
         itemBuilder: (BuildContext context, int index) {
-          return PropertyView(properties[index]);
+          return PropertyView(table.properties[index], tableUpdater);
         },
       ),
     );
   }
+
+  // TODO submit should call the bloc
+  bool submit(BuildContext context, my.Table selectedTable, String action) {
+    final snackBar = SnackBar(
+        content: Text("$action ${selectedTable.name} done!"),
+        action: SnackBarAction(
+          label: "Undo",
+          onPressed: () {
+            // Some code to undo the change.
+          },
+        ));
+    Scaffold.of(context).showSnackBar(snackBar);
+    print(propertiesForm);
+    PostgresClient.insertRowIntoTable(null, table.name, propertiesForm);
+    return true;
+  }
 }
 
 class PropertyView extends StatefulWidget {
-  PropertyView(this.property);
+  PropertyView(this.property, this.updater);
 
   final Property property;
+  final ValueChanged<Tuple2<String, String>> updater;
 
   @override
   State<StatefulWidget> createState() => _PropertyViewState();
 }
 
-class _PropertyViewState extends State<PropertyView> {
-  var value = false;
+class _PropertyViewState extends State<PropertyView>
+    with AutomaticKeepAliveClientMixin {
+  var value;
+
+  void updateForm(String value, PostgreSQLDataType dataType) {
+    if ([PostgreSQLDataType.text, PostgreSQLDataType.date, PostgreSQLDataType.uuid].contains(dataType))
+      value = "'$value'";
+
+    if (widget.updater != null)
+      widget.updater(Tuple2(widget.property.name, value));
+  }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       children: <Widget>[
         Row(
@@ -237,10 +323,18 @@ class _PropertyViewState extends State<PropertyView> {
     );
   }
 
+  void _onChangeController(newValue, dataType) {
+    setState(() {
+      value = newValue;
+      updateForm(value, dataType);
+    });
+  }
+
   Widget buildInput(PostgreSQLDataType dataType) {
+    Widget ret;
     if (dataType == PostgreSQLDataType.text) {
-      return TextField(
-        controller: TextEditingController(text: ""),
+      ret = TextField(
+        onChanged: (newValue) => _onChangeController(newValue, dataType),
       );
     } else if ([
       PostgreSQLDataType.real,
@@ -248,24 +342,35 @@ class _PropertyViewState extends State<PropertyView> {
       PostgreSQLDataType.integer,
       PostgreSQLDataType.bigInteger
     ].contains(dataType)) {
-      return TextField(keyboardType: TextInputType.number);
+      value = value == null ? "" : value;
+      ret = TextField(
+          keyboardType: TextInputType.number,
+          onChanged: (newValue) => _onChangeController(newValue, dataType),
+          decoration: new InputDecoration.collapsed(hintText: '0')
+      );
     } else if (dataType == PostgreSQLDataType.boolean) {
-      return Checkbox(
+        value = value == null ? false : value;
+      ret = Checkbox(
         value: value,
-        onChanged: (bool newValue) {
-          setState(() {
-            value = newValue;
-          });
-        },
+        onChanged: (newValue) => _onChangeController(newValue, dataType),
+      );
+    } else if (dataType == PostgreSQLDataType.date) {
+      value = value == null ? "2020-03-20" : value;
+      ret = DatePicker(showDate: true);
+    } else if ([
+      PostgreSQLDataType.timestampWithTimezone,
+      PostgreSQLDataType.timestampWithoutTimezone
+    ].contains(dataType)) {
+      value = value == null? DateTime.now().millisecondsSinceEpoch : value;
+      ret = DatePicker(
+        showDate: true,
+        showTime: true,
       );
     }
-    else if (dataType == PostgreSQLDataType.date) {
-      return DatePicker(showDate: true);
-    }
-    else if ([PostgreSQLDataType.timestampWithTimezone, PostgreSQLDataType.timestampWithoutTimezone].contains(dataType)) {
-      return DatePicker(showDate: true, showTime: true,);
-    }
-    else
-      return TextFormField();
+    updateForm(value, dataType);
+    return ret;
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }

@@ -2,6 +2,7 @@ import 'package:postgres/postgres.dart';
 import 'package:registrator/model/databaseModel.dart';
 import 'package:registrator/model/property.dart';
 import 'package:registrator/model/table.dart' as my;
+import 'package:tuple/tuple.dart';
 
 // TODO complete and add short name field and flutter input type
 var postgresTypes = {
@@ -63,13 +64,36 @@ class PostgresClient {
 
   static Future<List<Property>> getPropertiesFromTable(PostgreSQLConnection connection, String table) async {
     List<List<dynamic>> results = await connection.query(
-        r"SELECT column_name, data_type FROM information_schema.columns "
+        r"SELECT ordinal_position, column_name, data_type FROM information_schema.columns "
         r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
         substitutionValues: {"tableSchema": "public", "tableName": table});
 
-    var r = results.map((res) { return Property(res[0], postgresTypes[res[1]]); }).toList().cast<Property>();
+    var r = results.map((res) { return Property(res[0]-1, res[1], postgresTypes[res[2]]); }).toList().cast<Property>();
 
     return r;
+  }
+
+  // TODO arreglar this shit
+  static Future<Null> insertRowIntoTable(PostgreSQLConnection connection, String table, Map<String, String> propertiesForm) async {
+    var connection = new PostgreSQLConnection("192.168.1.14", 5432, "my_data",
+        username: "postgres", password: r"!$36<BD5vuP7");
+    await connection.open();
+
+    print("Conectando con postgres");
+
+    var properties = listToSqlList(propertiesForm.keys.toList());
+    var values = listToSqlList(propertiesForm.keys.map((k) => propertiesForm[k]).toList());
+    print(properties);
+    print(values);
+    var results = await connection.execute("INSERT INTO $table ($properties) VALUES ($values)");
+
+    print(results);
+
+    connection.close();
+  }
+
+  static String listToSqlList(List<String> list) {
+    return list.join(", ");
   }
 
   static Future<DatabaseModel> getDatabaseModel(dbName) async {
