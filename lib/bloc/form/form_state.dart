@@ -1,20 +1,20 @@
 import 'package:equatable/equatable.dart';
 
-abstract class FormState extends Equatable {
-  const FormState();
+abstract class PropertiesFormState extends Equatable {
+  const PropertiesFormState();
 }
 
-class InitialFormState extends FormState {
+class InitialFormState extends PropertiesFormState {
   @override
   List<Object> get props => [];
 }
 
-class SubmittingFormState extends FormState {
+class SubmittingFormState extends PropertiesFormState {
   @override
   List<Object> get props => [];
 }
 
-class SubmittedFormState extends FormState {
+class SubmittedFormState extends PropertiesFormState {
   final bool success;
 
   SubmittedFormState(this.success);

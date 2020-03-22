@@ -42,7 +42,7 @@ class _DatePickerState extends State<DatePicker> {
 
   @override
   Widget build(BuildContext context) {
-    return RaisedButton(
+    return OutlineButton(
       child: Text((widget.showDate ? "${_date.day}/${_date.month}/${_date.year} " : "") + (widget.showTime ? "${_time.hour}:${_time.minute}" : "")),
       onPressed: () {
         if (widget.showTime && !widget.showDate) _selectedTime(context);

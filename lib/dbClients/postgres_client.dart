@@ -2,7 +2,6 @@ import 'package:postgres/postgres.dart';
 import 'package:registrator/model/databaseModel.dart';
 import 'package:registrator/model/property.dart';
 import 'package:registrator/model/table.dart' as my;
-import 'package:tuple/tuple.dart';
 
 // TODO complete and add short name field and flutter input type
 var postgresTypes = {
@@ -19,7 +18,7 @@ var postgresTypes = {
 
 class PostgresClient {
 
-  var connection;
+  var _connection;
 
   /// Private constructor
   PostgresClient._create() {
@@ -35,9 +34,9 @@ class PostgresClient {
 
     // Call the private constructor
     var component = PostgresClient._create();
-    component.connection = new PostgreSQLConnection("192.168.1.14", 5432, "my_data",
+    component._connection = new PostgreSQLConnection("192.168.1.14", 5432, "my_data",
         username: "postgres", password: r"!$36<BD5vuP7");
-    await component.connection.open();
+    await component._connection.open();
     // Do initialization that requires async
     //await component._complexAsyncInit();
 
@@ -45,65 +44,46 @@ class PostgresClient {
     return component;
   }
 
-  static Future<List<String>> getTables() async {
-    var connection = new PostgreSQLConnection("192.168.1.14", 5432, "my_data",
-        username: "postgres", password: r"!$36<BD5vuP7");
-    await connection.open();
+  Future<List<String>> getTables() async {
 
-    List<List<dynamic>> results = await connection.query(
+    List<List<dynamic>> results = await _connection.query(
         r"SELECT table_name "
         r"FROM information_schema.tables "
         r"WHERE table_type = 'BASE TABLE' "
         r"AND table_schema = @tableSchema",
         substitutionValues: {"tableSchema": "public"});
 
-    connection.close();
-
     return results.expand((i) => i).toList().cast<String>();
   }
 
-  static Future<List<Property>> getPropertiesFromTable(PostgreSQLConnection connection, String table) async {
-    List<List<dynamic>> results = await connection.query(
+  Future<List<Property>> getPropertiesFromTable(String table) async {
+    List<List<dynamic>> results = await _connection.query(
         r"SELECT ordinal_position, column_name, data_type FROM information_schema.columns "
         r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
         substitutionValues: {"tableSchema": "public", "tableName": table});
 
     var r = results.map((res) { return Property(res[0]-1, res[1], postgresTypes[res[2]]); }).toList().cast<Property>();
-
     return r;
   }
 
-  // TODO arreglar this shit
-  static Future<Null> insertRowIntoTable(PostgreSQLConnection connection, String table, Map<String, String> propertiesForm) async {
-    var connection = new PostgreSQLConnection("192.168.1.14", 5432, "my_data",
-        username: "postgres", password: r"!$36<BD5vuP7");
-    await connection.open();
-
-    print("Conectando con postgres");
-
+  Future<bool> insertRowIntoTable(String table, Map<String, String> propertiesForm) async {
     var properties = listToSqlList(propertiesForm.keys.toList());
     var values = listToSqlList(propertiesForm.keys.map((k) => propertiesForm[k]).toList());
     print(properties);
     print(values);
-    var results = await connection.execute("INSERT INTO $table ($properties) VALUES ($values)");
-
+    var results = await _connection.execute("INSERT INTO $table ($properties) VALUES ($values)");
     print(results);
-
-    connection.close();
+    if (results == 1) return Future.value(true);
+    else return Future.value(false);
   }
 
   static String listToSqlList(List<String> list) {
     return list.join(", ");
   }
 
-  static Future<DatabaseModel> getDatabaseModel(dbName) async {
-    var connection = new PostgreSQLConnection("192.168.1.14", 5432, dbName,
-        username: "postgres", password: r"!$36<BD5vuP7");
-    await connection.open();
+  Future<DatabaseModel> getDatabaseModel(dbName) async {
 
-    print("Conectando con postgres");
-
-    List<List<dynamic>> tablesResponse = await connection.query(
+    List<List<dynamic>> tablesResponse = await _connection.query(
         r"SELECT table_name "
         r"FROM information_schema.tables "
         r"WHERE table_type = 'BASE TABLE' "
@@ -116,14 +96,16 @@ class PostgresClient {
 
     List<my.Table> tables = [];
     for (var tName in tablesNames) {
-      List<Property> properties = await getPropertiesFromTable(connection, tName);
+      List<Property> properties = await getPropertiesFromTable(tName);
       tables.add(my.Table(tName, properties));
     }
 
     print(tables);
 
-    connection.close();
-
     return DatabaseModel(dbName, tables);
+  }
+
+  void close() {
+    _connection.close();
   }
 }

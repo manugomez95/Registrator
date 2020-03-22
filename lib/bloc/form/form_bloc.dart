@@ -1,21 +1,35 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
-import 'package:toast/toast.dart';
+import 'package:flutter/material.dart';
+import 'package:registrator/dbClients/postgres_client.dart';
+import '../../main.dart';
 import './bloc.dart';
 
-class FormBloc extends Bloc<FormEvent, FormState> {
+class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
   @override
-  FormState get initialState => InitialFormState();
+  PropertiesFormState get initialState => InitialFormState();
 
   @override
-  Stream<FormState> mapEventToState(
+  Stream<PropertiesFormState> mapEventToState(
     FormEvent event,
   ) async* {
     if (event is SubmitFormEvent) {
       yield SubmittingFormState();
-      // TODO Do something with event.form
-      Toast.show("Action done", event.context, duration: Toast.LENGTH_SHORT, gravity:  Toast.BOTTOM);
-      yield SubmittedFormState(true);
+      // TODO change by action class or enum
+      if (event.action == "INSERT INTO") if (await getIt<PostgresClient>()
+          .insertRowIntoTable(event.table.name, event.propertiesForm)) {
+        final snackBar = SnackBar(
+            content: Text("${event.action} ${event.table.name} done!"),
+            action: SnackBarAction(
+              label: "Undo",
+              onPressed: () {
+                // Some code to undo the change.
+              },
+            ));
+        Scaffold.of(event.context).showSnackBar(snackBar);
+      } else {
+        yield SubmittedFormState(true);
+      }
     }
   }
 }

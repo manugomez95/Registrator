@@ -28,9 +28,9 @@ class _DestinationViewState extends State<DestinationView> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.destination.title),
-        actions: <Widget>[IconButton(
+        /*actions: <Widget>[IconButton(
           icon: Icon(Icons.more_vert),
-          onPressed: () {},)] // TODO onPressed function passed as parameter
+          onPressed: () {},)]*/ // TODO onPressed function passed as parameter
       ),
       body: widget.destination.page, // TextField(controller: _textController)
     );

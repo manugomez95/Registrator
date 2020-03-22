@@ -1,17 +1,20 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stack/stack.dart' as dataStack;
-
-import 'destination.dart';
-import 'destinationView.dart';
+import 'package:registrator/dbClients/postgres_client.dart';
+import 'ui/destination.dart';
+import 'ui/destinationView.dart';
 
 GetIt getIt = GetIt.asNewInstance();
 
-void main() {
+Future<void> main() async {
+  getIt.registerSingleton<PostgresClient>(await PostgresClient.create());
   runApp(MyApp());
 }
 
+// TODO not closing db connection for the moment
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
@@ -32,33 +35,30 @@ class Routing extends StatefulWidget {
 // SingleTickerProviderStateMixin is used for animation
 class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
-  dataStack.Stack<int> _pStack = dataStack.Stack(); // TODO "stack set"
-  // TODO var dbClient;
+  LinkedHashSet<int> _pStack = LinkedHashSet(); // TODO "stack set"
 
-  @override
-  void initState() {
-    super.initState();
-    // TODO dbClient = await PostgresClient.create();
-  }
-
+  // ignore: missing_return
   Future<bool> _onWillPop() {
     setState(() {
-      if (_pStack.isEmpty) SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-      _selectedIndex=_pStack.pop();
+      if (_pStack.isEmpty)
+        SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+      // Pop
+      _selectedIndex = _pStack.last;
+      _pStack.remove(_selectedIndex);
     });
-
   }
 
   void _onItemTapped(int index) {
     setState(() {
-      _pStack.push(_selectedIndex);
+      // push
+      if (_pStack.contains(index)) _pStack.remove(index);
+      _pStack.add(_selectedIndex);
       _selectedIndex = index;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-
     return WillPopScope(
       onWillPop: _onWillPop,
       child: new Scaffold(
@@ -75,9 +75,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
         bottomNavigationBar: new BottomNavigationBar(
           items: allDestinations.map((Destination destination) {
             return BottomNavigationBarItem(
-                icon: Icon(destination.icon),
-                title: Text(destination.title)
-            );
+                icon: Icon(destination.icon), title: Text(destination.title));
           }).toList(),
           currentIndex: _selectedIndex,
           selectedItemColor: Color.fromRGBO(80, 158, 227, 1),
@@ -86,6 +84,5 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
         ),
       ),
     );
-
   }
 }

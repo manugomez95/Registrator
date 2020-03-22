@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:registrator/ui/tabs/dashboardPage.dart';
 import '../assets/my_custom_icons.dart';
-import './tabs/actionsPage.dart';
+import './pages/actionsPage.dart';
 
 class Destination {
   const Destination(this.title, this.icon, this.page);
