@@ -10,7 +10,7 @@ import 'ui/destinationView.dart';
 GetIt getIt = GetIt.asNewInstance();
 
 Future<void> main() async {
-  getIt.registerSingleton<PostgresClient>(await PostgresClient.create());
+  getIt.registerSingleton<PostgresClient>(await PostgresClient.create()); // TODO more than one in the future?
   runApp(MyApp());
 }
 

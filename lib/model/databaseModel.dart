@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:registrator/model/table.dart' as my;
 
 class DatabaseModel extends Equatable {

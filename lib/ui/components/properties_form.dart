@@ -9,9 +9,7 @@ class PropertiesForm extends StatelessWidget {
 
   final my.Table table;
   final String action;
-
-  // TODO add validation
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
 
   // Name, value
   final Map<String, String> propertiesForm = {};
@@ -23,11 +21,11 @@ class PropertiesForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Form(
-      key: _formKey,
+      key: formKey,
       child: ListView.separated(
         itemCount: table.properties.length,
         padding: new EdgeInsets.all(15.0),
-        separatorBuilder: (BuildContext context, int index) => Divider(),
+        separatorBuilder: (BuildContext context, int index) => Divider(height: 20,),
         itemBuilder: (BuildContext context, int index) {
           return PropertyView(table.properties[index], tableUpdater);
         },

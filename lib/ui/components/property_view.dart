@@ -39,7 +39,7 @@ class _PropertyViewState extends State<PropertyView>
                 fontSize: 19.0,
               ),
             ),
-            SizedBox(width: 50),
+            SizedBox(width: 35),
             Container(
               child: Text(widget.property.type.toString().split(".").last,
                   style: new TextStyle(
@@ -55,7 +55,7 @@ class _PropertyViewState extends State<PropertyView>
             )
           ],
         ),
-        buildInput(widget.property.type)
+        buildInput(widget.property)
       ],
     );
   }
@@ -63,50 +63,71 @@ class _PropertyViewState extends State<PropertyView>
   void _onChangeController(newValue, dataType) {
     setState(() {
       value = newValue;
-      updateForm(widget.property.name, widget.property.type, value.toString(),
+      updateForm(widget.property.name, widget.property.type, value,
           widget.updater);
     });
   }
 
   // TODO shorten
-  Widget buildInput(PostgreSQLDataType dataType) {
+  Widget buildInput(Property property) {
     Widget ret;
-    if ([PostgreSQLDataType.text, PostgreSQLDataType.uuid].contains(dataType)) {
-      ret = TextField(
-        onChanged: (newValue) => _onChangeController(newValue, dataType),
-      );
+    if ([PostgreSQLDataType.text].contains(property.type)) {
+      ret = TextFormField(
+          validator: (value) {
+            if (!property.isNullable && value.isEmpty) {
+              return "Field can't be null";
+            }
+            return null;
+          },
+          maxLength: property.charMaxLength,
+          textInputAction: TextInputAction.next,
+          onChanged: (newValue) => _onChangeController(newValue, property.type),
+          onFieldSubmitted: (v) {
+            FocusScope.of(context).nextFocus();
+          },
+          decoration: new InputDecoration.collapsed(
+              hintText: 'Lorem Ipsum...')); // TODO maxlength enforced?
     } else if ([
       PostgreSQLDataType.real,
       PostgreSQLDataType.smallInteger,
       PostgreSQLDataType.integer,
-      PostgreSQLDataType.bigInteger
-    ].contains(dataType)) {
-      value = value == null ? "" : value;
-      ret = TextField(
-        keyboardType: TextInputType.number,
-        onChanged: (newValue) => _onChangeController(newValue, dataType),
-        decoration: new InputDecoration.collapsed(hintText: '0')
-      );
-    } else if (dataType == PostgreSQLDataType.boolean) {
+      PostgreSQLDataType.bigInteger,
+      PostgreSQLDataType.uuid
+    ].contains(property.type)) {
+      ret = TextFormField(
+          validator: (value) {
+            if (!property.isNullable && value.isEmpty) {
+              return "Field can't be null";
+            }
+            return null;
+          },
+          textInputAction: TextInputAction.next,
+          keyboardType: TextInputType.number,
+          onChanged: (newValue) => _onChangeController(newValue, property.type),
+          onFieldSubmitted: (v) {
+            FocusScope.of(context).nextFocus();
+          },
+          decoration: new InputDecoration.collapsed(hintText: '0'));
+    } else if (property.type == PostgreSQLDataType.boolean) {
       value = value == null ? false : value;
       ret = Checkbox(
         value: value,
-        onChanged: (newValue) => _onChangeController(newValue, dataType),
+        onChanged: (newValue) => _onChangeController(newValue, property.type),
       );
-    } else if (dataType == PostgreSQLDataType.date) {
+    } else if (property.type == PostgreSQLDataType.date) {
       value = value == null ? "2020-03-20" : value;
       ret = DatePicker(showDate: true);
     } else if ([
       PostgreSQLDataType.timestampWithTimezone,
       PostgreSQLDataType.timestampWithoutTimezone
-    ].contains(dataType)) {
-      value = value == null ? DateTime.now().millisecondsSinceEpoch : value;
+    ].contains(property.type)) {
+      value = value == null ? "'${DateTime.now()}'" : value;
       ret = DatePicker(
         showDate: true,
         showTime: true,
       );
     }
-    updateForm(widget.property.name, widget.property.type, value.toString(),
+    updateForm(widget.property.name, widget.property.type, value,
         widget.updater);
     return ret;
   }
@@ -115,13 +136,12 @@ class _PropertyViewState extends State<PropertyView>
   bool get wantKeepAlive => true;
 }
 
-void updateForm(String propertyName, PostgreSQLDataType dataType, String value,
+void updateForm(String propertyName, PostgreSQLDataType dataType, value,
     ValueChanged<Tuple2<String, String>> updater) {
   if ([
     PostgreSQLDataType.text,
     PostgreSQLDataType.date,
-    PostgreSQLDataType.uuid
-  ].contains(dataType)) value = "'$value'";
+  ].contains(dataType) && value != null) value = "'${value.toString()}'";
 
-  updater(Tuple2(propertyName, value));
+  updater(Tuple2(propertyName, value.toString()));
 }

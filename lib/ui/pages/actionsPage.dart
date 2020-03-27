@@ -8,6 +8,7 @@ import 'package:registrator/model/databaseModel.dart';
 import 'package:registrator/model/table.dart' as my;
 import 'package:registrator/ui/components/properties_form.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ActionsPage extends StatefulWidget {
   const ActionsPage({Key key}) : super(key: key);
@@ -17,21 +18,21 @@ class ActionsPage extends StatefulWidget {
 }
 
 class ActionsPageState extends State<ActionsPage> {
-  final actions = Actions();
-  final dbModelBloc = DatabaseModelBloc();
+  final _actions = Actions();
+  final _dbModelBloc = DatabaseModelBloc(); // TODO actually it's a Postgres DBModel
 
   @override
   void initState() {
     super.initState();
-    dbModelBloc.add(GetDatabaseModel("my_data")); // TODO this will change
+    _dbModelBloc.add(GetDatabaseModel("my_data")); // TODO this will change
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-        create: (BuildContext context) => dbModelBloc,
+        create: (BuildContext context) => _dbModelBloc,
         child: BlocBuilder(
-          bloc: dbModelBloc,
+          bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
             if (state is DatabaseModelInitial) {
               return Text("No data");
@@ -54,7 +55,7 @@ class ActionsPageState extends State<ActionsPage> {
   // TODO review
   Widget buildActionsPage(DatabaseModel dbModel) {
     return Scaffold(
-      body: ActionsDropdown(actions, dbModel),
+      body: ActionsDropdown(_actions, dbModel),
     );
   }
 }
@@ -151,7 +152,7 @@ class _TablesDropdownState extends State<TablesDropdown> {
   void initState() {
     super.initState();
     tables = widget.dbModel.tables;
-    selectedTable = tables[0];
+    selectedTable = tables[0];    // TODO I should access persistent data here
     buildPropertiesForm(selectedTable, widget.action.title);
   }
 
@@ -167,8 +168,17 @@ class _TablesDropdownState extends State<TablesDropdown> {
               tooltip: "${widget.action} ${selectedTable.name}",
               child: Icon(Icons.check, color: widget.action.textColor,),
               onPressed: () {
-                _formBloc.add(SubmitFormEvent(
-                    context, form.propertiesForm, widget.action.title, selectedTable));
+                if (form.formKey.currentState.validate()) {
+                  _formBloc.add(SubmitFormEvent(
+                      context, form.propertiesForm, widget.action.title, selectedTable));
+                }
+                else {
+                  final snackBar = SnackBar(
+                    content: Text("Check for wrong input"),
+                    backgroundColor: Colors.red,
+                  );
+                  Scaffold.of(context).showSnackBar(snackBar);
+                }
               },
             ),
           ),
