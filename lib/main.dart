@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:registrator/dbClients/postgres_client.dart';
+import 'package:bitacora/dbClients/postgres_client.dart';
 import 'ui/destination.dart';
 import 'ui/destinationView.dart';
 
@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Registrator',
+      title: 'bitacora',
       theme: ThemeData(primaryColor: Colors.white),
       home: Routing(),
     );
@@ -35,7 +35,7 @@ class Routing extends StatefulWidget {
 // SingleTickerProviderStateMixin is used for animation
 class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
-  LinkedHashSet<int> _pStack = LinkedHashSet(); // TODO "stack set"
+  LinkedHashSet<int> _pStack = LinkedHashSet();
 
   // ignore: missing_return
   Future<bool> _onWillPop() {

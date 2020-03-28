@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:registrator/model/table.dart' as my;
+import 'package:bitacora/model/table.dart' as my;
 
 class DatabaseModel extends Equatable {
   final String name;

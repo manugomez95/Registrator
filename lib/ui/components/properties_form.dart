@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:registrator/model/table.dart' as my;
-import 'package:registrator/ui/components/property_view.dart';
+import 'package:bitacora/model/table.dart' as my;
+import 'package:bitacora/ui/components/property_view.dart';
 import 'package:tuple/tuple.dart';
 
 class PropertiesForm extends StatelessWidget {

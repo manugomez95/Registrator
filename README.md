@@ -1,4 +1,4 @@
-# registrator
+# bitacora
 
 A new Flutter application.
 

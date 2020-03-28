@@ -1,4 +1,4 @@
-package com.example.registrator
+package com.example.bitacora
 
 import androidx.annotation.NonNull;
 import io.flutter.embedding.android.FlutterActivity

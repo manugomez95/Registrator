@@ -2,9 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:postgres/postgres.dart';
-import 'package:registrator/model/databaseModel.dart';
-import 'package:registrator/model/property.dart';
-import 'package:registrator/model/table.dart' as my;
+import 'package:bitacora/model/databaseModel.dart';
+import 'package:bitacora/model/property.dart';
+import 'package:bitacora/model/table.dart' as my;
 
 // TODO complete and add short name field and flutter input type
 var postgresTypes = {

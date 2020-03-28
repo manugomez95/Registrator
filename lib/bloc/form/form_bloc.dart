@@ -2,8 +2,9 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:postgres/postgres.dart';
-import 'package:registrator/dbClients/postgres_client.dart';
-import 'package:registrator/ui/components/snack_bars.dart';
+import 'package:bitacora/dbClients/postgres_client.dart';
+import 'package:bitacora/model/action.dart';
+import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../main.dart';
 import './bloc.dart';
@@ -18,8 +19,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
   ) async* {
     if (event is SubmitFormEvent) {
       yield SubmittingFormState();
-      // TODO change by action class or enum
-      if (event.action == "INSERT INTO") {
+      if (event.action == ActionType.InsertInto) {
         try {
           await getIt<PostgresClient>()
               .insertRowIntoTable(event.table.name, event.propertiesForm);

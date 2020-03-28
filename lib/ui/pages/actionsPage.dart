@@ -1,13 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:registrator/bloc/database_model/bloc.dart';
-import 'package:registrator/bloc/form/bloc.dart';
-import 'package:registrator/model/action.dart' as myAction;
-import 'package:registrator/model/databaseModel.dart';
-import 'package:registrator/model/table.dart' as my;
-import 'package:registrator/ui/components/properties_form.dart';
-import 'package:registrator/ui/components/snack_bars.dart';
+import 'package:bitacora/bloc/database_model/bloc.dart';
+import 'package:bitacora/bloc/form/bloc.dart';
+import 'package:bitacora/model/action.dart' as app;
+import 'package:bitacora/model/databaseModel.dart';
+import 'package:bitacora/model/table.dart' as app;
+import 'package:bitacora/ui/components/properties_form.dart';
+import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,7 +19,7 @@ class ActionsPage extends StatefulWidget {
 }
 
 class ActionsPageState extends State<ActionsPage> {
-  final _actions = Actions();
+  //final _actions = Actions();
   final _dbModelBloc =
       DatabaseModelBloc(); // TODO actually it's a Postgres DBModel
 
@@ -57,30 +57,25 @@ class ActionsPageState extends State<ActionsPage> {
   // TODO review
   Widget buildActionsPage(DatabaseModel dbModel) {
     return Scaffold(
-      body: ActionsDropdown(_actions, dbModel),
+      body: ActionsDropdown(dbModel),
     );
   }
 }
 
 class Actions {
-  static const list = <myAction.Action>[
-    myAction.Action('INSERT INTO', Colors.blue, Colors.white),
-    myAction.Action('EDIT LAST FROM', Colors.orangeAccent, Colors.white),
-    myAction.Action('CREATE WIDGET FROM', Colors.green, Colors.white),
-  ];
-  BehaviorSubject _selectedAction = BehaviorSubject.seeded(list[0]);
+  BehaviorSubject _selectedAction = BehaviorSubject.seeded(app.actions[0]);
   Stream get stream$ => _selectedAction.stream;
-  myAction.Action get current => _selectedAction.value;
+  app.Action get current => _selectedAction.value;
   select(value) {
     _selectedAction.add(value);
   }
 }
 
 class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
-  ActionsDropdown(this.actions, this.dbModel);
+  ActionsDropdown(this.dbModel);
 
   final DatabaseModel dbModel;
-  final Actions actions;
+  //final Actions actions;
 
   @override
   _ActionsDropdownState createState() => _ActionsDropdownState();
@@ -90,8 +85,17 @@ class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _ActionsDropdownState extends State<ActionsDropdown> {
+  List<app.Action> actions = <app.Action>[];
+  app.Action selectedAction;
+
   @override
-  // TODO change with actions class
+  void initState() {
+    super.initState();
+    actions = app.actions;
+    selectedAction = actions[0]; // TODO I should access persistent data here
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
@@ -99,42 +103,29 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
           data: ThemeData(canvasColor: Colors.grey[700]),
           child: DropdownButtonHideUnderline(
               child: Container(
-            color: widget.actions.current.primaryColor,
-            child: DropdownButton<myAction.Action>(
-                value: widget.actions.current,
+            color: selectedAction.primaryColor,
+            child: DropdownButton<app.Action>(
+                value: selectedAction,
                 iconSize: 0,
                 isExpanded: true,
-                onChanged: (myAction.Action newValue) {
+                onChanged: (app.Action newValue) {
                   setState(() {
-                    widget.actions.select(newValue);
+                    selectedAction = newValue;
                   });
                 },
-                items: [
-                  DropdownMenuItem<myAction.Action>(
-                      value: Actions.list[0],
+                items: actions.map<DropdownMenuItem<app.Action>>(
+                    (app.Action action) {
+                  return DropdownMenuItem<app.Action>(
+                      value: action,
                       child: Center(
-                          child: Text(Actions.list[0].title,
+                          child: Text(action.title,
                               style: TextStyle(
-                                  color: Actions.list[0].textColor,
-                                  fontWeight: FontWeight.bold)))),
-                  DropdownMenuItem<myAction.Action>(
-                      value: Actions.list[1],
-                      child: Center(
-                          child: Text(Actions.list[1].title,
-                              style: TextStyle(
-                                  color: Actions.list[1].textColor,
-                                  fontWeight: FontWeight.bold)))),
-                  DropdownMenuItem<myAction.Action>(
-                      value: Actions.list[2],
-                      child: Center(
-                          child: Text(Actions.list[2].title,
-                              style: TextStyle(
-                                  color: Actions.list[2].textColor,
-                                  fontWeight: FontWeight.bold))))
-                ]),
+                                  color: action.textColor,
+                                  fontWeight: FontWeight.bold))));
+                }).toList()),
           )),
         ),
-        TablesDropdown(widget.actions.current, widget.dbModel)
+        TablesDropdown(selectedAction, widget.dbModel)
       ],
     );
   }
@@ -143,7 +134,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
 class TablesDropdown extends StatefulWidget {
   TablesDropdown(this.action, this.dbModel);
 
-  final myAction.Action action; // TODO will be a class
+  final app.Action action; // TODO will be a class
   final DatabaseModel dbModel;
 
   @override
@@ -151,8 +142,8 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class _TablesDropdownState extends State<TablesDropdown> {
-  var tables = <my.Table>[];
-  my.Table selectedTable;
+  List<app.Table> tables = <app.Table>[];
+  app.Table selectedTable;
   PropertiesForm form;
   final _formBloc = FormBloc();
 
@@ -181,7 +172,7 @@ class _TablesDropdownState extends State<TablesDropdown> {
             onPressed: () {
               if (form.formKey.currentState.validate()) {
                 _formBloc.add(SubmitFormEvent(context, form.propertiesForm,
-                    widget.action.title, selectedTable));
+                    widget.action.type, selectedTable));
               } else
                 showErrorSnackBar(context, "Check for wrong input");
             },
@@ -213,10 +204,10 @@ class _TablesDropdownState extends State<TablesDropdown> {
                 setState(() {
                   selectedTable = tables
                       .where((t) => t.name == newValue)
-                      .first; // TODO not very clean
+                      .first; // TODO not very clean and not robust
                 });
               },
-              items: tables.map<DropdownMenuItem<String>>((my.Table table) {
+              items: tables.map<DropdownMenuItem<String>>((app.Table table) {
                 return DropdownMenuItem<String>(
                     value: table.name,
                     child: Center(

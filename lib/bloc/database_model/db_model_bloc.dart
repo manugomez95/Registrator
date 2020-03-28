@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
-import 'package:registrator/dbClients/postgres_client.dart';
-import 'package:registrator/main.dart';
+import 'package:bitacora/dbClients/postgres_client.dart';
+import 'package:bitacora/main.dart';
 import './bloc.dart';
 
 class DatabaseModelBloc extends Bloc<DatabaseModelEvent, DatabaseModelState> {

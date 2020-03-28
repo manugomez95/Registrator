@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:registrator/model/databaseModel.dart';
+import 'package:bitacora/model/databaseModel.dart';
 
 abstract class DatabaseModelState extends Equatable {
   const DatabaseModelState();
