@@ -3,6 +3,7 @@ import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:postgres/postgres.dart';
 import 'package:registrator/dbClients/postgres_client.dart';
+import 'package:registrator/ui/components/snack_bars.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../main.dart';
 import './bloc.dart';
@@ -40,20 +41,11 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
 
           yield SubmittedFormState(true);
         } on PostgreSQLException catch (e) {
-          final snackBar = SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          );
-          Scaffold.of(event.context).showSnackBar(snackBar);
-          // TODO abstract error snackbar
+          showErrorSnackBar(event.context, e.toString());
         }
       }
       else {
-        final snackBar = SnackBar(
-          content: Text("Sorry, not implemented yet!"),
-          backgroundColor: Colors.red,
-        );
-        Scaffold.of(event.context).showSnackBar(snackBar);
+        showErrorSnackBar(event.context, "Sorry, not implemented yet!");
       }
     }
   }

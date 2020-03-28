@@ -7,6 +7,7 @@ import 'package:registrator/model/action.dart' as myAction;
 import 'package:registrator/model/databaseModel.dart';
 import 'package:registrator/model/table.dart' as my;
 import 'package:registrator/ui/components/properties_form.dart';
+import 'package:registrator/ui/components/snack_bars.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,7 +20,8 @@ class ActionsPage extends StatefulWidget {
 
 class ActionsPageState extends State<ActionsPage> {
   final _actions = Actions();
-  final _dbModelBloc = DatabaseModelBloc(); // TODO actually it's a Postgres DBModel
+  final _dbModelBloc =
+      DatabaseModelBloc(); // TODO actually it's a Postgres DBModel
 
   @override
   void initState() {
@@ -97,33 +99,39 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
           data: ThemeData(canvasColor: Colors.grey[700]),
           child: DropdownButtonHideUnderline(
               child: Container(
-                color: widget.actions.current.primaryColor,
-          child: DropdownButton<myAction.Action>(
-              value: widget.actions.current,
-              iconSize: 0,
-              isExpanded: true,
-              onChanged: (myAction.Action newValue) {
-                setState(() {
-                  widget.actions.select(newValue);
-                });
-              },
-              items: [
-                DropdownMenuItem<myAction.Action>(
-                    value: Actions.list[0],
-                    child: Center(
-                        child: Text(Actions.list[0].title,
-                            style: TextStyle(color: Actions.list[0].textColor, fontWeight: FontWeight.bold)))),
-                DropdownMenuItem<myAction.Action>(
-                    value: Actions.list[1],
-                    child: Center(
-                        child: Text(Actions.list[1].title,
-                            style: TextStyle(color: Actions.list[1].textColor, fontWeight: FontWeight.bold)))),
-                DropdownMenuItem<myAction.Action>(
-                    value: Actions.list[2],
-                    child: Center(
-                        child: Text(Actions.list[2].title,
-                            style: TextStyle(color: Actions.list[2].textColor, fontWeight: FontWeight.bold))))
-              ]),
+            color: widget.actions.current.primaryColor,
+            child: DropdownButton<myAction.Action>(
+                value: widget.actions.current,
+                iconSize: 0,
+                isExpanded: true,
+                onChanged: (myAction.Action newValue) {
+                  setState(() {
+                    widget.actions.select(newValue);
+                  });
+                },
+                items: [
+                  DropdownMenuItem<myAction.Action>(
+                      value: Actions.list[0],
+                      child: Center(
+                          child: Text(Actions.list[0].title,
+                              style: TextStyle(
+                                  color: Actions.list[0].textColor,
+                                  fontWeight: FontWeight.bold)))),
+                  DropdownMenuItem<myAction.Action>(
+                      value: Actions.list[1],
+                      child: Center(
+                          child: Text(Actions.list[1].title,
+                              style: TextStyle(
+                                  color: Actions.list[1].textColor,
+                                  fontWeight: FontWeight.bold)))),
+                  DropdownMenuItem<myAction.Action>(
+                      value: Actions.list[2],
+                      child: Center(
+                          child: Text(Actions.list[2].title,
+                              style: TextStyle(
+                                  color: Actions.list[2].textColor,
+                                  fontWeight: FontWeight.bold))))
+                ]),
           )),
         ),
         TablesDropdown(widget.actions.current, widget.dbModel)
@@ -152,7 +160,7 @@ class _TablesDropdownState extends State<TablesDropdown> {
   void initState() {
     super.initState();
     tables = widget.dbModel.tables;
-    selectedTable = tables[0];    // TODO I should access persistent data here
+    selectedTable = tables[0]; // TODO I should access persistent data here
     buildPropertiesForm(selectedTable, widget.action.title);
   }
 
@@ -163,26 +171,23 @@ class _TablesDropdownState extends State<TablesDropdown> {
         appBar: buildTablesDropdown(),
         body: buildPropertiesForm(selectedTable, widget.action.title),
         floatingActionButton: Builder(
-            builder: (context) => FloatingActionButton(
-              backgroundColor: widget.action.primaryColor,
-              tooltip: "${widget.action} ${selectedTable.name}",
-              child: Icon(Icons.check, color: widget.action.textColor,),
-              onPressed: () {
-                if (form.formKey.currentState.validate()) {
-                  _formBloc.add(SubmitFormEvent(
-                      context, form.propertiesForm, widget.action.title, selectedTable));
-                }
-                else {
-                  final snackBar = SnackBar(
-                    content: Text("Check for wrong input"),
-                    backgroundColor: Colors.red,
-                  );
-                  Scaffold.of(context).showSnackBar(snackBar);
-                }
-              },
+          builder: (context) => FloatingActionButton(
+            backgroundColor: widget.action.primaryColor,
+            tooltip: "${widget.action} ${selectedTable.name}",
+            child: Icon(
+              Icons.check,
+              color: widget.action.textColor,
             ),
+            onPressed: () {
+              if (form.formKey.currentState.validate()) {
+                _formBloc.add(SubmitFormEvent(context, form.propertiesForm,
+                    widget.action.title, selectedTable));
+              } else
+                showErrorSnackBar(context, "Check for wrong input");
+            },
           ),
         ),
+      ),
     );
   }
 
@@ -198,29 +203,28 @@ class _TablesDropdownState extends State<TablesDropdown> {
         color: Colors.grey[300],
         child: DropdownButtonHideUnderline(
             child: Theme(
-              data: ThemeData(canvasColor: Colors.grey[300]),
-              child: DropdownButton<String>(
-                  value: selectedTable.name,
-                  iconSize: 0,
-                  elevation: 0,
-                  isExpanded: true,
-                  onChanged: (String newValue) {
-                    setState(() {
-                      selectedTable = tables
-                          .where((t) => t.name == newValue)
-                          .first; // TODO not very clean
-                    });
-                  },
-                  items: tables.map<DropdownMenuItem<String>>((my.Table table) {
-                    return DropdownMenuItem<String>(
-                        value: table.name,
-                        child: Center(
-                            child: Text(table.name,
-                                style: TextStyle(color: Colors.black))));
-                  }).toList()),
-            )),
-      )
-      ,
+          data: ThemeData(canvasColor: Colors.grey[300]),
+          child: DropdownButton<String>(
+              value: selectedTable.name,
+              iconSize: 0,
+              elevation: 0,
+              isExpanded: true,
+              onChanged: (String newValue) {
+                setState(() {
+                  selectedTable = tables
+                      .where((t) => t.name == newValue)
+                      .first; // TODO not very clean
+                });
+              },
+              items: tables.map<DropdownMenuItem<String>>((my.Table table) {
+                return DropdownMenuItem<String>(
+                    value: table.name,
+                    child: Center(
+                        child: Text(table.name,
+                            style: TextStyle(color: Colors.black))));
+              }).toList()),
+        )),
+      ),
     );
   }
 }
