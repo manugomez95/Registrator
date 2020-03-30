@@ -1,10 +1,8 @@
-import 'dart:math';
-
 import 'package:flutter/cupertino.dart';
 import 'package:postgres/postgres.dart';
 import 'package:bitacora/model/databaseModel.dart';
 import 'package:bitacora/model/property.dart';
-import 'package:bitacora/model/table.dart' as my;
+import 'package:bitacora/model/table.dart' as app;
 
 // TODO complete and add short name field and flutter input type
 var postgresTypes = {
@@ -20,7 +18,9 @@ var postgresTypes = {
 };
 
 class PostgresClient {
-  var _connection;
+  PostgreSQLConnection _connection;
+  // TODO Get one dbModel from the local data and one from the database
+  DatabaseModel dbModel; // Currently empty
 
   /// Private constructor
   PostgresClient._create() {
@@ -31,14 +31,15 @@ class PostgresClient {
   }
 
   /// Public factory
-  static Future<PostgresClient> create() async {
+  // TODO protect password (encrypt)
+  static Future<PostgresClient> connect(String host, int port, String database,
+      {String username, String password}) async {
     print("create() (public factory)");
 
     // Call the private constructor
-    var component = PostgresClient._create();
-    component._connection = new PostgreSQLConnection(
-        "192.168.1.14", 5432, "my_data",
-        username: "postgres", password: r"!$36<BD5vuP7");
+    PostgresClient component = PostgresClient._create();
+    component._connection = PostgreSQLConnection(host, port, database,
+        username: username, password: password);
     await component._connection.open();
     // Do initialization that requires async
     //await component._complexAsyncInit();
@@ -48,14 +49,18 @@ class PostgresClient {
   }
 
   Future<List<String>> getTables() async {
-    List<List<dynamic>> results = await _connection.query(
+    List<List<dynamic>> tablesResponse = await _connection.query(
         r"SELECT table_name "
         r"FROM information_schema.tables "
         r"WHERE table_type = 'BASE TABLE' "
         r"AND table_schema = @tableSchema",
         substitutionValues: {"tableSchema": "public"});
 
-    return results.expand((i) => i).toList().cast<String>();
+    List<String> tablesNames =
+        tablesResponse.expand((i) => i).toList().cast<String>();
+
+    print(tablesNames);
+    return tablesNames;
   }
 
   Future<List<Property>> getPropertiesFromTable(String table) async {
@@ -85,11 +90,33 @@ class PostgresClient {
     String values =
         propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
     print("INSERT INTO $table ($properties) VALUES ($values)");
-
     try {
       var results = await _connection
           .execute("INSERT INTO $table ($properties) VALUES ($values)");
-      print(results);
+      debugPrint("insertRowIntoTable: $results");
+      if (results == 1)
+        return Future.value(true);
+      else
+        return Future.value(false);
+    } on PostgreSQLException catch (e) {
+      print(e);
+      throw e;
+    }
+  }
+
+  // TODO DELETE WITH ctid SO YOU DON'T NEED A PK
+  Future<bool> cancelLastInsertion(
+      String table, Map<String, String> propertiesForm) async {
+
+    String whereString = propertiesForm.keys
+        .map((e) =>
+            "${e.toLowerCase() == e ? e : "\"$e\""} = ${propertiesForm[e]}")
+        .join(" AND ");
+
+    try {
+      var results = await _connection.execute(
+          "DELETE FROM $table WHERE ctid IN (SELECT ctid FROM $table WHERE $whereString LIMIT 1)");
+      debugPrint("cancelLastInsertion: $results");
       if (results == 1)
         return Future.value(true);
       else
@@ -101,22 +128,14 @@ class PostgresClient {
   }
 
   Future<DatabaseModel> getDatabaseModel(dbName) async {
-    List<List<dynamic>> tablesResponse = await _connection.query(
-        r"SELECT table_name "
-        r"FROM information_schema.tables "
-        r"WHERE table_type = 'BASE TABLE' "
-        r"AND table_schema = @tableSchema",
-        substitutionValues: {"tableSchema": "public"});
+    /// Get tables
+    List<String> tablesNames = await getTables();
 
-    List<String> tablesNames =
-        tablesResponse.expand((i) => i).toList().cast<String>();
-
-    print(tablesNames);
-
-    List<my.Table> tables = [];
+    /// For each table get properties
+    List<app.Table> tables = [];
     for (var tName in tablesNames) {
       List<Property> properties = await getPropertiesFromTable(tName);
-      tables.add(my.Table(tName, properties));
+      tables.add(app.Table(tName, properties));
     }
 
     print(tables);

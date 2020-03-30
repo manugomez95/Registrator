@@ -5,6 +5,7 @@ import 'package:bitacora/model/property.dart';
 import 'package:tuple/tuple.dart';
 import 'date_picker.dart';
 import 'package:recase/recase.dart';
+import 'package:bitacora/conf/colors.dart' as app;
 
 class PropertyView extends StatefulWidget {
   PropertyView(this.property, this.updater);
@@ -47,7 +48,7 @@ class _PropertyViewState extends State<PropertyView>
                     fontSize: 12.0,
                   )),
               decoration: new BoxDecoration(
-                  color: Colors.grey[600],
+                  color: app.Colors.grey,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.all(Radius.circular(5.0))),
               padding:

@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/property.dart';
 
 class Table extends Equatable {

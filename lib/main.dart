@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import 'package:bitacora/conf/colors.dart' as app;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -10,7 +11,9 @@ import 'ui/destinationView.dart';
 GetIt getIt = GetIt.asNewInstance();
 
 Future<void> main() async {
-  getIt.registerSingleton<PostgresClient>(await PostgresClient.create()); // TODO more than one in the future?
+  // TODO get all connections
+  getIt.registerSingleton<PostgresClient>(await PostgresClient.connect(
+      "192.168.1.14", 5432, "my_data", username: "postgres", password: r"!$36<BD5vuP7"));
   runApp(MyApp());
 }
 
@@ -78,7 +81,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
                 icon: Icon(destination.icon), title: Text(destination.title));
           }).toList(),
           currentIndex: _selectedIndex,
-          selectedItemColor: Color.fromRGBO(80, 158, 227, 1),
+          selectedItemColor: app.Colors.navigationBlue,
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
         ),

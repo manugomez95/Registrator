@@ -9,7 +9,7 @@ import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:bitacora/conf/colors.dart' as app;
 
 class ActionsPage extends StatefulWidget {
   const ActionsPage({Key key}) : super(key: key);
@@ -100,7 +100,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
     return Column(
       children: <Widget>[
         Theme(
-          data: ThemeData(canvasColor: Colors.grey[700]),
+          data: ThemeData(canvasColor: app.Colors.darkGrey),
           child: DropdownButtonHideUnderline(
               child: Container(
             color: selectedAction.primaryColor,
@@ -191,10 +191,10 @@ class _TablesDropdownState extends State<TablesDropdown> {
     return PreferredSize(
       preferredSize: Size(double.infinity, kToolbarHeight),
       child: Container(
-        color: Colors.grey[300],
+        color: app.Colors.lightGrey,
         child: DropdownButtonHideUnderline(
             child: Theme(
-          data: ThemeData(canvasColor: Colors.grey[300]),
+          data: ThemeData(canvasColor: app.Colors.lightGrey),
           child: DropdownButton<String>(
               value: selectedTable.name,
               iconSize: 0,

@@ -8,6 +8,7 @@ import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../main.dart';
 import './bloc.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
   @override
@@ -27,8 +28,14 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
               content: Text("${event.action} ${event.table.name} done!"),
               action: SnackBarAction(
                 label: "Undo",
-                onPressed: () {
-                  // Some code to undo the change.
+                onPressed: () async {
+                  try {
+                    await getIt<PostgresClient>().cancelLastInsertion(
+                        event.table.name, event.propertiesForm);
+                    Fluttertoast.showToast(msg: "Undo");
+                  } on PostgreSQLException catch (e) {
+                    showErrorSnackBar(event.context, e.toString());
+                  }
                 },
               ));
 
@@ -43,8 +50,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
         } on PostgreSQLException catch (e) {
           showErrorSnackBar(event.context, e.toString());
         }
-      }
-      else {
+      } else {
         showErrorSnackBar(event.context, "Sorry, not implemented yet!");
       }
     }
