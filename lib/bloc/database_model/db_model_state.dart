@@ -1,5 +1,6 @@
+import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:equatable/equatable.dart';
-import 'package:bitacora/model/databaseModel.dart';
+import 'package:bitacora/model/database_model.dart';
 
 abstract class DatabaseModelState extends Equatable {
   const DatabaseModelState();
@@ -22,4 +23,18 @@ class DatabaseModelLoaded extends DatabaseModelState {
 
   @override
   List<Object> get props => [dbModel];
+}
+
+class AttemptingDbConnection extends DatabaseModelState {
+  @override
+  List<Object> get props => null;
+}
+
+class ConnectionSuccessful extends DatabaseModelState {
+  final PostgresClient client;
+
+  ConnectionSuccessful(this.client);
+
+  @override
+  List<Object> get props => [client];
 }

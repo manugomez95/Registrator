@@ -1,16 +1,20 @@
+import 'package:bitacora/db_clients/postgres_client.dart';
+import 'package:bitacora/main.dart';
+import 'package:bitacora/model/app_data.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitacora/bloc/database_model/bloc.dart';
 import 'package:bitacora/bloc/form/bloc.dart';
 import 'package:bitacora/model/action.dart' as app;
-import 'package:bitacora/model/databaseModel.dart';
+import 'package:bitacora/model/database_model.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:bitacora/conf/colors.dart' as app;
+import 'package:bitacora/conf/style.dart' as app;
 
+// TODO Stateful o Stateless?
 class ActionsPage extends StatefulWidget {
   const ActionsPage({Key key}) : super(key: key);
 
@@ -19,15 +23,7 @@ class ActionsPage extends StatefulWidget {
 }
 
 class ActionsPageState extends State<ActionsPage> {
-  //final _actions = Actions();
-  final _dbModelBloc =
-      DatabaseModelBloc(); // TODO actually it's a Postgres DBModel
-
-  @override
-  void initState() {
-    super.initState();
-    _dbModelBloc.add(GetDatabaseModel("my_data")); // TODO this will change
-  }
+  final _dbModelBloc = getIt<DatabaseModelBloc>(); // TODO actually it's a AppDataBloc
 
   @override
   Widget build(BuildContext context) {
@@ -36,12 +32,10 @@ class ActionsPageState extends State<ActionsPage> {
         child: BlocBuilder(
           bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
-            if (state is DatabaseModelInitial) {
-              return Text("No data");
-            } else if (state is DatabaseModelLoading) {
+            if (state is DatabaseModelInitial || state is AttemptingDbConnection) {
               return buildLoading();
-            } else if (state is DatabaseModelLoaded) {
-              return buildActionsPage(state.dbModel);
+            } else if (state is ConnectionSuccessful) {
+              return buildActionsPage();
             } else
               throw Exception;
           },
@@ -55,10 +49,16 @@ class ActionsPageState extends State<ActionsPage> {
   }
 
   // TODO review
-  Widget buildActionsPage(DatabaseModel dbModel) {
+  Widget buildActionsPage() {
     return Scaffold(
-      body: ActionsDropdown(dbModel),
+      body: ActionsDropdown(),
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _dbModelBloc.close();
   }
 }
 
@@ -72,11 +72,6 @@ class Actions {
 }
 
 class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
-  ActionsDropdown(this.dbModel);
-
-  final DatabaseModel dbModel;
-  //final Actions actions;
-
   @override
   _ActionsDropdownState createState() => _ActionsDropdownState();
 
@@ -100,7 +95,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
     return Column(
       children: <Widget>[
         Theme(
-          data: ThemeData(canvasColor: app.Colors.darkGrey),
+          data: ThemeData(canvasColor: app.Style.darkGrey),
           child: DropdownButtonHideUnderline(
               child: Container(
             color: selectedAction.primaryColor,
@@ -125,17 +120,17 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 }).toList()),
           )),
         ),
-        TablesDropdown(selectedAction, widget.dbModel)
+        TablesDropdown(selectedAction, getIt<AppData>().dbs.map((PostgresClient db) => db.tables).expand((i) => i).toList())
       ],
     );
   }
 }
 
 class TablesDropdown extends StatefulWidget {
-  TablesDropdown(this.action, this.dbModel);
+  TablesDropdown(this.action, this.tables);
 
   final app.Action action; // TODO will be a class
-  final DatabaseModel dbModel;
+  final List<app.Table> tables;
 
   @override
   _TablesDropdownState createState() => _TablesDropdownState();
@@ -150,7 +145,7 @@ class _TablesDropdownState extends State<TablesDropdown> {
   @override
   void initState() {
     super.initState();
-    tables = widget.dbModel.tables;
+    tables = widget.tables;
     selectedTable = tables[0]; // TODO I should access persistent data here
     buildPropertiesForm(selectedTable, widget.action.title);
   }
@@ -172,7 +167,7 @@ class _TablesDropdownState extends State<TablesDropdown> {
             onPressed: () {
               if (form.formKey.currentState.validate()) {
                 _formBloc.add(SubmitFormEvent(context, form.propertiesForm,
-                    widget.action.type, selectedTable));
+                    widget.action, selectedTable));
               } else
                 showErrorSnackBar(context, "Check for wrong input");
             },
@@ -191,10 +186,10 @@ class _TablesDropdownState extends State<TablesDropdown> {
     return PreferredSize(
       preferredSize: Size(double.infinity, kToolbarHeight),
       child: Container(
-        color: app.Colors.lightGrey,
+        color: app.Style.lightGrey,
         child: DropdownButtonHideUnderline(
             child: Theme(
-          data: ThemeData(canvasColor: app.Colors.lightGrey),
+          data: ThemeData(canvasColor: app.Style.lightGrey),
           child: DropdownButton<String>(
               value: selectedTable.name,
               iconSize: 0,

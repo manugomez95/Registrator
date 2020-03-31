@@ -5,7 +5,7 @@ import 'package:bitacora/model/property.dart';
 import 'package:tuple/tuple.dart';
 import 'date_picker.dart';
 import 'package:recase/recase.dart';
-import 'package:bitacora/conf/colors.dart' as app;
+import 'package:bitacora/conf/style.dart' as app;
 
 class PropertyView extends StatefulWidget {
   PropertyView(this.property, this.updater);
@@ -48,7 +48,7 @@ class _PropertyViewState extends State<PropertyView>
                     fontSize: 12.0,
                   )),
               decoration: new BoxDecoration(
-                  color: app.Colors.grey,
+                  color: app.Style.grey,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.all(Radius.circular(5.0))),
               padding:
@@ -64,8 +64,8 @@ class _PropertyViewState extends State<PropertyView>
   void _onChangeController(newValue, dataType) {
     setState(() {
       value = newValue;
-      updateForm(widget.property.name, widget.property.type, value,
-          widget.updater);
+      updateForm(
+          widget.property.name, widget.property.type, value, widget.updater);
     });
   }
 
@@ -87,7 +87,7 @@ class _PropertyViewState extends State<PropertyView>
             FocusScope.of(context).nextFocus();
           },
           decoration: new InputDecoration.collapsed(
-              hintText: 'Lorem Ipsum...')); // TODO maxlength enforced?
+              hintText: 'Lorem Ipsum...'));
     } else if ([
       PostgreSQLDataType.real,
       PostgreSQLDataType.smallInteger,
@@ -128,8 +128,8 @@ class _PropertyViewState extends State<PropertyView>
         showTime: true,
       );
     }
-    updateForm(widget.property.name, widget.property.type, value,
-        widget.updater);
+    updateForm(
+        widget.property.name, widget.property.type, value, widget.updater);
     return ret;
   }
 
@@ -140,9 +140,10 @@ class _PropertyViewState extends State<PropertyView>
 void updateForm(String propertyName, PostgreSQLDataType dataType, value,
     ValueChanged<Tuple2<String, String>> updater) {
   if ([
-    PostgreSQLDataType.text,
-    PostgreSQLDataType.date,
-  ].contains(dataType) && value != null) value = "'${value.toString()}'";
+        PostgreSQLDataType.text,
+        PostgreSQLDataType.date,
+      ].contains(dataType) &&
+      value != null) value = "'${value.toString()}'";
 
   updater(Tuple2(propertyName, value.toString()));
 }

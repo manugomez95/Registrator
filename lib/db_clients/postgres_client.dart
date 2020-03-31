@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:postgres/postgres.dart';
-import 'package:bitacora/model/databaseModel.dart';
+import 'package:bitacora/model/database_model.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
 
@@ -17,10 +17,10 @@ var postgresTypes = {
   "oid": PostgreSQLDataType.uuid
 };
 
+// TODO change to some other class that implements PostgresClient/RelationalDBClient interface
 class PostgresClient {
-  PostgreSQLConnection _connection;
-  // TODO Get one dbModel from the local data and one from the database
-  DatabaseModel dbModel; // Currently empty
+  PostgreSQLConnection connection;
+  List<app.Table> tables;
 
   /// Private constructor
   PostgresClient._create() {
@@ -32,15 +32,15 @@ class PostgresClient {
 
   /// Public factory
   // TODO protect password (encrypt)
-  static Future<PostgresClient> connect(String host, int port, String database,
+  static Future<PostgresClient> create(String host, int port, String database,
       {String username, String password}) async {
     print("create() (public factory)");
 
     // Call the private constructor
     PostgresClient component = PostgresClient._create();
-    component._connection = PostgreSQLConnection(host, port, database,
+    component.connection = PostgreSQLConnection(host, port, database,
         username: username, password: password);
-    await component._connection.open();
+    await component.connection.open();
     // Do initialization that requires async
     //await component._complexAsyncInit();
 
@@ -49,7 +49,7 @@ class PostgresClient {
   }
 
   Future<List<String>> getTables() async {
-    List<List<dynamic>> tablesResponse = await _connection.query(
+    List<List<dynamic>> tablesResponse = await connection.query(
         r"SELECT table_name "
         r"FROM information_schema.tables "
         r"WHERE table_type = 'BASE TABLE' "
@@ -64,7 +64,7 @@ class PostgresClient {
   }
 
   Future<List<Property>> getPropertiesFromTable(String table) async {
-    List<List<dynamic>> results = await _connection.query(
+    List<List<dynamic>> results = await connection.query(
         r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length FROM information_schema.columns "
         r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
         substitutionValues: {"tableSchema": "public", "tableName": table});
@@ -91,7 +91,7 @@ class PostgresClient {
         propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
     print("INSERT INTO $table ($properties) VALUES ($values)");
     try {
-      var results = await _connection
+      var results = await connection
           .execute("INSERT INTO $table ($properties) VALUES ($values)");
       debugPrint("insertRowIntoTable: $results");
       if (results == 1)
@@ -114,7 +114,7 @@ class PostgresClient {
         .join(" AND ");
 
     try {
-      var results = await _connection.execute(
+      var results = await connection.execute(
           "DELETE FROM $table WHERE ctid IN (SELECT ctid FROM $table WHERE $whereString LIMIT 1)");
       debugPrint("cancelLastInsertion: $results");
       if (results == 1)
@@ -127,7 +127,9 @@ class PostgresClient {
     }
   }
 
-  Future<DatabaseModel> getDatabaseModel(dbName) async {
+  Future<List<app.Table>> getDatabaseModel() async {
+    if (this.tables != null) return this.tables;
+
     /// Get tables
     List<String> tablesNames = await getTables();
 
@@ -135,15 +137,16 @@ class PostgresClient {
     List<app.Table> tables = [];
     for (var tName in tablesNames) {
       List<Property> properties = await getPropertiesFromTable(tName);
-      tables.add(app.Table(tName, properties));
+      tables.add(app.Table(tName, properties, this));
     }
 
-    print(tables);
+    this.tables = tables;
 
-    return DatabaseModel(dbName, tables);
+    print(tables);
+    return tables;
   }
 
   void close() {
-    _connection.close();
+    connection.close();
   }
 }

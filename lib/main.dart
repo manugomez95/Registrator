@@ -1,19 +1,24 @@
 import 'dart:collection';
 
-import 'package:bitacora/conf/colors.dart' as app;
+import 'package:bitacora/bloc/database_model/db_model_event.dart';
+import 'package:bitacora/conf/style.dart' as app;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:bitacora/dbClients/postgres_client.dart';
+import 'bloc/database_model/db_model_bloc.dart';
+import 'model/app_data.dart';
 import 'ui/destination.dart';
-import 'ui/destinationView.dart';
+import 'ui/destination_view.dart';
 
 GetIt getIt = GetIt.asNewInstance();
 
 Future<void> main() async {
   // TODO get all connections
-  getIt.registerSingleton<PostgresClient>(await PostgresClient.connect(
-      "192.168.1.14", 5432, "my_data", username: "postgres", password: r"!$36<BD5vuP7"));
+  getIt.registerSingleton<AppData>(AppData());
+  getIt.registerSingleton<DatabaseModelBloc>(DatabaseModelBloc());
+  //getIt<DatabaseModelBloc>().add(ConnectToDatabase("192.168.1.14", 5432, "my_data", "postgres", r"!$36<BD5vuP7"));
+  getIt<DatabaseModelBloc>().add(ConnectToDatabase("192.168.1.18", 5433, "postgres", "postgres", r"unit679City"));
   runApp(MyApp());
 }
 
@@ -75,17 +80,31 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
           ),
         ),
         // drawer: new AppNavigationDrawer(),
-        bottomNavigationBar: new BottomNavigationBar(
+        bottomNavigationBar: BottomNavigationBar(
           items: allDestinations.map((Destination destination) {
             return BottomNavigationBarItem(
                 icon: Icon(destination.icon), title: Text(destination.title));
           }).toList(),
           currentIndex: _selectedIndex,
-          selectedItemColor: app.Colors.navigationBlue,
+          selectedItemColor: app.Style.navigationBlue,
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
         ),
       ),
     );
   }
+}
+
+Widget noConnectionBanner() {
+  return Material(
+    child: Container(
+      padding: EdgeInsets.all(5),
+      child: Text("Not connected",
+          style: TextStyle(
+            color: Colors.white,
+          ),
+          textAlign: TextAlign.center),
+      color: Colors.grey[800],
+    ),
+  );
 }

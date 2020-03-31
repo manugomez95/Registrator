@@ -13,14 +13,10 @@ class DestinationView extends StatefulWidget {
 
 
 class _DestinationViewState extends State<DestinationView> {
-  // TextEditingController _textController; // To test state persistence
 
   @override
   void initState() {
     super.initState();
-    /*_textController = TextEditingController(
-      text: 'sample text: ${widget.destination.title}',
-    );*/
   }
 
   @override
@@ -28,9 +24,6 @@ class _DestinationViewState extends State<DestinationView> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.destination.title),
-        /*actions: <Widget>[IconButton(
-          icon: Icon(Icons.more_vert),
-          onPressed: () {},)]*/ // TODO onPressed function passed as parameter
       ),
       body: widget.destination.page, // TextField(controller: _textController)
     );
@@ -38,7 +31,6 @@ class _DestinationViewState extends State<DestinationView> {
 
   @override
   void dispose() {
-    // _textController.dispose();
     super.dispose();
   }
 }

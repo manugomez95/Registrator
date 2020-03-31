@@ -1,15 +1,15 @@
 import 'dart:ui';
 
-import 'package:bitacora/conf/colors.dart' as app;
+import 'package:bitacora/conf/style.dart' as app;
 import 'package:flutter/material.dart';
 import 'package:recase/recase.dart';
 
 enum ActionType { InsertInto, EditLastFrom, CreateWidgetFrom }
 
 final actions = <Action>[
-  Action(ActionType.InsertInto, app.Colors.insert, Colors.white),
-  Action(ActionType.EditLastFrom, app.Colors.edit, Colors.white),
-  Action(ActionType.CreateWidgetFrom, app.Colors.createWidget, Colors.white),
+  Action(ActionType.InsertInto, app.Style.insert, Colors.white),
+  Action(ActionType.EditLastFrom, app.Style.edit, Colors.white),
+  Action(ActionType.CreateWidgetFrom, app.Style.createWidget, Colors.white),
 ];
 
 class Action {

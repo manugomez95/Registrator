@@ -2,11 +2,9 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:postgres/postgres.dart';
-import 'package:bitacora/dbClients/postgres_client.dart';
 import 'package:bitacora/model/action.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../main.dart';
 import './bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
@@ -20,17 +18,16 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
   ) async* {
     if (event is SubmitFormEvent) {
       yield SubmittingFormState();
-      if (event.action == ActionType.InsertInto) {
+      if (event.action.type == ActionType.InsertInto) {
         try {
-          await getIt<PostgresClient>()
-              .insertRowIntoTable(event.table.name, event.propertiesForm);
+          await event.table.client.insertRowIntoTable(event.table.name, event.propertiesForm);
           final snackBar = SnackBar(
-              content: Text("${event.action} ${event.table.name} done!"),
+              content: Text("${event.action.title} ${event.table.name} done!"),
               action: SnackBarAction(
                 label: "Undo",
                 onPressed: () async {
                   try {
-                    await getIt<PostgresClient>().cancelLastInsertion(
+                    await event.table.client.cancelLastInsertion(
                         event.table.name, event.propertiesForm);
                     Fluttertoast.showToast(msg: "Undo");
                   } on PostgreSQLException catch (e) {

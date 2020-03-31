@@ -1,3 +1,4 @@
+import 'package:bitacora/conf/style.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:bitacora/model/table.dart' as my;
@@ -24,7 +25,7 @@ class PropertiesForm extends StatelessWidget {
       key: formKey,
       child: ListView.separated(
         itemCount: table.properties.length,
-        padding: new EdgeInsets.all(15.0),
+        padding: new EdgeInsets.all(Style.scaffoldPadding),
         separatorBuilder: (BuildContext context, int index) => Divider(height: 20,),
         itemBuilder: (BuildContext context, int index) {
           return PropertyView(table.properties[index], tableUpdater);
