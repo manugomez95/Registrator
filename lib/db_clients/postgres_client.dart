@@ -40,46 +40,61 @@ class PostgresClient {
     PostgresClient component = PostgresClient._create();
     component.connection = PostgreSQLConnection(host, port, database,
         username: username, password: password);
-    await component.connection.open();
-    // Do initialization that requires async
-    //await component._complexAsyncInit();
+    try {
+      await component.connection.open();
+      // Do initialization that requires async
+      //await component._complexAsyncInit();
 
-    // Return the fully initialized object
-    return component;
+      // Return the fully initialized object
+      return component;
+    } on Exception catch (e) {
+      print(e);
+      throw e;
+    }
   }
 
   Future<List<String>> getTables() async {
-    List<List<dynamic>> tablesResponse = await connection.query(
-        r"SELECT table_name "
-        r"FROM information_schema.tables "
-        r"WHERE table_type = 'BASE TABLE' "
-        r"AND table_schema = @tableSchema",
-        substitutionValues: {"tableSchema": "public"});
+    try {
+      List<List<dynamic>> tablesResponse = await connection.query(
+          r"SELECT table_name "
+          r"FROM information_schema.tables "
+          r"WHERE table_type = 'BASE TABLE' "
+          r"AND table_schema = @tableSchema",
+          substitutionValues: {"tableSchema": "public"});
 
-    List<String> tablesNames =
-        tablesResponse.expand((i) => i).toList().cast<String>();
+      List<String> tablesNames =
+      tablesResponse.expand((i) => i).toList().cast<String>();
 
-    print(tablesNames);
-    return tablesNames;
+      print(tablesNames);
+      return tablesNames;
+    } on PostgreSQLException catch (e) {
+      print(e);
+      throw e;
+    }
   }
 
   Future<List<Property>> getPropertiesFromTable(String table) async {
-    List<List<dynamic>> results = await connection.query(
-        r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length FROM information_schema.columns "
-        r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
-        substitutionValues: {"tableSchema": "public", "tableName": table});
+    try {
+      List<List<dynamic>> results = await connection.query(
+          r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length FROM information_schema.columns "
+          r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
+          substitutionValues: {"tableSchema": "public", "tableName": table});
 
-    var r = results
-        .map((res) {
-          return Property(res[0] - 1, res[1], postgresTypes[res[2]], res[3],
-              res[4] == 'YES' ? true : false, res[5]);
-        })
-        .toList()
-        .cast<Property>();
+      var r = results
+          .map((res) {
+            return Property(res[0] - 1, res[1], postgresTypes[res[2]], res[3],
+                res[4] == 'YES' ? true : false, res[5]);
+          })
+          .toList()
+          .cast<Property>();
 
-    debugPrint(r.toString());
+      debugPrint(r.toString());
 
-    return r;
+      return r;
+    } on PostgreSQLException catch (e) {
+      print(e);
+      throw e;
+    }
   }
 
   Future<bool> insertRowIntoTable(
@@ -89,10 +104,11 @@ class PostgresClient {
         .join(", ");
     String values =
         propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
-    print("INSERT INTO $table ($properties) VALUES ($values)");
+
+    String sql = "INSERT INTO $table ($properties) VALUES ($values)";
+    debugPrint(sql);
     try {
-      var results = await connection
-          .execute("INSERT INTO $table ($properties) VALUES ($values)");
+      var results = await connection.execute(sql);
       debugPrint("insertRowIntoTable: $results");
       if (results == 1)
         return Future.value(true);
@@ -104,18 +120,20 @@ class PostgresClient {
     }
   }
 
-  // TODO DELETE WITH ctid SO YOU DON'T NEED A PK
+  /// Deleting with ctid I don't need a PK
+  // TODO awesome printing usefulness, copy where I can
   Future<bool> cancelLastInsertion(
       String table, Map<String, String> propertiesForm) async {
-
     String whereString = propertiesForm.keys
         .map((e) =>
-            "${e.toLowerCase() == e ? e : "\"$e\""} = ${propertiesForm[e]}")
+            "${e.toLowerCase() == e ? e : "\"$e\""} ${propertiesForm[e] == "null" ? "is null" : "= ${propertiesForm[e]}"}")
         .join(" AND ");
 
+    String sql =
+        "DELETE FROM $table WHERE ctid IN (SELECT ctid FROM $table WHERE $whereString LIMIT 1)";
+    debugPrint(sql);
     try {
-      var results = await connection.execute(
-          "DELETE FROM $table WHERE ctid IN (SELECT ctid FROM $table WHERE $whereString LIMIT 1)");
+      var results = await connection.execute(sql);
       debugPrint("cancelLastInsertion: $results");
       if (results == 1)
         return Future.value(true);

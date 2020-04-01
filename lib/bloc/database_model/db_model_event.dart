@@ -1,5 +1,6 @@
 import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
 
 abstract class DatabaseModelEvent extends Equatable {
   const DatabaseModelEvent();
@@ -11,8 +12,10 @@ class ConnectToDatabase extends DatabaseModelEvent {
   final String dbName;
   final String username;
   final String password;
+  final BuildContext context;
+  final bool fromForm;
 
-  ConnectToDatabase(this.host, this.port, this.dbName, this.username, this.password);
+  ConnectToDatabase(this.host, this.port, this.dbName, this.username, this.password, {this.context, this.fromForm: false});
 
   @override
   List<Object> get props => [this.host, this.port, this.dbName, this.username, this.password];

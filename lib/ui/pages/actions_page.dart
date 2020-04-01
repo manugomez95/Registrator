@@ -32,7 +32,7 @@ class ActionsPageState extends State<ActionsPage> {
         child: BlocBuilder(
           bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
-            if (state is DatabaseModelInitial || state is AttemptingDbConnection) {
+            if (state is DatabaseModelInitial || state is AttemptingDbConnection || state is ConnectionError) {
               return buildLoading();
             } else if (state is ConnectionSuccessful) {
               return buildActionsPage();

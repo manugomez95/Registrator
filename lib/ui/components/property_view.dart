@@ -137,6 +137,7 @@ class _PropertyViewState extends State<PropertyView>
   bool get wantKeepAlive => true;
 }
 
+/// What happens with null? Generated "null" string
 void updateForm(String propertyName, PostgreSQLDataType dataType, value,
     ValueChanged<Tuple2<String, String>> updater) {
   if ([

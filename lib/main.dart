@@ -14,11 +14,11 @@ import 'ui/destination_view.dart';
 GetIt getIt = GetIt.asNewInstance();
 
 Future<void> main() async {
-  // TODO get all connections
+  // TODO get all saved connections
   getIt.registerSingleton<AppData>(AppData());
   getIt.registerSingleton<DatabaseModelBloc>(DatabaseModelBloc());
-  //getIt<DatabaseModelBloc>().add(ConnectToDatabase("192.168.1.14", 5432, "my_data", "postgres", r"!$36<BD5vuP7"));
-  getIt<DatabaseModelBloc>().add(ConnectToDatabase("192.168.1.18", 5433, "postgres", "postgres", r"unit679City"));
+  getIt<DatabaseModelBloc>().add(ConnectToDatabase("192.168.1.14", 5432, "my_data", "postgres", r"!$36<BD5vuP7"));
+  //getIt<DatabaseModelBloc>().add(ConnectToDatabase("192.168.1.18", 5433, "postgres", "postgres", r"unit679City"));
   runApp(MyApp());
 }
 
