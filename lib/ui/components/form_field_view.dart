@@ -22,8 +22,6 @@ class FormFieldView<T> extends StatefulWidget {
 class _FormFieldViewState extends State<FormFieldView>
     with AutomaticKeepAliveClientMixin {
 
-  bool auto = true;
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -59,8 +57,6 @@ class _FormFieldViewState extends State<FormFieldView>
   Widget buildInput(DbParameter param) {
     // TODO use same names as the defined
     if (param is Host || param is Username || param is DatabaseName || param is Port) {
-      if (auto)
-        (widget.controller as TextEditingController).text = widget.param.defaultValue.toString();
       return TextFormField(
           controller: widget.controller,
           validator: validator,
@@ -69,16 +65,6 @@ class _FormFieldViewState extends State<FormFieldView>
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          onChanged: (v) {
-            if (auto) {
-              setState(() {
-                auto = false;
-              });
-            }
-          },
-          style: TextStyle(
-            color: auto ? app.Style.auto : Colors.black
-          ),
           decoration:
               new InputDecoration.collapsed(
                   hintText: param.defaultValue.toString()

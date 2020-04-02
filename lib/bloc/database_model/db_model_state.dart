@@ -1,4 +1,5 @@
 import 'package:bitacora/db_clients/postgres_client.dart';
+import 'package:bitacora/model/app_data.dart';
 import 'package:equatable/equatable.dart';
 import 'package:bitacora/model/database_model.dart';
 import 'package:postgres/postgres.dart';
@@ -35,6 +36,15 @@ class ConnectionSuccessful extends DatabaseModelState {
   final PostgresClient client;
 
   ConnectionSuccessful(this.client);
+
+  @override
+  List<Object> get props => [client];
+}
+
+class DisconnectionSuccessful extends DatabaseModelState {
+  final PostgresClient client;
+
+  DisconnectionSuccessful(this.client);
 
   @override
   List<Object> get props => [client];

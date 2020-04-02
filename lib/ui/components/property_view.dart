@@ -116,13 +116,13 @@ class _PropertyViewState extends State<PropertyView>
         onChanged: (newValue) => _onChangeController(newValue, property.type),
       );
     } else if (property.type == PostgreSQLDataType.date) {
-      value = value == null ? "2020-03-20" : value;
+      value = value == null ? "2020-03-20" : value; // TODO correct
       ret = DatePicker(showDate: true);
     } else if ([
       PostgreSQLDataType.timestampWithTimezone,
       PostgreSQLDataType.timestampWithoutTimezone
     ].contains(property.type)) {
-      value = value == null ? "'${DateTime.now()}'" : value;
+      value = value == null ? "'${DateTime.now()}'" : value; // TODO correct
       ret = DatePicker(
         showDate: true,
         showTime: true,

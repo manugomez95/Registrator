@@ -6,34 +6,19 @@ import 'package:flutter/material.dart';
 import '../../main.dart';
 import 'form_field_view.dart';
 
-class DbForm extends StatelessWidget {
+class DbForm extends StatefulWidget {
   final hostController = TextEditingController();
   final portController = TextEditingController();
   final dbNameController = TextEditingController();
   final userController = TextEditingController();
   final passwordController = TextEditingController();
+  final ValueNotifier<bool> useSSL = ValueNotifier(false);
 
   final formKey = GlobalKey<FormState>();
 
+
   @override
-  Widget build(BuildContext context) {
-    return Form(
-      key: formKey,
-      child: Container(
-        width: double.maxFinite,
-        child: ListView(
-          shrinkWrap: true,
-          children: <Widget>[
-            FormFieldView(Host(), hostController),
-            FormFieldView(Port(), portController),
-            FormFieldView(DatabaseName(), dbNameController),
-            FormFieldView(Username(), userController),
-            FormFieldView(Password(), passwordController),
-          ],
-        ),
-      ),
-    );
-  }
+  State<StatefulWidget> createState() => DbFormState();
 
   void submit(BuildContext context) {
     getIt<DatabaseModelBloc>().add(ConnectToDatabase(
@@ -42,7 +27,40 @@ class DbForm extends StatelessWidget {
         dbNameController.text,
         userController.text,
         passwordController.text,
+        useSSL: useSSL.value,
         context: context,
         fromForm: true));
+  }
+}
+
+class DbFormState extends State<DbForm> {
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: widget.formKey,
+      child: Container(
+        width: double.maxFinite,
+        child: ListView(
+          shrinkWrap: true,
+          children: <Widget>[
+            FormFieldView(Host(), widget.hostController),
+            FormFieldView(Port(), widget.portController),
+            FormFieldView(DatabaseName(), widget.dbNameController),
+            FormFieldView(Username(), widget.userController),
+            FormFieldView(Password(), widget.passwordController),
+            SwitchListTile(
+              title: const Text('SSL'),
+              value: widget.useSSL.value,
+              onChanged: (value) {
+                setState(() {
+                  widget.useSSL.value = !widget.useSSL.value;
+                });
+              },
+            )
+          ],
+        ),
+      ),
+    );
   }
 }

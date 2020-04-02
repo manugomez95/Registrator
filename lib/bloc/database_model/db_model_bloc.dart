@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
+import 'package:bitacora/ui/pages/actions_page.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -20,7 +21,7 @@ class DatabaseModelBloc extends Bloc<DatabaseModelEvent, DatabaseModelState> {
       yield AttemptingDbConnection();
       try {
         final client = await PostgresClient.create(
-            event.host, event.port, event.dbName, username: event.username,
+            event.host, event.port, event.dbName, event.useSSL, username: event.username,
             password: event.password);
         await client.getDatabaseModel();
         getIt<AppData>().dbs.add(client);
@@ -33,5 +34,18 @@ class DatabaseModelBloc extends Bloc<DatabaseModelEvent, DatabaseModelState> {
         throw e;
       }
     }
+    else if (event is DisconnectFromDatabase) {
+      try {
+        print("DisconnectFromDatabase: ${await event.client.connection.close()}");
+        getIt<AppData>().dbs.remove(event.client);
+        yield DisconnectionSuccessful(event.client);
+      } on Exception catch (e) {
+        yield ConnectionError(e);
+        Fluttertoast.showToast(msg: "Connection error");
+        print(e);
+        throw e;
+      }
+    }
+
   }
 }
