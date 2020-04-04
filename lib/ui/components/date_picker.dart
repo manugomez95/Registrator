@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
-class DatePicker extends StatefulWidget {
-  DatePicker({Key key, this.showDate = true, this.showTime = false }) : super(key: key);
+// TODO use form builder
+class DateTimePicker extends StatefulWidget {
+  DateTimePicker({Key key, this.showDate = true, this.showTime = false }) : super(key: key);
 
   final bool showDate;
   final bool showTime;
 
   @override
-  _DatePickerState createState() => _DatePickerState();
+  _DateTimePickerState createState() => _DateTimePickerState();
 }
 
-class _DatePickerState extends State<DatePicker> {
+class _DateTimePickerState extends State<DateTimePicker> {
   DateTime _date = DateTime.now();
   TimeOfDay _time = TimeOfDay.now();
 

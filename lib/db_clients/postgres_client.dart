@@ -1,43 +1,61 @@
-import 'package:flutter/cupertino.dart';
-import 'package:postgres/postgres.dart';
-import 'package:bitacora/model/database_model.dart';
 import 'package:bitacora/model/property.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/table.dart' as app;
+import 'package:postgres/postgres.dart';
 
 // TODO complete and add short name field and flutter input type
-var postgresTypes = {
-  "timestamp without time zone": PostgreSQLDataType.timestampWithoutTimezone,
-  "timestamp with time zone": PostgreSQLDataType.timestampWithTimezone,
-  "character varying": PostgreSQLDataType.text,
-  "integer": PostgreSQLDataType.integer,
-  "smallint": PostgreSQLDataType.smallInteger,
-  "boolean": PostgreSQLDataType.boolean,
-  "real": PostgreSQLDataType.real,
-  "date": PostgreSQLDataType.date,
-  "oid": PostgreSQLDataType.uuid
-};
+PostgreSQLDataType standardizeType(String dataType, {udtName}) {
+  switch (dataType) {
+    case "timestamp without time zone":
+      return PostgreSQLDataType.timestampWithoutTimezone;
+    case "timestamp with time zone":
+      return PostgreSQLDataType.timestampWithTimezone;
+    case "character varying":
+    case "text":
+    case "_text":
+      return PostgreSQLDataType.text;
+    case "integer":
+      return PostgreSQLDataType.integer;
+    case "smallint":
+      return PostgreSQLDataType.smallInteger;
+    case "boolean":
+      return PostgreSQLDataType.boolean;
+    case "real":
+      return PostgreSQLDataType.real;
+    case "date":
+      return PostgreSQLDataType.date;
+    case "oid":
+      return PostgreSQLDataType.uuid;
+    case "ARRAY":
+      return standardizeType(udtName);
+    default:
+      throw Exception; // TODO define Exceptions
+  }
+}
 
 // TODO change to some other class that implements PostgresClient/RelationalDBClient interface
 class PostgresClient {
+  String name;
   PostgreSQLConnection connection;
   List<app.Table> tables;
 
   /// Private constructor
-  PostgresClient._create() {
+  PostgresClient._create(String name) {
     print("_create() (private constructor)");
-
+    this.name = name;
     // Do most of your initialization here, that's what a constructor is for
     //...
   }
 
   /// Public factory
   // TODO protect password (encrypt)
-  static Future<PostgresClient> create(String host, int port, String database, bool useSSL,
+  static Future<PostgresClient> create(String name,
+      String host, int port, String database, bool useSSL,
       {String username, String password}) async {
     print("create() (public factory)");
 
     // Call the private constructor
-    PostgresClient component = PostgresClient._create();
+    PostgresClient component = PostgresClient._create(name);
     component.connection = PostgreSQLConnection(host, port, database,
         username: username, password: password, useSSL: useSSL);
     try {
@@ -63,7 +81,7 @@ class PostgresClient {
           substitutionValues: {"tableSchema": "public"});
 
       List<String> tablesNames =
-      tablesResponse.expand((i) => i).toList().cast<String>();
+          tablesResponse.expand((i) => i).toList().cast<String>();
 
       print(tablesNames);
       return tablesNames;
@@ -76,14 +94,20 @@ class PostgresClient {
   Future<List<Property>> getPropertiesFromTable(String table) async {
     try {
       List<List<dynamic>> results = await connection.query(
-          r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length FROM information_schema.columns "
+          r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length, udt_name FROM information_schema.columns "
           r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
           substitutionValues: {"tableSchema": "public", "tableName": table});
 
       var r = results
           .map((res) {
-            return Property(res[0] - 1, res[1], postgresTypes[res[2]], res[3],
-                res[4] == 'YES' ? true : false, res[5]);
+            return Property(
+                res[0] - 1,
+                res[1],
+                standardizeType(res[2], udtName: res[6]),
+                res[3],
+                res[4] == 'YES' ? true : false,
+                res[5],
+                res[2] == 'ARRAY' ? true : false);
           })
           .toList()
           .cast<Property>();

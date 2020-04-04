@@ -7,6 +7,7 @@ import '../../main.dart';
 import 'form_field_view.dart';
 
 class DbForm extends StatefulWidget {
+  final nameController = TextEditingController();
   final hostController = TextEditingController();
   final portController = TextEditingController();
   final dbNameController = TextEditingController();
@@ -22,6 +23,7 @@ class DbForm extends StatefulWidget {
 
   void submit(BuildContext context) {
     getIt<DatabaseModelBloc>().add(ConnectToDatabase(
+        nameController.text,
         hostController.text,
         int.parse(portController.text),
         dbNameController.text,
@@ -44,6 +46,7 @@ class DbFormState extends State<DbForm> {
         child: ListView(
           shrinkWrap: true,
           children: <Widget>[
+            FormFieldView(Alias(), widget.nameController),
             FormFieldView(Host(), widget.hostController),
             FormFieldView(Port(), widget.portController),
             FormFieldView(DatabaseName(), widget.dbNameController),

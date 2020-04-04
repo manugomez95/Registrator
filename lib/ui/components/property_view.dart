@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:postgres/postgres.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:tuple/tuple.dart';
-import 'date_picker.dart';
 import 'package:recase/recase.dart';
 import 'package:bitacora/conf/style.dart' as app;
+import 'package:intl/intl.dart';
+import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 
 class PropertyView extends StatefulWidget {
   PropertyView(this.property, this.updater);
@@ -42,7 +43,8 @@ class _PropertyViewState extends State<PropertyView>
             ),
             SizedBox(width: 35),
             Container(
-              child: Text(widget.property.type.toString().split(".").last,
+              child: Text(
+                  "${widget.property.type.toString().split(".").last}${widget.property.isArray ? "[ ]" : ""}",
                   style: new TextStyle(
                     color: Colors.white,
                     fontSize: 12.0,
@@ -61,11 +63,10 @@ class _PropertyViewState extends State<PropertyView>
     );
   }
 
-  void _onChangeController(newValue, dataType) {
+  void _onChangeController(newValue) {
     setState(() {
       value = newValue;
-      updateForm(
-          widget.property.name, widget.property.type, value, widget.updater);
+      updateForm(widget.property, value, widget.updater);
     });
   }
 
@@ -82,12 +83,12 @@ class _PropertyViewState extends State<PropertyView>
           },
           maxLength: property.charMaxLength,
           textInputAction: TextInputAction.next,
-          onChanged: (newValue) => _onChangeController(newValue, property.type),
+          onChanged: (newValue) => _onChangeController(newValue),
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          decoration: new InputDecoration.collapsed(
-              hintText: 'Lorem Ipsum...'));
+          decoration:
+              new InputDecoration(hintText: 'Lorem Ipsum...'));
     } else if ([
       PostgreSQLDataType.real,
       PostgreSQLDataType.smallInteger,
@@ -104,32 +105,60 @@ class _PropertyViewState extends State<PropertyView>
           },
           textInputAction: TextInputAction.next,
           keyboardType: TextInputType.number,
-          onChanged: (newValue) => _onChangeController(newValue, property.type),
+          onChanged: (newValue) => _onChangeController(newValue),
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          decoration: new InputDecoration.collapsed(hintText: '0'));
+          decoration: new InputDecoration(hintText: '0'));
     } else if (property.type == PostgreSQLDataType.boolean) {
       value = value == null ? false : value;
       ret = Checkbox(
         value: value,
-        onChanged: (newValue) => _onChangeController(newValue, property.type),
+        onChanged: (newValue) => _onChangeController(newValue),
       );
     } else if (property.type == PostgreSQLDataType.date) {
-      value = value == null ? "2020-03-20" : value; // TODO correct
-      ret = DatePicker(showDate: true);
+      DateFormat format = DateFormat("yyyy-MM-dd");
+      value = value == null ? format.format(DateTime.now()) : value;
+      ret = DateTimeField(
+        onChanged: _onChangeController,
+        format: format,
+        onShowPicker: (context, currentValue) {
+          return showDatePicker(
+              context: context,
+              firstDate: DateTime(1900),
+              initialDate: currentValue ?? DateTime.now(),
+              lastDate: DateTime(2100));
+        },
+      );
     } else if ([
       PostgreSQLDataType.timestampWithTimezone,
       PostgreSQLDataType.timestampWithoutTimezone
     ].contains(property.type)) {
-      value = value == null ? "'${DateTime.now()}'" : value; // TODO correct
-      ret = DatePicker(
-        showDate: true,
-        showTime: true,
+      DateFormat format = DateFormat("yyyy-MM-dd HH:mm");
+      value = value == null ? DateTime.now() : value;
+      ret = DateTimeField(
+        onChanged: _onChangeController,
+        format: format,
+        onShowPicker: (context, currentValue) async {
+          final date = await showDatePicker(
+              context: context,
+              firstDate: DateTime(1900),
+              initialDate: currentValue ?? DateTime.now(),
+              lastDate: DateTime(2100));
+          if (date != null) {
+            final time = await showTimePicker(
+              context: context,
+              initialTime:
+                  TimeOfDay.fromDateTime(currentValue ?? DateTime.now()),
+            );
+            return DateTimeField.combine(date, time);
+          } else {
+            return currentValue;
+          }
+        },
       );
     }
-    updateForm(
-        widget.property.name, widget.property.type, value, widget.updater);
+    updateForm(widget.property, value, widget.updater);
     return ret;
   }
 
@@ -138,13 +167,26 @@ class _PropertyViewState extends State<PropertyView>
 }
 
 /// What happens with null? Generated "null" string
-void updateForm(String propertyName, PostgreSQLDataType dataType, value,
-    ValueChanged<Tuple2<String, String>> updater) {
+// TODO optimize because is called all the time, maybe better on submit?
+// TODO change array part, very cutre for the moment
+void updateForm(
+    Property property, value, ValueChanged<Tuple2<String, String>> updater) {
   if ([
         PostgreSQLDataType.text,
         PostgreSQLDataType.date,
-      ].contains(dataType) &&
-      value != null) value = "'${value.toString()}'";
+        PostgreSQLDataType.timestampWithoutTimezone,
+        PostgreSQLDataType.timestampWithTimezone,
+      ].contains(property.type) &&
+      value != null &&
+      !property.isArray)
+    value = "'${value.toString()}'";
+  else if (property.isArray && value != null)
+    value = "ARRAY ${(value as String).split(", ").map((s) => ([
+              PostgreSQLDataType.text,
+              PostgreSQLDataType.date,
+            ].contains(property.type)) ? "'$s'" : s)}"
+        .replaceAll("(", "[")
+        .replaceAll(")", "]");
 
-  updater(Tuple2(propertyName, value.toString()));
+  updater(Tuple2(property.name, value.toString()));
 }

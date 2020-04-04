@@ -9,14 +9,15 @@ class Property<T> extends Equatable {
   final T columnDefault;
   final bool isNullable;
   final int charMaxLength;
+  final bool isArray;
 
-  Property(this.index, this.name, this.type, this.columnDefault, this.isNullable, this.charMaxLength);
+  Property(this.index, this.name, this.type, this.columnDefault, this.isNullable, this.charMaxLength, this.isArray);
 
   @override
-  List<Object> get props => [name, type];
+  List<Object> get props => [index, name, type, columnDefault, isNullable, charMaxLength, isArray];
 
   @override
   String toString() {
-    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength)";
+    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength, isArray: $isArray)";
   }
 }

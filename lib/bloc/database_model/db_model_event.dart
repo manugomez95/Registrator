@@ -7,6 +7,7 @@ abstract class DatabaseModelEvent extends Equatable {
 }
 
 class ConnectToDatabase extends DatabaseModelEvent {
+  final String name;
   final String host;
   final int port;
   final String dbName;
@@ -16,10 +17,10 @@ class ConnectToDatabase extends DatabaseModelEvent {
   final BuildContext context;
   final bool fromForm;
 
-  ConnectToDatabase(this.host, this.port, this.dbName, this.username, this.password, {this.context, this.fromForm: false, this.useSSL: false});
+  ConnectToDatabase(this.name, this.host, this.port, this.dbName, this.username, this.password, {this.context, this.fromForm: false, this.useSSL: false});
 
   @override
-  List<Object> get props => [this.host, this.port, this.dbName, this.username, this.password];
+  List<Object> get props => [this.name, this.host, this.port, this.dbName, this.username, this.password];
 }
 
 class DisconnectFromDatabase extends DatabaseModelEvent {

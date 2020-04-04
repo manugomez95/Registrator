@@ -29,7 +29,7 @@ class DatabaseCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text("Titulo"),
+                    Text(db.name),
                     Text(db.connection.host),
                     Text(db.connection.databaseName),
                     Text(db.connection.username),
@@ -63,7 +63,7 @@ class DatabaseCard extends StatelessWidget {
   }
 }
 
-
+// TODO nice
 Future<bool> _asyncConfirmDialog(BuildContext context, PostgresClient db) async {
   return showDialog<bool>(
     context: context,

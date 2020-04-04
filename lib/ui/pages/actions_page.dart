@@ -37,7 +37,7 @@ class ActionsPageState extends State<ActionsPage> {
                 child: CircularProgressIndicator(),
               );
             } else
-              return ActionsDropdown();
+              return ActionsDropdown(); // TODO test case when DB has no tables
           },
         ));
   }

@@ -1,15 +1,28 @@
 // TODO use?
+abstract class PropertyType<T> {
+  T value;
+}
+
 abstract class Database {
+  String alias;
   Host host;
   Port port;
   DatabaseName dbName;
   Username username;
   Password password;
+  // TODO useSSL?
 }
 
 abstract class DbParameter<T> {
   String title;
   T defaultValue;
+}
+
+class Alias extends DbParameter<String> {
+  @override
+  String get title => "Alias";
+  @override
+  String get defaultValue => "My data";
 }
 
 class Host extends DbParameter<String> {

@@ -56,7 +56,7 @@ class _FormFieldViewState extends State<FormFieldView>
 
   Widget buildInput(DbParameter param) {
     // TODO use same names as the defined
-    if (param is Host || param is Username || param is DatabaseName || param is Port) {
+    if (param is Host || param is Username || param is DatabaseName || param is Port || param is Alias) {
       return TextFormField(
           controller: widget.controller,
           validator: validator,
@@ -66,7 +66,7 @@ class _FormFieldViewState extends State<FormFieldView>
             FocusScope.of(context).nextFocus();
           },
           decoration:
-              new InputDecoration.collapsed(
+              new InputDecoration(
                   hintText: param.defaultValue.toString()
               ));
     }
@@ -80,7 +80,7 @@ class _FormFieldViewState extends State<FormFieldView>
           },
           obscureText: true,
           decoration:
-          new InputDecoration.collapsed(hintText: param.defaultValue));
+          new InputDecoration(hintText: param.defaultValue));
     }
     else
       throw Exception;
