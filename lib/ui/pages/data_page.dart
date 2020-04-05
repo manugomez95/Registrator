@@ -1,6 +1,7 @@
 import 'package:bitacora/bloc/database_model/db_model_bloc.dart';
+import 'package:bitacora/bloc/database_model/db_model_event.dart';
 import 'package:bitacora/bloc/database_model/db_model_state.dart';
-import 'package:bitacora/conf/style.dart';
+import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/ui/components/database_card.dart';
@@ -29,10 +30,29 @@ class _DataPageState extends State<DataPage> {
           bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
             return Scaffold(
-              body: ListView(
-                padding: new EdgeInsets.all(Style.scaffoldPadding),
-                children:
-                    getIt<AppData>().dbs.map((db) => DatabaseCard(db)).toList(),
+              body: ListView.separated(
+                itemCount: getIt<AppData>().dbs.toList().length,
+                itemBuilder: (context, index) {
+                  return Dismissible(
+                    key: ValueKey(getIt<AppData>().dbs.toList()[index]),
+                    onDismissed: (direction) {
+                      // Remove the item from the data source.
+                      setState(() {
+                        getIt<DatabaseModelBloc>()
+                            .add(DisconnectFromDatabase(getIt<AppData>().dbs.toList()[index]));
+                      });
+                      // Then show a snackbar.
+                      Scaffold.of(context).showSnackBar(
+                          SnackBar(content: Text("${getIt<AppData>().dbs.toList()[index]} dismissed")));
+                    },
+                    confirmDismiss: (direction) async {
+                      return _asyncConfirmDialog(context, getIt<AppData>().dbs.toList()[index]);
+                    },
+                    background: Container(color: Colors.red),
+                    child: DatabaseCard(getIt<AppData>().dbs.toList()[index]),
+                  );
+                },
+                separatorBuilder: (BuildContext context, int index) => Divider(height: 20, color: Colors.transparent,),
               ),
               floatingActionButton: FloatingActionButton(
                 child: Icon(Icons.add),
@@ -74,5 +94,33 @@ class _DataPageState extends State<DataPage> {
   void dispose() {
     super.dispose();
     _dbModelBloc.close();
+  }
+
+  Future<bool> _asyncConfirmDialog(
+      BuildContext context, PostgresClient db) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // user must tap button for close dialog!
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Remove ${db.name}?'),
+          content: const Text('This will close and remove the connection.'),
+          actions: <Widget>[
+            FlatButton(
+              child: const Text('CANCEL'),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            FlatButton(
+              child: const Text('ACCEPT'),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            )
+          ],
+        );
+      },
+    );
   }
 }

@@ -82,7 +82,10 @@ class _PropertyViewState extends State<PropertyView>
             return null;
           },
           maxLength: property.charMaxLength,
-          textInputAction: TextInputAction.next,
+          textInputAction: TextInputAction.newline,
+          minLines: 1,
+          maxLines: 5,
+          keyboardType: TextInputType.multiline,
           onChanged: (newValue) => _onChangeController(newValue),
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
