@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
-import 'package:bitacora/ui/pages/actions_page.dart';
 
 abstract class FormEvent extends Equatable {
   const FormEvent();

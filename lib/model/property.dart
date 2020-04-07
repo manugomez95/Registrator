@@ -1,23 +1,19 @@
-import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:postgres/postgres.dart';
+import 'package:bitacora/utils/db_parameter.dart';
 
-class Property<T> extends Equatable {
+class Property<T> {
   final int index;
   final String name;
-  final PostgreSQLDataType type;
+  final PostgresDataType type;
   final T columnDefault;
   final bool isNullable;
   final int charMaxLength;
-  final bool isArray;
+  bool definesLinearity;
+  T lastValue;
 
-  Property(this.index, this.name, this.type, this.columnDefault, this.isNullable, this.charMaxLength, this.isArray);
-
-  @override
-  List<Object> get props => [index, name, type, columnDefault, isNullable, charMaxLength, isArray];
+  Property(this.index, this.name, this.type, this.columnDefault, this.isNullable, this.charMaxLength, {this.definesLinearity: false});
 
   @override
   String toString() {
-    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength, isArray: $isArray)";
+    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength, definesLinearity: $definesLinearity)";
   }
 }

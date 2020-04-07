@@ -1,15 +1,20 @@
 import 'package:bitacora/conf/style.dart';
+import 'package:bitacora/main.dart';
+import 'package:bitacora/model/app_data.dart';
+import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:bitacora/model/table.dart' as my;
 import 'package:bitacora/ui/components/property_view.dart';
 import 'package:tuple/tuple.dart';
+import 'package:bitacora/model/action.dart' as app;
+import 'package:bitacora/model/table.dart' as app;
+
 
 class PropertiesForm extends StatelessWidget {
   PropertiesForm(this.table, this.action);
 
-  final my.Table table;
-  final String action;
+  final app.Table table;
+  final app.Action action;
   final formKey = GlobalKey<FormState>();
 
   // Name, value
@@ -21,6 +26,13 @@ class PropertiesForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    List<Property> properties = table.properties.toList();
+    // todo dont know if well done
+    getIt<AppData>().dbs.forEach((db) {
+      db.tables.forEach((t) {
+        db.getLastRow(t);
+      });
+    });
     return Form(
       key: formKey,
       child: ListView.separated(
@@ -28,7 +40,7 @@ class PropertiesForm extends StatelessWidget {
         padding: new EdgeInsets.all(Style.scaffoldPadding),
         separatorBuilder: (BuildContext context, int index) => Divider(height: 20,),
         itemBuilder: (BuildContext context, int index) {
-          return PropertyView(table.properties[index], tableUpdater);
+          return PropertyView(properties[index], tableUpdater, action);
         },
       ),
     );

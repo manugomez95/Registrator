@@ -38,7 +38,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
 
           Scaffold.of(event.context).showSnackBar(snackBar);
 
-          // obtain shared preferences
+          // TODO wtf is this obtain shared preferences
           final prefs = await SharedPreferences.getInstance();
           // set value
           prefs.setString('last_table', event.table.name);
@@ -47,6 +47,26 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
         } on PostgreSQLException catch (e) {
           showErrorSnackBar(event.context, e.toString());
         }
+      } else if (event.action.type == ActionType.EditLastFrom) {
+        await event.table.client.updateLastRow(event.table, event.propertiesForm);
+        // TODO make it a function
+        final snackBar = SnackBar(
+            content: Text("${event.action.title} ${event.table.name} done!"),
+            action: SnackBarAction(
+              label: "Undo",
+              onPressed: () async {
+                try {
+                  // TODO Cancel last edition
+                  await event.table.client.cancelLastInsertion(
+                      event.table.name, event.propertiesForm);
+                  Fluttertoast.showToast(msg: "Undo");
+                } on PostgreSQLException catch (e) {
+                  showErrorSnackBar(event.context, e.toString());
+                }
+              },
+            ));
+
+        Scaffold.of(event.context).showSnackBar(snackBar);
       } else {
         showErrorSnackBar(event.context, "Sorry, not implemented yet!");
       }

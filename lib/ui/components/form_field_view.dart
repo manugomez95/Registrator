@@ -1,12 +1,6 @@
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:postgres/postgres.dart';
-import 'package:bitacora/model/property.dart';
-import 'package:tuple/tuple.dart';
-import 'date_picker.dart';
-import 'package:recase/recase.dart';
-import 'package:bitacora/conf/style.dart' as app;
 
 class FormFieldView<T> extends StatefulWidget {
   FormFieldView(this.param, this.controller);

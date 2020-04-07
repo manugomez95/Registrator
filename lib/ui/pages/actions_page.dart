@@ -10,7 +10,6 @@ import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
-import 'package:http/http.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:bitacora/conf/style.dart' as app;
 
@@ -23,7 +22,8 @@ class ActionsPage extends StatefulWidget {
 }
 
 class ActionsPageState extends State<ActionsPage> {
-  final _dbModelBloc = getIt<DatabaseModelBloc>(); // TODO actually it's a AppDataBloc
+  final _dbModelBloc =
+      getIt<DatabaseModelBloc>(); // TODO actually it's a AppDataBloc
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +32,8 @@ class ActionsPageState extends State<ActionsPage> {
         child: BlocBuilder(
           bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
-            if (state is DatabaseModelInitial || state is AttemptingDbConnection || getIt<AppData>().dbs.isEmpty) {
+            if (state is DatabaseModelInitial ||
+                (state is AttemptingDbConnection && getIt<AppData>().dbs.isEmpty)) {
               return Center(
                 child: CircularProgressIndicator(),
               );
@@ -97,8 +98,8 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                     selectedAction = newValue;
                   });
                 },
-                items: actions.map<DropdownMenuItem<app.Action>>(
-                    (app.Action action) {
+                items: actions
+                    .map<DropdownMenuItem<app.Action>>((app.Action action) {
                   return DropdownMenuItem<app.Action>(
                       value: action,
                       child: Center(
@@ -109,17 +110,15 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 }).toList()),
           )),
         ),
-        TablesDropdown(selectedAction, getIt<AppData>().dbs.map((PostgresClient db) => db.tables).expand((i) => i).toList())
+        TablesDropdown(selectedAction,)
       ],
     );
   }
 }
 
 class TablesDropdown extends StatefulWidget {
-  TablesDropdown(this.action, this.tables);
-
+  TablesDropdown(this.action);
   final app.Action action;
-  final List<app.Table> tables;
 
   @override
   TablesDropdownState createState() {
@@ -129,23 +128,46 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class TablesDropdownState extends State<TablesDropdown> {
+  List<app.Table> tables = getIt<AppData>()
+      .dbs
+      .map((PostgresClient db) => db.tables)
+      .expand((i) => i)
+      .toList();
   app.Table selectedTable;
   final _formBloc = FormBloc(); // TODO necessary?
 
   @override
   void initState() {
     super.initState();
-    selectedTable = widget.tables.first; // TODO I should access persistent data here
+    selectedTable =
+        tables.first; // TODO I should access persistent data here
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.tables.contains(selectedTable)) selectedTable = widget.tables.first;
-    PropertiesForm form = PropertiesForm(selectedTable, widget.action.title);
+    if (!tables.contains(selectedTable))
+      selectedTable = tables.first;
+    PropertiesForm form = PropertiesForm(selectedTable, widget.action);
     return Expanded(
       child: Scaffold(
         appBar: buildTablesDropdown(),
-        body: form,
+        body: RefreshIndicator(
+          child: form,
+          onRefresh: () async {
+            form.formKey.currentState.reset();
+            getIt<AppData>().dbs.forEach((db) async {
+              await db.getDatabaseModel();
+            });
+            setState(() {
+              tables = getIt<AppData>()
+                  .dbs
+                  .map((PostgresClient db) => db.tables)
+                  .expand((i) => i)
+                  .toList();
+            });
+            return null;
+          },
+        ),
         floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(
             backgroundColor: widget.action.primaryColor,
@@ -182,12 +204,13 @@ class TablesDropdownState extends State<TablesDropdown> {
               isExpanded: true,
               onChanged: (String newValue) {
                 setState(() {
-                  selectedTable = widget.tables
+                  selectedTable = tables
                       .where((t) => t.name == newValue)
                       .first; // TODO not very clean and not robust
                 });
               },
-              items: widget.tables.map<DropdownMenuItem<String>>((app.Table table) {
+              items: tables
+                  .map<DropdownMenuItem<String>>((app.Table table) {
                 return DropdownMenuItem<String>(
                     value: table.name,
                     child: Center(

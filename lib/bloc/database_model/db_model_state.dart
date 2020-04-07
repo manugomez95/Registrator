@@ -1,8 +1,6 @@
 import 'package:bitacora/db_clients/postgres_client.dart';
-import 'package:bitacora/model/app_data.dart';
 import 'package:equatable/equatable.dart';
 import 'package:bitacora/model/database_model.dart';
-import 'package:postgres/postgres.dart';
 
 abstract class DatabaseModelState extends Equatable {
   const DatabaseModelState();

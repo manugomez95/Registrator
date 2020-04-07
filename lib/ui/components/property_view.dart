@@ -1,3 +1,4 @@
+import 'package:bitacora/model/action.dart' as app;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:postgres/postgres.dart';
@@ -9,9 +10,10 @@ import 'package:intl/intl.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 
 class PropertyView extends StatefulWidget {
-  PropertyView(this.property, this.updater);
+  PropertyView(this.property, this.updater, this.action);
 
   final Property property;
+  final app.Action action;
 
   /// useful to pass info to parent
   final ValueChanged<Tuple2<String, String>> updater;
@@ -44,13 +46,13 @@ class _PropertyViewState extends State<PropertyView>
             SizedBox(width: 35),
             Container(
               child: Text(
-                  "${widget.property.type.toString().split(".").last}${widget.property.isArray ? "[ ]" : ""}",
+                  widget.property.type.alias,
                   style: new TextStyle(
                     color: Colors.white,
                     fontSize: 12.0,
                   )),
               decoration: new BoxDecoration(
-                  color: app.Style.grey,
+                  color: widget.property.definesLinearity ? app.Style.auto : app.Style.grey,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.all(Radius.circular(5.0))),
               padding:
@@ -73,8 +75,10 @@ class _PropertyViewState extends State<PropertyView>
   // TODO shorten
   Widget buildInput(Property property) {
     Widget ret;
-    if ([PostgreSQLDataType.text].contains(property.type)) {
+    if ([PostgreSQLDataType.text].contains(property.type.complete)) {
+      value = value == null ? (widget.action.type == app.ActionType.EditLastFrom ? property.lastValue : "") : value;
       ret = TextFormField(
+          initialValue: value,
           validator: (value) {
             if (!property.isNullable && value.isEmpty) {
               return "Field can't be null";
@@ -90,16 +94,17 @@ class _PropertyViewState extends State<PropertyView>
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          decoration:
-              new InputDecoration(hintText: 'Lorem Ipsum...'));
+          decoration: InputDecoration(hintText: property.lastValue != null ? property.lastValue : "Lorem ipsum..."));
     } else if ([
       PostgreSQLDataType.real,
       PostgreSQLDataType.smallInteger,
       PostgreSQLDataType.integer,
       PostgreSQLDataType.bigInteger,
       PostgreSQLDataType.uuid
-    ].contains(property.type)) {
+    ].contains(property.type.complete)) {
+      value = value == null ? ((widget.action.type == app.ActionType.EditLastFrom && property.lastValue != null) ? property.lastValue.toString() : null) : value;
       ret = TextFormField(
+          initialValue: value,
           validator: (value) {
             if (!property.isNullable && value.isEmpty) {
               return "Field can't be null";
@@ -112,17 +117,18 @@ class _PropertyViewState extends State<PropertyView>
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          decoration: new InputDecoration(hintText: '0'));
-    } else if (property.type == PostgreSQLDataType.boolean) {
+          decoration: new InputDecoration(hintText: property.lastValue != null ? property.lastValue.toString() : "0"));
+    } else if (property.type.complete == PostgreSQLDataType.boolean) {
       value = value == null ? false : value;
       ret = Checkbox(
         value: value,
         onChanged: (newValue) => _onChangeController(newValue),
       );
-    } else if (property.type == PostgreSQLDataType.date) {
+    } else if (property.type.complete == PostgreSQLDataType.date) {
       DateFormat format = DateFormat("yyyy-MM-dd");
-      value = value == null ? format.format(DateTime.now()) : value;
+      value = value == null ? (widget.action.type == app.ActionType.EditLastFrom ? property.lastValue : DateTime.now()) : value;
       ret = DateTimeField(
+        initialValue: value,
         onChanged: _onChangeController,
         format: format,
         onShowPicker: (context, currentValue) {
@@ -136,10 +142,11 @@ class _PropertyViewState extends State<PropertyView>
     } else if ([
       PostgreSQLDataType.timestampWithTimezone,
       PostgreSQLDataType.timestampWithoutTimezone
-    ].contains(property.type)) {
+    ].contains(property.type.complete)) {
       DateFormat format = DateFormat("yyyy-MM-dd HH:mm");
-      value = value == null ? DateTime.now() : value;
+      value = value == null ? (widget.action.type == app.ActionType.EditLastFrom ? property.lastValue : DateTime.now()) : value;
       ret = DateTimeField(
+        initialValue: value,
         onChanged: _onChangeController,
         format: format,
         onShowPicker: (context, currentValue) async {
@@ -179,15 +186,15 @@ void updateForm(
         PostgreSQLDataType.date,
         PostgreSQLDataType.timestampWithoutTimezone,
         PostgreSQLDataType.timestampWithTimezone,
-      ].contains(property.type) &&
+      ].contains(property.type.complete) &&
       value != null &&
-      !property.isArray)
+      !property.type.isArray)
     value = "'${value.toString()}'";
-  else if (property.isArray && value != null)
+  else if (property.type.isArray && value != null)
     value = "ARRAY ${(value as String).split(", ").map((s) => ([
               PostgreSQLDataType.text,
               PostgreSQLDataType.date,
-            ].contains(property.type)) ? "'$s'" : s)}"
+            ].contains(property.type.complete)) ? "'$s'" : s)}"
         .replaceAll("(", "[")
         .replaceAll(")", "]");
 

@@ -2,36 +2,7 @@ import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:postgres/postgres.dart';
-
-// TODO complete and add short name field and flutter input type
-PostgreSQLDataType standardizeType(String dataType, {udtName}) {
-  switch (dataType) {
-    case "timestamp without time zone":
-      return PostgreSQLDataType.timestampWithoutTimezone;
-    case "timestamp with time zone":
-      return PostgreSQLDataType.timestampWithTimezone;
-    case "character varying":
-    case "text":
-    case "_text":
-      return PostgreSQLDataType.text;
-    case "integer":
-      return PostgreSQLDataType.integer;
-    case "smallint":
-      return PostgreSQLDataType.smallInteger;
-    case "boolean":
-      return PostgreSQLDataType.boolean;
-    case "real":
-      return PostgreSQLDataType.real;
-    case "date":
-      return PostgreSQLDataType.date;
-    case "oid":
-      return PostgreSQLDataType.uuid;
-    case "ARRAY":
-      return standardizeType(udtName);
-    default:
-      throw Exception; // TODO define Exceptions
-  }
-}
+import 'package:bitacora/utils/db_parameter.dart';
 
 // TODO change to some other class that implements PostgresClient/RelationalDBClient interface
 class PostgresClient {
@@ -103,11 +74,10 @@ class PostgresClient {
             return Property(
                 res[0] - 1,
                 res[1],
-                standardizeType(res[2], udtName: res[6]),
+                PostgresDataType(res[2], udtName: res[6]),
                 res[3],
                 res[4] == 'YES' ? true : false,
-                res[5],
-                res[2] == 'ARRAY' ? true : false);
+                res[5]);
           })
           .toList()
           .cast<Property>();
@@ -144,6 +114,55 @@ class PostgresClient {
     }
   }
 
+  Future<bool> updateLastRow(
+      app.Table table, Map<String, String> propertiesForm) async {
+    String properties = propertiesForm.keys
+        .map((e) => e.toLowerCase() == e ? e : "\"$e\"")
+        .join(", ");
+    String values =
+    propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
+
+    Property linearityProperty = table.properties.firstWhere((p) => p.definesLinearity);
+    String last =
+        "SELECT ctid FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1";
+
+    String sql = "UPDATE ${table.name} SET ($properties) = ($values) WHERE ctid IN ($last)";
+    debugPrint(sql);
+    try {
+      var results = await connection.execute(sql);
+      debugPrint("updateLastRow: $results");
+      if (results == 1)
+        return Future.value(true);
+      else
+        return Future.value(false);
+    } on PostgreSQLException catch (e) {
+      print(e);
+      throw e;
+    }
+  }
+
+  void getLastRow(app.Table table) async {
+    // TODO get it in a more efficient way
+    Property linearityProperty = table.properties.firstWhere((p) => p.definesLinearity, orElse: () => null);
+    if (linearityProperty == null) {
+      debugPrint("getLastRow: No linearity defined for ${table.name}");
+      return;
+    }
+    String sql =
+        "SELECT * FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1";
+    debugPrint(sql);
+    try {
+      List<List<dynamic>> results = await connection.query(sql);
+      debugPrint("getLastRow: $results");
+
+      table.properties.asMap().forEach((index, p) => p.lastValue = results[0][index]); // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
+
+    } on PostgreSQLException catch (e) {
+      print(e);
+      throw e;
+    }
+  }
+
   /// Deleting with ctid I don't need a PK
   // TODO awesome printing usefulness, copy where I can
   Future<bool> cancelLastInsertion(
@@ -170,15 +189,25 @@ class PostgresClient {
   }
 
   Future<List<app.Table>> getDatabaseModel() async {
-    if (this.tables != null) return this.tables;
+    if (this.tables != null) debugPrint("getDatabaseModel: Updating model");
 
     /// Get tables
     List<String> tablesNames = await getTables();
 
-    /// For each table get properties
+    /// For each table get properties and identify the "timeline field"
     List<app.Table> tables = [];
     for (var tName in tablesNames) {
       List<Property> properties = await getPropertiesFromTable(tName);
+      Property linearity;
+      for (final p in properties) {
+        if ([PostgreSQLDataType.date, PostgreSQLDataType.timestampWithTimezone, PostgreSQLDataType.timestampWithoutTimezone].contains(p.type.complete))
+          if (linearity == null) linearity = p;
+          else {
+            linearity = null;
+            break;
+          }
+      }
+      if (linearity != null) linearity.definesLinearity = true;
       tables.add(app.Table(tName, properties, this));
     }
 
