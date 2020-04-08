@@ -20,15 +20,13 @@ class PostgresClient {
 
   /// Public factory
   // TODO protect password (encrypt)
-  static Future<PostgresClient> create(String name,
-      String host, int port, String database, bool useSSL,
-      {String username, String password}) async {
+  static Future<PostgresClient> create(Database db) async {
     print("create() (public factory)");
 
     // Call the private constructor
-    PostgresClient component = PostgresClient._create(name);
-    component.connection = PostgreSQLConnection(host, port, database,
-        username: username, password: password, useSSL: useSSL);
+    PostgresClient component = PostgresClient._create(db.alias);
+    component.connection = PostgreSQLConnection(db.host, db.port, db.dbName,
+        username: db.username, password: db.password, useSSL: db.useSSL);
     try {
       await component.connection.open();
       // Do initialization that requires async
@@ -54,7 +52,7 @@ class PostgresClient {
       List<String> tablesNames =
           tablesResponse.expand((i) => i).toList().cast<String>();
 
-      print(tablesNames);
+      //debugPrint(tablesNames);
       return tablesNames;
     } on PostgreSQLException catch (e) {
       print(e);
@@ -82,7 +80,7 @@ class PostgresClient {
           .toList()
           .cast<Property>();
 
-      debugPrint(r.toString());
+      //debugPrint(r.toString());
 
       return r;
     } on PostgreSQLException catch (e) {

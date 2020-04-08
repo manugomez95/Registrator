@@ -1,4 +1,3 @@
-// TODO use?
 import 'package:postgres/postgres.dart';
 
 abstract class PropertyType<T> {
@@ -6,13 +5,19 @@ abstract class PropertyType<T> {
 }
 
 abstract class Database {
-  String alias;
-  Host host;
-  Port port;
-  DatabaseName dbName;
-  Username username;
-  Password password;
-  // TODO useSSL?
+  final String alias;
+  final String host;
+  final int port;
+  final String dbName;
+  final String username;
+  final String password;
+  final bool useSSL;
+
+  Database(this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL);
+}
+
+class PostgreSQL extends Database {
+  PostgreSQL(String alias, String host, int port, String dbName, String username, String password, bool useSSL) : super(alias, host, port, dbName, username, password, useSSL);
 }
 
 class PostgresDataType {
@@ -48,7 +53,7 @@ class PostgresDataType {
       case "ARRAY":
         return PostgresDataType(udtName, isArray: true);
       default:
-        throw Exception; // TODO define Exceptions
+        throw Exception("$dataType not supported as a type");
     }
   }
 
@@ -60,6 +65,7 @@ class PostgresDataType {
 
 abstract class DbParameter<T> {
   String title;
+  T value;
   T defaultValue;
 }
 

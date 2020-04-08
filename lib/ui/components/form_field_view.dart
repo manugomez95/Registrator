@@ -49,7 +49,6 @@ class _FormFieldViewState extends State<FormFieldView>
   }
 
   Widget buildInput(DbParameter param) {
-    // TODO use same names as the defined
     if (param is Host || param is Username || param is DatabaseName || param is Port || param is Alias) {
       return TextFormField(
           controller: widget.controller,

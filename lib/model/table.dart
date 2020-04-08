@@ -10,5 +10,10 @@ class Table extends Equatable {
   Table(this.name, this.properties, this.client);
 
   @override
-  List<Object> get props => [name, properties];
+  List<Object> get props => [name, client.connection.processID];
+
+  @override
+  String toString() {
+    return name;
+  }
 }

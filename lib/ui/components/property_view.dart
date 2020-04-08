@@ -102,7 +102,7 @@ class _PropertyViewState extends State<PropertyView>
       PostgreSQLDataType.bigInteger,
       PostgreSQLDataType.uuid
     ].contains(property.type.complete)) {
-      value = value == null ? ((widget.action.type == app.ActionType.EditLastFrom && property.lastValue != null) ? property.lastValue.toString() : null) : value;
+      value = value == null ? ((widget.action.type == app.ActionType.EditLastFrom && property.lastValue != null) ? property.lastValue.toString() : "") : value;
       ret = TextFormField(
           initialValue: value,
           validator: (value) {
@@ -177,10 +177,10 @@ class _PropertyViewState extends State<PropertyView>
 }
 
 /// What happens with null? Generated "null" string
-// TODO optimize because is called all the time, maybe better on submit?
 // TODO change array part, very cutre for the moment
 void updateForm(
     Property property, value, ValueChanged<Tuple2<String, String>> updater) {
+  if (value.toString() == "") value = null;
   if ([
         PostgreSQLDataType.text,
         PostgreSQLDataType.date,

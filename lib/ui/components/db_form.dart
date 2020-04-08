@@ -17,26 +17,24 @@ class DbForm extends StatefulWidget {
 
   final formKey = GlobalKey<FormState>();
 
-
   @override
   State<StatefulWidget> createState() => DbFormState();
 
   void submit(BuildContext context) {
-    getIt<DatabaseModelBloc>().add(ConnectToDatabase(
+    Database db = PostgreSQL(
         nameController.text,
         hostController.text,
         int.parse(portController.text),
         dbNameController.text,
         userController.text,
         passwordController.text,
-        useSSL: useSSL.value,
-        context: context,
-        fromForm: true));
+        useSSL.value);
+    getIt<DatabaseModelBloc>()
+        .add(ConnectToDatabase(db, context: context, fromForm: true));
   }
 }
 
 class DbFormState extends State<DbForm> {
-
   @override
   Widget build(BuildContext context) {
     return Form(

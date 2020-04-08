@@ -19,16 +19,14 @@ class DatabaseModelBloc extends Bloc<DatabaseModelEvent, DatabaseModelState> {
     if (event is ConnectToDatabase) {
       yield AttemptingDbConnection();
       try {
-        final client = await PostgresClient.create(event.name,
-            event.host, event.port, event.dbName, event.useSSL, username: event.username,
-            password: event.password);
+        final client = await PostgresClient.create(event.db);
         await client.getDatabaseModel();
         getIt<AppData>().dbs.add(client);
         if (event.fromForm) Navigator.of(event.context).pop(); // exit alertDialog
         yield ConnectionSuccessful(client);
       } on Exception catch (e) {
         yield ConnectionError(e);
-        Fluttertoast.showToast(msg: "${event.name} not connected", toastLength: Toast.LENGTH_LONG);
+        Fluttertoast.showToast(msg: "${event.db.alias} not connected", toastLength: Toast.LENGTH_LONG);
         print(e);
         throw e;
       }

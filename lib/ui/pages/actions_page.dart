@@ -13,20 +13,14 @@ import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:bitacora/conf/style.dart' as app;
 
-// TODO Stateful o Stateless?
-class ActionsPage extends StatefulWidget {
-  const ActionsPage({Key key}) : super(key: key);
-
-  @override
-  State<StatefulWidget> createState() => ActionsPageState();
-}
-
-class ActionsPageState extends State<ActionsPage> {
-  final _dbModelBloc =
-      getIt<DatabaseModelBloc>(); // TODO actually it's a AppDataBloc
+// TODO maybe this should be Stateful y destination view Stateless
+class ActionsPage extends StatelessWidget {
+  const ActionsPage();
 
   @override
   Widget build(BuildContext context) {
+    // ignore: close_sinks
+    final _dbModelBloc = getIt<DatabaseModelBloc>();
     return BlocProvider(
         create: (BuildContext context) => _dbModelBloc,
         child: BlocBuilder(
@@ -41,21 +35,6 @@ class ActionsPageState extends State<ActionsPage> {
               return ActionsDropdown(); // TODO test case when DB has no tables
           },
         ));
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _dbModelBloc.close();
-  }
-}
-
-class Actions {
-  BehaviorSubject _selectedAction = BehaviorSubject.seeded(app.actions[0]);
-  Stream get stream$ => _selectedAction.stream;
-  app.Action get current => _selectedAction.value;
-  select(value) {
-    _selectedAction.add(value);
   }
 }
 
@@ -178,8 +157,18 @@ class TablesDropdownState extends State<TablesDropdown> {
             ),
             onPressed: () {
               if (form.formKey.currentState.validate()) {
-                _formBloc.add(SubmitFormEvent(context, form.propertiesForm,
-                    widget.action, selectedTable));
+                switch(widget.action.type) {
+                  case app.ActionType.InsertInto:
+                    _formBloc.add(InsertSubmitForm(context, form.propertiesForm,
+                        widget.action, selectedTable));
+                    break;
+                  case app.ActionType.EditLastFrom:
+                    _formBloc.add(EditSubmitForm(context, form.propertiesForm,
+                        widget.action, selectedTable));
+                    break;
+                  default:
+                    showErrorSnackBar(context, "Not implemented yet");
+                }
               } else
                 showErrorSnackBar(context, "Check for wrong input");
             },
