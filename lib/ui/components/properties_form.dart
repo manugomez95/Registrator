@@ -27,7 +27,7 @@ class PropertiesForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     List<Property> properties = table.properties.toList();
-    // todo dont know if well done
+    // TODO maybe can be optimized
     getIt<AppData>().dbs.forEach((db) {
       db.tables.forEach((t) {
         db.getLastRow(t);

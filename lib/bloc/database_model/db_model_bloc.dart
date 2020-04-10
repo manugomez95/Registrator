@@ -18,22 +18,23 @@ class DatabaseModelBloc extends Bloc<DatabaseModelEvent, DatabaseModelState> {
   ) async* {
     if (event is ConnectToDatabase) {
       yield AttemptingDbConnection();
-      try {
-        final client = await PostgresClient.create(event.db);
-        await client.getDatabaseModel();
-        getIt<AppData>().dbs.add(client);
-        if (event.fromForm) Navigator.of(event.context).pop(); // exit alertDialog
-        yield ConnectionSuccessful(client);
-      } on Exception catch (e) {
-        yield ConnectionError(e);
-        Fluttertoast.showToast(msg: "${event.db.alias} not connected", toastLength: Toast.LENGTH_LONG);
-        print(e);
-        throw e;
-      }
+      // Asynchronously opens the connection and gets table info. We don't wait for this so the BLoC event loop is not blocked.
+      PostgresClient.create(event.db);
+      if (event.fromForm) Navigator.of(event.context).pop(); // exit alertDialog
+    }
+    else if (event is ConnectionSuccessfulEvent) {
+      getIt<AppData>().dbs.add(event.client);
+      yield ConnectionSuccessful(event.client);
+    }
+    else if (event is ConnectionErrorEvent) {
+      yield ConnectionError(event.exception);
+      Fluttertoast.showToast(msg: "${event.client.name} not connected", toastLength: Toast.LENGTH_LONG);
+      print(event.exception);
+      throw event.exception;
     }
     else if (event is DisconnectFromDatabase) {
       try {
-        print("DisconnectFromDatabase: ${await event.client.connection.close()}");
+        debugPrint("DisconnectFromDatabase: ${await event.client.connection.close()}");
         getIt<AppData>().dbs.remove(event.client);
         yield DisconnectionSuccessful(event.client);
       } on Exception catch (e) {
@@ -42,6 +43,11 @@ class DatabaseModelBloc extends Bloc<DatabaseModelEvent, DatabaseModelState> {
         print(e);
         throw e;
       }
+    }
+    else if (event is UpdateDbsStatus) {
+      getIt<AppData>().dbs.forEach((db) {
+        db.updateStatus();
+      });
     }
 
   }

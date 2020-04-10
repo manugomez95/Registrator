@@ -1,6 +1,7 @@
 import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
+import 'package:bitacora/ui/components/empty_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,7 +11,6 @@ import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
-import 'package:rxdart/rxdart.dart';
 import 'package:bitacora/conf/style.dart' as app;
 
 // TODO maybe this should be Stateful y destination view Stateless
@@ -26,11 +26,18 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
-            if (state is DatabaseModelInitial ||
-                (state is AttemptingDbConnection && getIt<AppData>().dbs.isEmpty)) {
+            if (state is AttemptingDbConnection &&
+                getIt<AppData>().dbs.isEmpty) {
               return Center(
                 child: CircularProgressIndicator(),
               );
+            } else if (state is DatabaseModelInitial ||
+                getIt<AppData>()
+                    .dbs
+                    .map((PostgresClient db) => db.tables)
+                    .expand((i) => i)
+                    .isEmpty) {
+              return EmptyView();
             } else
               return ActionsDropdown(); // TODO test case when DB has no tables
           },
@@ -53,14 +60,12 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
   @override
   void initState() {
     super.initState();
-    print("_ActionsDropdownState.initState: ${getIt<AppData>().dbs}");
     actions = app.actions;
     selectedAction = actions[0]; // TODO I should access persistent data here
   }
 
   @override
   Widget build(BuildContext context) {
-    print("_ActionsDropdownState.build: ${getIt<AppData>().dbs}");
     return Column(
       children: <Widget>[
         Theme(
@@ -89,7 +94,9 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 }).toList()),
           )),
         ),
-        TablesDropdown(selectedAction,)
+        TablesDropdown(
+          selectedAction,
+        )
       ],
     );
   }
@@ -107,25 +114,19 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class TablesDropdownState extends State<TablesDropdown> {
-  List<app.Table> tables = getIt<AppData>()
-      .dbs
-      .map((PostgresClient db) => db.tables)
-      .expand((i) => i)
-      .toList();
+  List<app.Table> tables;
   app.Table selectedTable;
-  final _formBloc = FormBloc(); // TODO necessary?
-
-  @override
-  void initState() {
-    super.initState();
-    selectedTable =
-        tables.first; // TODO I should access persistent data here
-  }
+  final _formBloc =
+      FormBloc(); // TODO necessary? maybe not for the moment (we don't need to manage state)
 
   @override
   Widget build(BuildContext context) {
-    if (!tables.contains(selectedTable))
-      selectedTable = tables.first;
+    tables = getIt<AppData>()
+        .dbs
+        .map((PostgresClient db) => db.tables)
+        .expand((i) => i)
+        .toList();
+    if (!tables.contains(selectedTable)) selectedTable = tables.first;
     PropertiesForm form = PropertiesForm(selectedTable, widget.action);
     return Expanded(
       child: Scaffold(
@@ -135,6 +136,7 @@ class TablesDropdownState extends State<TablesDropdown> {
           onRefresh: () async {
             form.formKey.currentState.reset();
             getIt<AppData>().dbs.forEach((db) async {
+              // TODO update status?
               await db.getDatabaseModel();
             });
             setState(() {
@@ -157,7 +159,7 @@ class TablesDropdownState extends State<TablesDropdown> {
             ),
             onPressed: () {
               if (form.formKey.currentState.validate()) {
-                switch(widget.action.type) {
+                switch (widget.action.type) {
                   case app.ActionType.InsertInto:
                     _formBloc.add(InsertSubmitForm(context, form.propertiesForm,
                         widget.action, selectedTable));
@@ -198,8 +200,7 @@ class TablesDropdownState extends State<TablesDropdown> {
                       .first; // TODO not very clean and not robust
                 });
               },
-              items: tables
-                  .map<DropdownMenuItem<String>>((app.Table table) {
+              items: tables.map<DropdownMenuItem<String>>((app.Table table) {
                 return DropdownMenuItem<String>(
                     value: table.name,
                     child: Center(

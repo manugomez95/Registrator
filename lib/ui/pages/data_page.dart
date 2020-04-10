@@ -30,30 +30,39 @@ class _DataPageState extends State<DataPage> {
           bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
             return Scaffold(
-              body: ListView.separated(
-                itemCount: getIt<AppData>().dbs.toList().length,
-                itemBuilder: (context, index) {
-                  return Dismissible(
-                    key: ValueKey(getIt<AppData>().dbs.toList()[index]),
-                    onDismissed: (direction) {
-                      // Remove the item from the data source.
-                      setState(() {
-                        getIt<DatabaseModelBloc>()
-                            .add(DisconnectFromDatabase(getIt<AppData>().dbs.toList()[index]));
-                      });
-                      // Then show a snackbar.
-                      Scaffold.of(context).showSnackBar(
-                          SnackBar(content: Text("${getIt<AppData>().dbs.toList()[index]} dismissed")));
-                    },
-                    confirmDismiss: (direction) async {
-                      return _asyncConfirmDialog(context, getIt<AppData>().dbs.toList()[index]);
-                    },
-                    background: Container(color: Colors.red),
-                    child: DatabaseCard(getIt<AppData>().dbs.toList()[index]),
-                  );
+              body: RefreshIndicator(
+                child: ListView.separated(
+                  itemCount: getIt<AppData>().dbs.toList().length,
+                  itemBuilder: (context, index) {
+                    return Dismissible(
+                      key: ValueKey(getIt<AppData>().dbs.toList()[index]),
+                      onDismissed: (direction) {
+                        // Remove the item from the data source.
+                        setState(() {
+                          getIt<DatabaseModelBloc>()
+                              .add(DisconnectFromDatabase(getIt<AppData>().dbs.toList()[index]));
+                        });
+                        // Then show a snackbar.
+                        Scaffold.of(context).showSnackBar(
+                            SnackBar(content: Text("${getIt<AppData>().dbs.toList()[index]} dismissed")));
+                      },
+                      confirmDismiss: (direction) async {
+                        return _asyncConfirmDialog(context, getIt<AppData>().dbs.toList()[index]);
+                      },
+                      background: Container(color: Colors.red),
+                      child: DatabaseCard(getIt<AppData>().dbs.toList()[index]),
+                    );
+                  },
+                  separatorBuilder: (BuildContext context, int index) => Divider(height: 20, color: Colors.transparent,),
+                ),
+                onRefresh: () async {
+                  setState(() {
+                    getIt<DatabaseModelBloc>().add(UpdateDbsStatus());
+                  });
+                  return null;
                 },
-                separatorBuilder: (BuildContext context, int index) => Divider(height: 20, color: Colors.transparent,),
-              ),
+              )
+                ,
               floatingActionButton: FloatingActionButton(
                 child: Icon(Icons.add),
                 onPressed: () {

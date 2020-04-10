@@ -176,7 +176,6 @@ class _PropertyViewState extends State<PropertyView>
   bool get wantKeepAlive => true;
 }
 
-/// What happens with null? Generated "null" string
 // TODO change array part, very cutre for the moment
 void updateForm(
     Property property, value, ValueChanged<Tuple2<String, String>> updater) {

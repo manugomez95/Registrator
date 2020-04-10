@@ -46,3 +46,8 @@ class ConnectionError extends DatabaseModelState {
   @override
   List<Object> get props => [e];
 }
+
+class DbsStatusUpdated extends DatabaseModelState {
+  @override
+  List<Object> get props => [];
+}
