@@ -1,10 +1,12 @@
+import 'package:equatable/equatable.dart';
 import 'package:postgres/postgres.dart';
 
 abstract class PropertyType<T> {
   T value;
 }
 
-abstract class Database {
+// TODO doesnt need to be a class, could be a List<DbParams>
+abstract class DbDescription extends Equatable{
   final String alias;
   final String host;
   final int port;
@@ -13,10 +15,12 @@ abstract class Database {
   final String password;
   final bool useSSL;
 
-  Database(this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL);
+  DbDescription(this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL);
+
+  List<Object> get props => [this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL];
 }
 
-class PostgreSQL extends Database {
+class PostgreSQL extends DbDescription {
   PostgreSQL(String alias, String host, int port, String dbName, String username, String password, bool useSSL) : super(alias, host, port, dbName, username, password, useSSL);
 }
 

@@ -43,6 +43,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.7.4
+  meta: ^1.1.8
 
 # run:
 # flutter pub get

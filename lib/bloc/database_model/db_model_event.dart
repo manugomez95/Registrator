@@ -1,5 +1,5 @@
+import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/db_clients/postgres_client.dart';
-import 'package:bitacora/utils/db_parameter.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -8,27 +8,28 @@ abstract class DatabaseModelEvent extends Equatable {
 }
 
 class ConnectToDatabase extends DatabaseModelEvent {
-  final Database db;
+  final PostgresClient client;
   final BuildContext context;
   final bool fromForm;
 
-  ConnectToDatabase(this.db, {this.context, this.fromForm: false});
+  ConnectToDatabase(this.client, {this.context, this.fromForm: false});
 
   @override
-  List<Object> get props => [this.db, this.context, this.fromForm];
+  List<Object> get props => [this.client, this.context, this.fromForm];
 }
 
 class ConnectionSuccessfulEvent extends DatabaseModelEvent {
-  final PostgresClient client;
+  final DbClient client;
+  final bool fromForm;
 
-  ConnectionSuccessfulEvent(this.client);
+  ConnectionSuccessfulEvent(this.client, this.fromForm);
 
   @override
-  List<Object> get props => [this.client];
+  List<Object> get props => [this.client, this.fromForm];
 }
 
 class ConnectionErrorEvent extends DatabaseModelEvent {
-  final PostgresClient client;
+  final DbClient client;
   final Exception exception;
 
   ConnectionErrorEvent(this.client, this.exception);
@@ -38,7 +39,7 @@ class ConnectionErrorEvent extends DatabaseModelEvent {
 }
 
 class DisconnectFromDatabase extends DatabaseModelEvent {
-  final PostgresClient client;
+  final DbClient client;
 
   DisconnectFromDatabase(this.client);
 

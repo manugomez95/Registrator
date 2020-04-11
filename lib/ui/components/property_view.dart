@@ -94,7 +94,7 @@ class _PropertyViewState extends State<PropertyView>
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          decoration: InputDecoration(hintText: property.lastValue != null ? property.lastValue : "Lorem ipsum..."));
+          decoration: InputDecoration(hintText: property.lastValue != null ? (property.lastValue.toString().length > 40 ? "${property.lastValue.toString().substring(0, 40)}..." : property.lastValue.toString()) : "Lorem ipsum..."));
     } else if ([
       PostgreSQLDataType.real,
       PostgreSQLDataType.smallInteger,

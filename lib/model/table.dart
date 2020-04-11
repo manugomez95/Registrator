@@ -1,16 +1,18 @@
-import 'package:bitacora/db_clients/postgres_client.dart';
+import 'package:bitacora/db_clients/db_client.dart';
 import 'package:equatable/equatable.dart';
 import 'package:bitacora/model/property.dart';
 
+// ignore: must_be_immutable
 class Table extends Equatable {
-  final PostgresClient client;
+  final DbClient client;
   final String name;
   final List<Property> properties;
+  bool visible;
 
   Table(this.name, this.properties, this.client);
 
   @override
-  List<Object> get props => [name, client.connection.processID];
+  List<Object> get props => [name, client];
 
   @override
   String toString() {

@@ -1,4 +1,4 @@
-import 'package:bitacora/db_clients/postgres_client.dart';
+import 'package:bitacora/db_clients/db_client.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class DatabaseModelState extends Equatable {
@@ -21,7 +21,7 @@ class AttemptingDbConnection extends DatabaseModelState {
 }
 
 class ConnectionSuccessful extends DatabaseModelState {
-  final PostgresClient client;
+  final DbClient client;
 
   ConnectionSuccessful(this.client);
 
@@ -30,7 +30,7 @@ class ConnectionSuccessful extends DatabaseModelState {
 }
 
 class DisconnectionSuccessful extends DatabaseModelState {
-  final PostgresClient client;
+  final DbClient client;
 
   DisconnectionSuccessful(this.client);
 

@@ -1,4 +1,3 @@
-import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/ui/components/empty_view.dart';
@@ -27,16 +26,12 @@ class ActionsPage extends StatelessWidget {
           bloc: _dbModelBloc,
           builder: (BuildContext context, DatabaseModelState state) {
             if (state is AttemptingDbConnection &&
-                getIt<AppData>().dbs.isEmpty) {
+                getIt<AppData>().getDbs().isEmpty) {
               return Center(
                 child: CircularProgressIndicator(),
               );
             } else if (state is DatabaseModelInitial ||
-                getIt<AppData>()
-                    .dbs
-                    .map((PostgresClient db) => db.tables)
-                    .expand((i) => i)
-                    .isEmpty) {
+                getIt<AppData>().getTables().isEmpty) {
               return EmptyView();
             } else
               return ActionsDropdown(); // TODO test case when DB has no tables
@@ -121,30 +116,37 @@ class TablesDropdownState extends State<TablesDropdown> {
 
   @override
   Widget build(BuildContext context) {
-    tables = getIt<AppData>()
-        .dbs
-        .map((PostgresClient db) => db.tables)
-        .expand((i) => i)
-        .toList();
+    tables = getIt<AppData>().getTables();
     if (!tables.contains(selectedTable)) selectedTable = tables.first;
     PropertiesForm form = PropertiesForm(selectedTable, widget.action);
     return Expanded(
       child: Scaffold(
         appBar: buildTablesDropdown(),
         body: RefreshIndicator(
-          child: form,
+          child: Dismissible(
+            // TODO only for editlast from
+            child: form,
+            key: UniqueKey(),
+            background: Container(color: Colors.red),
+            onDismissed: (direction) {
+              // Remove the item from the data source.
+              setState(() {
+                selectedTable.client.cancelLastInsertion(selectedTable,
+                    form.propertiesForm); // TODO Remove last with linearity
+              });
+              // Then show a snackbar.
+              Scaffold.of(context).showSnackBar(SnackBar(
+                  content: Text("Deleted"))); // TODO call made function
+            },
+          ),
           onRefresh: () async {
             form.formKey.currentState.reset();
-            getIt<AppData>().dbs.forEach((db) async {
+            getIt<AppData>().getDbs().forEach((db) async {
               // TODO update status?
-              await db.getDatabaseModel();
+              await db.updateDatabaseModel(verbose: false);
             });
             setState(() {
-              tables = getIt<AppData>()
-                  .dbs
-                  .map((PostgresClient db) => db.tables)
-                  .expand((i) => i)
-                  .toList();
+              tables = getIt<AppData>().getTables();
             });
             return null;
           },

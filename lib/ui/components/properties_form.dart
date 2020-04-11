@@ -1,6 +1,4 @@
 import 'package:bitacora/conf/style.dart';
-import 'package:bitacora/main.dart';
-import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -27,15 +25,11 @@ class PropertiesForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     List<Property> properties = table.properties.toList();
-    // TODO maybe can be optimized
-    getIt<AppData>().dbs.forEach((db) {
-      db.tables.forEach((t) {
-        db.getLastRow(t);
-      });
-    });
+    table.client.getLastRow(table);
     return Form(
       key: formKey,
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: table.properties.length,
         padding: new EdgeInsets.all(Style.scaffoldPadding),
         separatorBuilder: (BuildContext context, int index) => Divider(height: 20,),

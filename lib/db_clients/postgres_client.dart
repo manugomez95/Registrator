@@ -1,5 +1,6 @@
 import 'package:bitacora/bloc/database_model/bloc.dart';
 import 'package:bitacora/bloc/database_model/db_model_bloc.dart';
+import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
@@ -8,36 +9,122 @@ import 'package:postgres/postgres.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 
 // TODO change to some other class that implements PostgresClient/RelationalDBClient interface
-class PostgresClient {
-  String name; // TODO same as db alias???
-  PostgreSQLConnection connection;
-  List<app.Table> tables;
+// ignore: must_be_immutable
+class PostgresClient extends DbClient<PostgreSQLConnection> {
 
-  /// Private constructor
-  PostgresClient._create(String name) {
-    this.name = name;
+  PostgresClient(DbDescription params, {Duration timeout: const Duration(seconds: 3), Duration queryTimeout: const Duration(seconds: 2)}) : super(params, timeout: timeout, queryTimeout: queryTimeout) {
+    connection = PostgreSQLConnection(params.host, params.port, params.dbName,
+        username: params.username, password: params.password, useSSL: params.useSSL, timeoutInSeconds: timeout.inSeconds, queryTimeoutInSeconds: queryTimeout.inSeconds);
   }
 
-  /// Public factory
-  // TODO protect password (encrypt)
-  static void create(Database db) async {
-    // Call the private constructor
-    PostgresClient component = PostgresClient._create(db.alias);
-    component.connection = PostgreSQLConnection(db.host, db.port, db.dbName,
-        username: db.username, password: db.password, useSSL: db.useSSL);
+  @override
+  List<Object> get props => [
+    this.params.host,
+    this.params.port,
+    this.params.dbName,
+    this.params.username
+  ];
+
+  /// Always call asynchronously
+  @override
+  Future<bool> connect({verbose: true, fromForm: false}) async {
+    if (connection == null) {
+      connection = PostgreSQLConnection(params.host, params.port, params.dbName,
+          username: params.username,
+          password: params.password,
+          useSSL: params.useSSL,
+          timeoutInSeconds: timeout.inSeconds,
+          queryTimeoutInSeconds: queryTimeout.inSeconds);
+    }
     try {
-      await component.connection.open();
-      await component.getDatabaseModel();
-      getIt<DatabaseModelBloc>().add(ConnectionSuccessfulEvent(component));
+      await connection.open(); // TODO Not enough the first time apparently
+      if (verbose)
+        debugPrint("connect (${this.params.alias}): Connection established");
+      await updateDatabaseModel();
+      isConnected = true;
+      getIt<DatabaseModelBloc>().add(ConnectionSuccessfulEvent(this, fromForm));
+      return true;
     } on Exception catch (e) {
-      getIt<DatabaseModelBloc>().add(ConnectionErrorEvent(component, e));
+      if (verbose) debugPrint("connect (${this.params.alias}): ${e.toString()}");
+      await disconnect(); // todo add always?
+      getIt<DatabaseModelBloc>().add(ConnectionErrorEvent(this, e)); // TODO send custom exception?
+      return false;
     }
   }
 
-  Future<void> updateStatus() async {
-    if (connection.isClosed) {
-      print(await connection.open());
+  @override
+  disconnect({verbose: true}) async {
+    try {
+      await connection.close().timeout(timeout);
+    } on Exception catch (e) {
+      if (verbose) debugPrint("disconnect (${this.params.alias}): $e");
     }
+    finally {
+      connection = null;
+      isConnected = false;
+    }
+  }
+
+  @override
+  Future<bool> ping({verbose: true}) async {
+    if (connection == null) return false;
+    String sql = "select 1 from information_schema.columns limit 1";
+    try {
+      await connection.query(sql).timeout(timeout);
+      if (verbose) debugPrint("ping (${this.params.alias}): connected");
+    } on Exception catch (e) {
+      if (verbose) debugPrint("ping (${this.params.alias}): not connected");
+      await disconnect();
+      getIt<DatabaseModelBloc>().add(ConnectionErrorEvent(this, e));
+    } finally {
+      // ignore: control_flow_in_finally
+      return isConnected;
+    }
+  }
+
+  @override
+  Future<List<app.Table>> updateDatabaseModel({verbose: false}) async {
+    if (verbose) {
+      if (this.tables != null)
+        debugPrint("updateDatabaseModel (${this.params.alias}): Updating model");
+      else
+        debugPrint("updateDatabaseModel (${this.params.alias}): Getting model for the first time");
+    }
+
+    /// Get tables
+    List<String> tablesNames = await getTables(verbose: verbose);
+
+    /// For each table:
+    List<app.Table> tables = [];
+    for (var tName in tablesNames) {
+      /// get properties...
+      List<Property> properties = await getPropertiesFromTable(tName);
+
+      /// identify the "timeline field"...
+      Property linearity;
+      for (final p in properties) {
+        if ([
+          PostgreSQLDataType.date,
+          PostgreSQLDataType.timestampWithTimezone,
+          PostgreSQLDataType.timestampWithoutTimezone
+        ].contains(p.type.complete)) if (linearity == null)
+          linearity = p;
+        else {
+          linearity = null;
+          break;
+        }
+      }
+      if (linearity != null) linearity.definesLinearity = true;
+      tables.add(app.Table(tName, properties, this));
+
+      /// and get last row
+      getLastRow(tables.last);
+    }
+
+    this.tables = tables;
+
+    if (verbose) debugPrint("updateDatabaseModel: ${tables.toString()}");
+    return tables;
   }
 
   Future<List<String>> getTables({verbose: false}) async {
@@ -47,12 +134,12 @@ class PostgresClient {
           r"FROM information_schema.tables "
           r"WHERE table_type = 'BASE TABLE' "
           r"AND table_schema = @tableSchema",
-          substitutionValues: {"tableSchema": "public"});
+          substitutionValues: {"tableSchema": "public"}).timeout(timeout);
 
       List<String> tablesNames =
           tablesResponse.expand((i) => i).toList().cast<String>();
 
-      if (verbose) debugPrint(tablesNames.toString());
+      if (verbose) debugPrint("getTables (${this.params.alias}): ${tablesNames.toString()}");
       return tablesNames;
     } on PostgreSQLException catch (e) {
       debugPrint(e.toString());
@@ -60,12 +147,14 @@ class PostgresClient {
     }
   }
 
-  Future<List<Property>> getPropertiesFromTable(String table, {verbose: false}) async {
+  @override
+  Future<List<Property>> getPropertiesFromTable(String table,
+      {verbose: false}) async {
     try {
       List<List<dynamic>> results = await connection.query(
           r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length, udt_name FROM information_schema.columns "
           r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
-          substitutionValues: {"tableSchema": "public", "tableName": table});
+          substitutionValues: {"tableSchema": "public", "tableName": table}).timeout(timeout);
 
       var r = results
           .map((res) {
@@ -89,18 +178,21 @@ class PostgresClient {
     }
   }
 
+  @override
   Future<bool> insertRowIntoTable(
-      String table, Map<String, String> propertiesForm) async {
+      app.Table table, Map<String, String> propertiesForm,
+      {verbose: false}) async {
     String properties = propertiesForm.keys
         .map((e) => e.toLowerCase() == e ? e : "\"$e\"")
         .join(", ");
     String values =
         propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
 
-    String sql = "INSERT INTO $table ($properties) VALUES ($values)";
+    String sql =
+        "INSERT INTO ${table.toString()} ($properties) VALUES ($values)";
     debugPrint(sql);
     try {
-      var results = await connection.execute(sql);
+      var results = await connection.execute(sql).timeout(timeout);
       debugPrint("insertRowIntoTable: $results");
       if (results == 1)
         return Future.value(true);
@@ -113,68 +205,75 @@ class PostgresClient {
   }
 
   Future<bool> updateLastRow(
-      app.Table table, Map<String, String> propertiesForm) async {
+      app.Table table, Map<String, String> propertiesForm,
+      {verbose: false}) async {
     String properties = propertiesForm.keys
         .map((e) => e.toLowerCase() == e ? e : "\"$e\"")
         .join(", ");
     String values =
-    propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
+        propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
 
-    Property linearityProperty = table.properties.firstWhere((p) => p.definesLinearity);
+    Property linearityProperty =
+        table.properties.firstWhere((p) => p.definesLinearity);
     String last =
         "SELECT ctid FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1";
 
-    String sql = "UPDATE ${table.name} SET ($properties) = ($values) WHERE ctid IN ($last)";
+    String sql =
+        "UPDATE ${table.name} SET ($properties) = ($values) WHERE ctid IN ($last)";
     debugPrint(sql);
     try {
-      var results = await connection.execute(sql);
+      var results = await connection.execute(sql).timeout(timeout);
       debugPrint("updateLastRow: $results");
       if (results == 1)
-        return Future.value(true);
+        return true;
       else
-        return Future.value(false);
+        return false;
     } on PostgreSQLException catch (e) {
-      print(e);
-      throw e;
+      print("updateLastRow: $e");
+      return false;
     }
   }
 
   void getLastRow(app.Table table, {verbose: false}) async {
-    Property linearityProperty = table.properties.firstWhere((p) => p.definesLinearity, orElse: () => null);
+    Property linearityProperty = table.properties
+        .firstWhere((p) => p.definesLinearity, orElse: () => null);
     if (linearityProperty == null) {
-      if (verbose) debugPrint("getLastRow: No linearity defined for ${table.name}");
+      if (verbose)
+        debugPrint("getLastRow (${table.name}): No linearity defined");
       return;
     }
     String sql =
         "SELECT * FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1";
-    if (verbose) debugPrint("getLastRow: $sql");
+    if (verbose) debugPrint("getLastRow (${table.name}): $sql");
     try {
-      List<List<dynamic>> results = await connection.query(sql);
+      List<List<dynamic>> results = await connection.query(sql).timeout(timeout);
       if (verbose) debugPrint("getLastRow: $results");
 
-      table.properties.asMap().forEach((index, p) => p.lastValue = results[0][index]); // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
+      table.properties.asMap().forEach((index, p) => p.lastValue = results[0][
+          index]); // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
 
     } on PostgreSQLException catch (e) {
-      print(e);
-      throw e;
+      print("getLastRow (${table.name}): $e");
     }
   }
 
   /// Deleting with ctid I don't need a PK
   // TODO awesome printing usefulness, copy where I can
+  @override
   Future<bool> cancelLastInsertion(
-      String table, Map<String, String> propertiesForm) async {
+      app.Table table, Map<String, String> propertiesForm,
+      {verbose: false}) async {
     String whereString = propertiesForm.keys
         .map((e) =>
             "${e.toLowerCase() == e ? e : "\"$e\""} ${propertiesForm[e] == "null" ? "is null" : "= ${propertiesForm[e]}"}")
         .join(" AND ");
 
     String sql =
-        "DELETE FROM $table WHERE ctid IN (SELECT ctid FROM $table WHERE $whereString LIMIT 1)";
-    debugPrint("cancelLastInsertion: $sql");
+        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name} WHERE $whereString LIMIT 1)";
+    debugPrint("cancelLastInsertion (${this.params.alias}): $sql");
     try {
-      var results = await connection.execute(sql);
-      debugPrint("cancelLastInsertion: $results");
+      var results = await connection.execute(sql).timeout(timeout);
+      debugPrint("cancelLastInsertion (${this.params.alias}): $results");
       if (results == 1)
         return Future.value(true);
       else
@@ -183,45 +282,5 @@ class PostgresClient {
       print(e);
       throw e;
     }
-  }
-
-  Future<List<app.Table>> getDatabaseModel({verbose: false}) async {
-    if (verbose) {
-      debugPrint("_________________");
-      if (this.tables != null) debugPrint("getDatabaseModel: Updating model");
-      else debugPrint("getDatabaseModel: Getting model for the first time");
-    }
-
-    /// Get tables
-    List<String> tablesNames = await getTables(verbose: verbose);
-
-    /// For each table:
-    List<app.Table> tables = [];
-    for (var tName in tablesNames) {
-      /// get properties...
-      List<Property> properties = await getPropertiesFromTable(tName);
-
-      /// identify the "timeline field"...
-      Property linearity;
-      for (final p in properties) {
-        if ([PostgreSQLDataType.date, PostgreSQLDataType.timestampWithTimezone, PostgreSQLDataType.timestampWithoutTimezone].contains(p.type.complete))
-          if (linearity == null) linearity = p;
-          else {
-            linearity = null;
-            break;
-          }
-      }
-      if (linearity != null) linearity.definesLinearity = true;
-      tables.add(app.Table(tName, properties, this));
-
-      /// and get last row
-      getLastRow(tables.last);
-    }
-
-    this.tables = tables;
-
-    if (verbose) debugPrint("getDatabaseModel: ${tables.toString()}");
-    if (verbose) debugPrint("_________________");
-    return tables;
   }
 }

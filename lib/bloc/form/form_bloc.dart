@@ -17,7 +17,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
       if (event.action.type == ActionType.InsertInto) {
         try {
           await event.table.client.insertRowIntoTable(
-              event.table.name, event.propertiesForm);
+              event.table, event.propertiesForm);
           submitFormSnackBar(
               event, "${event.action.title} ${event.table.name} done!",
               undoAction: event.undo);

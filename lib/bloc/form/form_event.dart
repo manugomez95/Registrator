@@ -31,7 +31,7 @@ class InsertSubmitForm extends SubmitFormEvent {
   Future<void> undo() async {
     try {
       await table.client.cancelLastInsertion(
-          table.name, propertiesForm);
+          table, propertiesForm);
       Fluttertoast.showToast(msg: "Undo");
     } on PostgreSQLException catch (e) {
       showErrorSnackBar(context, e.toString());
@@ -47,7 +47,7 @@ class EditSubmitForm extends SubmitFormEvent {
     try {
       // TODO Cancel last update instead of insertion
       await table.client.cancelLastInsertion(
-          table.name, propertiesForm);
+          table, propertiesForm);
       Fluttertoast.showToast(msg: "Undo");
     } on PostgreSQLException catch (e) {
       showErrorSnackBar(context, e.toString());
