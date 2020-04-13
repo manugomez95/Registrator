@@ -1,3 +1,4 @@
+import 'package:bitacora/bloc/app_data/app_data_bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:equatable/equatable.dart';
@@ -5,7 +6,8 @@ import 'package:equatable/equatable.dart';
 class AppData extends Equatable {
   // TODO que tenga un BLOC
 
-  // DbClients
+  // ignore: close_sinks
+  final AppDataBloc bloc = AppDataBloc();
   final Set<DbClient> dbs = Set();
 
   @override

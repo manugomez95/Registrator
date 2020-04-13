@@ -1,4 +1,4 @@
-import 'package:bitacora/model/app_data.dart';
+import 'package:bitacora/db_clients/db_client.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class AppDataState extends Equatable {
@@ -10,16 +10,16 @@ class InitialAppDataState extends AppDataState {
   List<Object> get props => [];
 }
 
-class AppDataLoading extends AppDataState {
+class UpdateUI extends AppDataState {
+  final DbClient client;
+
+  UpdateUI(this.client);
+
   @override
-  List<Object> get props => null;
+  List<Object> get props => [client];
 }
 
-class AppDataLoaded extends AppDataState {
-  final AppData appData;
-
-  AppDataLoaded(this.appData);
-
+class Loading extends AppDataState {
   @override
-  List<Object> get props => [appData];
+  List<Object> get props => [];
 }

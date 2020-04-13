@@ -1,7 +1,5 @@
-import 'package:bitacora/bloc/database_model/bloc.dart';
-import 'package:bitacora/bloc/database_model/db_model_bloc.dart';
+import 'package:bitacora/bloc/database/bloc.dart' as alt;
 import 'package:bitacora/db_clients/db_client.dart';
-import 'package:bitacora/main.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/table.dart' as app;
@@ -15,6 +13,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   PostgresClient(DbDescription params, {Duration timeout: const Duration(seconds: 3), Duration queryTimeout: const Duration(seconds: 2)}) : super(params, timeout: timeout, queryTimeout: queryTimeout) {
     connection = PostgreSQLConnection(params.host, params.port, params.dbName,
         username: params.username, password: params.password, useSSL: params.useSSL, timeoutInSeconds: timeout.inSeconds, queryTimeoutInSeconds: queryTimeout.inSeconds);
+    databaseBloc = alt.DatabaseBloc();
   }
 
   @override
@@ -27,7 +26,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   /// Always call asynchronously
   @override
-  Future<bool> connect({verbose: true, fromForm: false}) async {
+  Future<bool> connect({verbose: false, fromForm: false}) async {
     if (connection == null) {
       connection = PostgreSQLConnection(params.host, params.port, params.dbName,
           username: params.username,
@@ -42,20 +41,20 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         debugPrint("connect (${this.params.alias}): Connection established");
       await updateDatabaseModel();
       isConnected = true;
-      getIt<DatabaseModelBloc>().add(ConnectionSuccessfulEvent(this, fromForm));
+      databaseBloc.add(alt.ConnectionSuccessfulEvent(this, fromForm));
       return true;
     } on Exception catch (e) {
       if (verbose) debugPrint("connect (${this.params.alias}): ${e.toString()}");
-      await disconnect(); // todo add always?
-      getIt<DatabaseModelBloc>().add(ConnectionErrorEvent(this, e)); // TODO send custom exception?
+      await disconnect(); // todo add with all the connection errors?
+      databaseBloc.add(alt.ConnectionErrorEvent(this, e));
       return false;
     }
   }
 
   @override
-  disconnect({verbose: true}) async {
+  disconnect({verbose: false}) async {
     try {
-      await connection.close().timeout(timeout);
+      await connection?.close()?.timeout(timeout);
     } on Exception catch (e) {
       if (verbose) debugPrint("disconnect (${this.params.alias}): $e");
     }
@@ -66,16 +65,19 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  Future<bool> ping({verbose: true}) async {
+  Future<bool> ping({verbose: false}) async {
     if (connection == null) return false;
     String sql = "select 1 from information_schema.columns limit 1";
     try {
       await connection.query(sql).timeout(timeout);
       if (verbose) debugPrint("ping (${this.params.alias}): connected");
+      //getIt<DatabaseModelBloc>().add(ConnectionSuccessfulEvent(this, false));
+      databaseBloc.add(alt.ConnectionSuccessfulEvent(this, false));
     } on Exception catch (e) {
       if (verbose) debugPrint("ping (${this.params.alias}): not connected");
       await disconnect();
-      getIt<DatabaseModelBloc>().add(ConnectionErrorEvent(this, e));
+      //getIt<DatabaseModelBloc>().add(ConnectionErrorEvent(this, e));
+      databaseBloc.add(alt.ConnectionErrorEvent(this, e));
     } finally {
       // ignore: control_flow_in_finally
       return isConnected;

@@ -1,10 +1,8 @@
-import 'package:bitacora/bloc/database_model/db_model_bloc.dart';
-import 'package:bitacora/bloc/database_model/db_model_event.dart';
+import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../main.dart';
 import 'form_field_view.dart';
 
 class DbForm extends StatefulWidget {
@@ -22,16 +20,16 @@ class DbForm extends StatefulWidget {
   State<StatefulWidget> createState() => DbFormState();
 
   void submit(BuildContext context) {
-    DbDescription db = PostgreSQL(
+    PostgresClient db = PostgresClient(PostgreSQL(
         nameController.text,
         hostController.text,
         int.parse(portController.text),
         dbNameController.text,
         userController.text,
         passwordController.text,
-        useSSL.value);
-    getIt<DatabaseModelBloc>()
-        .add(ConnectToDatabase(PostgresClient(db), context: context, fromForm: true));
+        useSSL.value));
+
+    db.databaseBloc.add(ConnectToDatabase(db, context: context, fromForm: true));
   }
 }
 

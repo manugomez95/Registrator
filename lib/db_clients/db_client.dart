@@ -1,3 +1,4 @@
+import 'package:bitacora/bloc/database/bloc.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:equatable/equatable.dart';
@@ -7,6 +8,10 @@ import 'package:bitacora/model/table.dart' as app;
 // TODO change to some other class that implements PostgresClient/RelationalDBClient interface
 // ignore: must_be_immutable
 abstract class DbClient<T> extends Equatable {
+  /// BLoC
+  // ignore: close_sinks
+  DatabaseBloc databaseBloc;
+
   /// Database model TODO might be an object because not final properties
   DbDescription params;
   List<app.Table> tables;

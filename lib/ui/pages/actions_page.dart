@@ -1,10 +1,10 @@
+import 'package:bitacora/bloc/app_data/app_data_state.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/ui/components/empty_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:bitacora/bloc/database_model/bloc.dart';
 import 'package:bitacora/bloc/form/bloc.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
@@ -19,18 +19,18 @@ class ActionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ignore: close_sinks
-    final _dbModelBloc = getIt<DatabaseModelBloc>();
+    final bloc = getIt<AppData>().bloc;
     return BlocProvider(
-        create: (BuildContext context) => _dbModelBloc,
+        create: (BuildContext context) => bloc,
         child: BlocBuilder(
-          bloc: _dbModelBloc,
-          builder: (BuildContext context, DatabaseModelState state) {
-            if (state is AttemptingDbConnection &&
+          bloc: bloc,
+          builder: (BuildContext context, AppDataState state) {
+            if (state is Loading &&
                 getIt<AppData>().getDbs().isEmpty) {
               return Center(
                 child: CircularProgressIndicator(),
               );
-            } else if (state is DatabaseModelInitial ||
+            } else if (state is InitialAppDataState ||
                 getIt<AppData>().getTables().isEmpty) {
               return EmptyView();
             } else
@@ -61,6 +61,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
 
   @override
   Widget build(BuildContext context) {
+    print("_ActionsDropdownState build");
     return Column(
       children: <Widget>[
         Theme(
@@ -143,7 +144,7 @@ class TablesDropdownState extends State<TablesDropdown> {
             form.formKey.currentState.reset();
             getIt<AppData>().getDbs().forEach((db) async {
               // TODO update status?
-              await db.updateDatabaseModel(verbose: false);
+              await db.updateDatabaseModel();
             });
             setState(() {
               tables = getIt<AppData>().getTables();
