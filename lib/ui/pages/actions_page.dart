@@ -25,13 +25,13 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
-            if (state is Loading &&
-                getIt<AppData>().getDbs().isEmpty) {
+            print(state);
+            if (state is InitialAppDataState ||
+                (state.loadingStack.isNotEmpty && getIt<AppData>().getTables().isEmpty)) {
               return Center(
                 child: CircularProgressIndicator(),
               );
-            } else if (state is InitialAppDataState ||
-                getIt<AppData>().getTables().isEmpty) {
+            } else if (getIt<AppData>().getTables().isEmpty && state.loadingStack.isEmpty) {
               return EmptyView();
             } else
               return ActionsDropdown(); // TODO test case when DB has no tables
@@ -155,7 +155,7 @@ class TablesDropdownState extends State<TablesDropdown> {
         floatingActionButton: Builder(
           builder: (context) => FloatingActionButton(
             backgroundColor: widget.action.primaryColor,
-            tooltip: "${widget.action} ${selectedTable.name}",
+            tooltip: "${widget.action.title} ${selectedTable.name}",
             child: Icon(
               Icons.check,
               color: widget.action.textColor,

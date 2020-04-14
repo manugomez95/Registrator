@@ -33,6 +33,7 @@ dependencies:
   intl: ^0.16.0
   datetime_picker_formfield: ^1.0.0
   flutter_svg: ^0.17.4
+  stack: ^0.0.1
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -66,7 +67,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/Postgresql_elephant.svg
+    - assets/images/postgresql_elephant.svg
+    - assets/images/tumbleweed.svg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

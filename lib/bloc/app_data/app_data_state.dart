@@ -1,25 +1,32 @@
-import 'package:bitacora/db_clients/db_client.dart';
 import 'package:equatable/equatable.dart';
+import 'package:stack/stack.dart';
+import 'app_data_event.dart';
 
 abstract class AppDataState extends Equatable {
-  const AppDataState();
+  final Stack<AppDataEvent> loadingStack;
+
+  const AppDataState(this.loadingStack);
 }
 
 class InitialAppDataState extends AppDataState {
+  InitialAppDataState(Stack<AppDataEvent> loadingStack) : super(loadingStack);
+
   @override
   List<Object> get props => [];
 }
 
 class UpdateUI extends AppDataState {
-  final DbClient client;
+  final UpdateUIEvent event;
 
-  UpdateUI(this.client);
+  UpdateUI(this.event, Stack<AppDataEvent> loadingStack) : super(loadingStack);
 
   @override
-  List<Object> get props => [client];
+  List<Object> get props => [event];
 }
 
 class Loading extends AppDataState {
+  Loading(Stack<AppDataEvent> loadingStack) : super(loadingStack);
+
   @override
   List<Object> get props => [];
 }

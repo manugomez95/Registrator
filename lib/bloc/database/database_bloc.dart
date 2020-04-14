@@ -25,19 +25,19 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
     else if (event is ConnectionSuccessfulEvent) {
       if (event.fromForm) getIt<AppData>().dbs.add(event.client);
       yield ConnectionSuccessful();
-      getIt<AppData>().bloc.add(UpdateUIEvent(event.client));
+      getIt<AppData>().bloc.add(UpdateUIEvent(event));
     }
     else if (event is ConnectionErrorEvent) {
       Fluttertoast.showToast(msg: "${event.client.params.alias} not connected", toastLength: Toast.LENGTH_LONG);
       yield ConnectionError(event.exception);
-      getIt<AppData>().bloc.add(UpdateUIEvent(event.client));
+      getIt<AppData>().bloc.add(UpdateUIEvent(event));
     }
     else if (event is DisconnectFromDatabase) {
       try {
         await event.client.disconnect();
         getIt<AppData>().dbs.remove(event.client);
         yield DisconnectionSuccessful();
-        getIt<AppData>().bloc.add(UpdateUIEvent(event.client));
+        getIt<AppData>().bloc.add(UpdateUIEvent(event));
       } on Exception catch (e) {
         add(ConnectionErrorEvent(event.client, e));
       }

@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 
-final String assetName = 'assets/images/Postgresql_elephant.svg';
+final String assetName = 'assets/images/postgresql_elephant.svg';
 final Widget svg = SvgPicture.asset(assetName,
     height: 75, width: 75, semanticsLabel: 'Postgres Logo');
 
