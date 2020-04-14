@@ -55,3 +55,14 @@ class EditSubmitForm extends SubmitFormEvent {
   }
 
 }
+
+class DeleteLastEntry extends FormEvent {
+  final app.Table table;
+  final BuildContext context;
+
+  DeleteLastEntry(this.table, this.context);
+
+  @override
+  List<Object> get props => [table, context];
+
+}

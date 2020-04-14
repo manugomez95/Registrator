@@ -1,6 +1,7 @@
 import 'package:bitacora/bloc/app_data/app_data_state.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
+import 'package:bitacora/ui/components/confirm_dialog.dart';
 import 'package:bitacora/ui/components/empty_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -25,13 +26,14 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
-            print(state);
             if (state is InitialAppDataState ||
-                (state.loadingStack.isNotEmpty && getIt<AppData>().getTables().isEmpty)) {
+                (state.loadingStack.isNotEmpty &&
+                    getIt<AppData>().getTables().isEmpty)) {
               return Center(
                 child: CircularProgressIndicator(),
               );
-            } else if (getIt<AppData>().getTables().isEmpty && state.loadingStack.isEmpty) {
+            } else if (getIt<AppData>().getTables().isEmpty &&
+                state.loadingStack.isEmpty) {
               return EmptyView();
             } else
               return ActionsDropdown(); // TODO test case when DB has no tables
@@ -61,7 +63,6 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
 
   @override
   Widget build(BuildContext context) {
-    print("_ActionsDropdownState build");
     return Column(
       children: <Widget>[
         Theme(
@@ -119,68 +120,82 @@ class TablesDropdownState extends State<TablesDropdown> {
   Widget build(BuildContext context) {
     tables = getIt<AppData>().getTables();
     if (!tables.contains(selectedTable)) selectedTable = tables.first;
-    PropertiesForm form = PropertiesForm(selectedTable, widget.action);
-    return Expanded(
-      child: Scaffold(
-        appBar: buildTablesDropdown(),
-        body: RefreshIndicator(
-          child: Dismissible(
-            // TODO only for editlast from
-            child: form,
-            key: UniqueKey(),
-            background: Container(color: Colors.red),
-            onDismissed: (direction) {
-              // Remove the item from the data source.
-              setState(() {
-                selectedTable.client.cancelLastInsertion(selectedTable,
-                    form.propertiesForm); // TODO Remove last with linearity
-              });
-              // Then show a snackbar.
-              Scaffold.of(context).showSnackBar(SnackBar(
-                  content: Text("Deleted"))); // TODO call made function
-            },
-          ),
-          onRefresh: () async {
-            form.formKey.currentState.reset();
-            getIt<AppData>().getDbs().forEach((db) async {
-              // TODO update status?
-              await db.updateDatabaseModel();
-            });
-            setState(() {
-              tables = getIt<AppData>().getTables();
-            });
-            return null;
-          },
-        ),
-        floatingActionButton: Builder(
-          builder: (context) => FloatingActionButton(
-            backgroundColor: widget.action.primaryColor,
-            tooltip: "${widget.action.title} ${selectedTable.name}",
-            child: Icon(
-              Icons.check,
-              color: widget.action.textColor,
-            ),
-            onPressed: () {
-              if (form.formKey.currentState.validate()) {
-                switch (widget.action.type) {
-                  case app.ActionType.InsertInto:
-                    _formBloc.add(InsertSubmitForm(context, form.propertiesForm,
-                        widget.action, selectedTable));
-                    break;
-                  case app.ActionType.EditLastFrom:
-                    _formBloc.add(EditSubmitForm(context, form.propertiesForm,
-                        widget.action, selectedTable));
-                    break;
-                  default:
-                    showErrorSnackBar(context, "Not implemented yet");
-                }
-              } else
-                showErrorSnackBar(context, "Check for wrong input");
-            },
-          ),
-        ),
-      ),
-    );
+    return BlocProvider(
+        create: (BuildContext context) => _formBloc,
+        child: BlocBuilder(
+            bloc: _formBloc,
+            builder: (BuildContext context, PropertiesFormState state) {
+              PropertiesForm form = PropertiesForm(selectedTable, widget.action);
+              return Expanded(
+                child: Scaffold(
+                  appBar: buildTablesDropdown(),
+                  body: RefreshIndicator(
+                    child: widget.action.type == app.ActionType.EditLastFrom
+                        ? Dismissible(
+                            child: form,
+                            key: UniqueKey(),
+                            background: Container(color: Colors.red),
+                            onDismissed: (direction) {
+                              // Remove the item from the data source.
+                              setState(() {
+                                _formBloc.add(
+                                    DeleteLastEntry(selectedTable, context));
+                              });
+                            },
+                            confirmDismiss: (direction) async {
+                              return asyncConfirmDialog(context,
+                                  title: "Remove last entry?");
+                            },
+                          )
+                        : form,
+                    onRefresh: () async {
+                      form.formKey.currentState.reset();
+                      getIt<AppData>().getDbs().forEach((db) async {
+                        // TODO update status?
+                        await db.updateDatabaseModel();
+                      });
+                      setState(() {
+                        tables = getIt<AppData>().getTables();
+                      });
+                      return null;
+                    },
+                  ),
+                  floatingActionButton: Builder(
+                    builder: (context) => FloatingActionButton(
+                      backgroundColor: widget.action.primaryColor,
+                      tooltip: "${widget.action.title} ${selectedTable.name}",
+                      child: Icon(
+                        Icons.check,
+                        color: widget.action.textColor,
+                      ),
+                      onPressed: () {
+                        if (form.formKey.currentState.validate()) {
+                          switch (widget.action.type) {
+                            case app.ActionType.InsertInto:
+                              _formBloc.add(InsertSubmitForm(
+                                  context,
+                                  form.propertiesForm,
+                                  widget.action,
+                                  selectedTable));
+                              break;
+                            case app.ActionType.EditLastFrom:
+                              _formBloc.add(EditSubmitForm(
+                                  context,
+                                  form.propertiesForm,
+                                  widget.action,
+                                  selectedTable));
+                              break;
+                            default:
+                              showErrorSnackBar(context, "Not implemented yet");
+                          }
+                        } else
+                          showErrorSnackBar(context, "Check for wrong input");
+                      },
+                    ),
+                  ),
+                ),
+              );
+            }));
   }
 
   Widget buildTablesDropdown() {

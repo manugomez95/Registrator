@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:equatable/equatable.dart';
 
 abstract class PropertiesFormState extends Equatable {
@@ -14,11 +16,12 @@ class SubmittingFormState extends PropertiesFormState {
   List<Object> get props => [];
 }
 
-class SubmittedFormState extends PropertiesFormState {
-  final bool success;
+// TODO not used
+class DeletedLastRow extends PropertiesFormState {
+  final int id = Random().nextInt(100000);
 
-  SubmittedFormState(this.success);
+  DeletedLastRow();
 
   @override
-  List<Object> get props => [success];
+  List<Object> get props => [id];
 }

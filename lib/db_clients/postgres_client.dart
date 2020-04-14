@@ -215,8 +215,13 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     String values =
         propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
 
-    Property linearityProperty =
-        table.properties.firstWhere((p) => p.definesLinearity);
+    Property linearityProperty = table.properties
+        .firstWhere((p) => p.definesLinearity, orElse: () => null);
+    if (linearityProperty == null) {
+      if (verbose)
+        debugPrint("updateLastRow (${table.name}): No linearity defined");
+      return false;
+    }
     String last =
         "SELECT ctid FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1";
 
@@ -272,16 +277,39 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
     String sql =
         "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name} WHERE $whereString LIMIT 1)";
-    debugPrint("cancelLastInsertion (${this.params.alias}): $sql");
+    if (verbose) debugPrint("cancelLastInsertion (${this.params.alias}): $sql");
     try {
       var results = await connection.execute(sql).timeout(timeout);
-      debugPrint("cancelLastInsertion (${this.params.alias}): $results");
+      if (verbose) debugPrint("cancelLastInsertion (${this.params.alias}): $results");
       if (results == 1)
-        return Future.value(true);
+        return true;
       else
-        return Future.value(false);
+        return false;
     } on PostgreSQLException catch (e) {
       print(e);
+      throw e;
+    }
+  }
+
+  // TODO nice, copy in the rest of the functions (exceptions, logging...)
+  @override
+  removeLastEntry(app.Table table, {verbose: true}) async {
+    Property linearityProperty = table.properties
+        .firstWhere((p) => p.definesLinearity, orElse: () => null);
+    if (linearityProperty == null) {
+      Exception e = Exception("No linearity defined");
+      if (verbose)
+        debugPrint("removeLastEntry (${table.name}): ${e.toString()}");
+      throw e;
+    }
+    String sql =
+        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1)";
+    if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
+    try {
+      var results = await connection.execute(sql).timeout(timeout);
+      if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
+    } on PostgreSQLException catch (e) {
+      if (verbose) debugPrint("removeLastEntry (${table.name}): ${e.toString()}");
       throw e;
     }
   }

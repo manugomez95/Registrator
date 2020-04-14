@@ -2,6 +2,7 @@ import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
+import 'package:bitacora/ui/components/confirm_dialog.dart';
 import 'package:bitacora/ui/components/database_card.dart';
 import 'package:bitacora/ui/components/db_form.dart';
 import 'package:flutter/cupertino.dart';
@@ -38,7 +39,7 @@ class DataPageState extends State<DataPage> {
                 });
               },
               confirmDismiss: (direction) async {
-                return _asyncConfirmDialog(context, dbs[index]);
+                return asyncConfirmDialog(context, title: 'Remove ${dbs[index].params.alias}?', message: 'This will close and remove the connection.');
               },
               background: Container(color: Colors.red),
               child: DatabaseCard(dbs[index]),
@@ -81,33 +82,6 @@ class DataPageState extends State<DataPage> {
               });
         },
       ),
-    );
-  }
-
-  Future<bool> _asyncConfirmDialog(BuildContext context, DbClient db) async {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false, // user must tap button for close dialog!
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Remove ${db.params.alias}?'),
-          content: const Text('This will close and remove the connection.'),
-          actions: <Widget>[
-            FlatButton(
-              child: const Text('CANCEL'),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            FlatButton(
-              child: const Text('ACCEPT'),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            )
-          ],
-        );
-      },
     );
   }
 }

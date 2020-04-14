@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:postgres/postgres.dart';
 import 'package:bitacora/model/action.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
@@ -13,21 +14,18 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
   @override
   Stream<PropertiesFormState> mapEventToState(FormEvent event,) async* {
     if (event is SubmitFormEvent) {
-      yield SubmittingFormState();
       if (event.action.type == ActionType.InsertInto) {
         try {
           await event.table.client.insertRowIntoTable(
               event.table, event.propertiesForm);
           submitFormSnackBar(
-              event, "${event.action.title} ${event.table.name} done!",
+              event, "${event.action.title} ${event.table.name}",
               undoAction: event.undo);
 
           // TODO wtf is this obtain shared preferences
           final prefs = await SharedPreferences.getInstance();
           // set value
           prefs.setString('last_table', event.table.name);
-
-          yield SubmittedFormState(true);
         } on PostgreSQLException catch (e) {
           showErrorSnackBar(event.context, e.toString());
         }
@@ -35,9 +33,17 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
         await event.table.client.updateLastRow(
             event.table, event.propertiesForm);
         submitFormSnackBar(
-            event, "${event.action.title} ${event.table.name} done!",
+            event, "${event.action.title} ${event.table.name}",
             undoAction: event.undo);
-        yield SubmittedFormState(true);
+      }
+    }
+    else if (event is DeleteLastEntry) {
+      try {
+        await event.table.client.removeLastEntry(event.table);
+        Fluttertoast.showToast(msg: "Removed last row");
+        yield DeletedLastRow();
+      } on Exception catch (e) {
+        Fluttertoast.showToast(msg: e.toString());
       }
     }
   }
