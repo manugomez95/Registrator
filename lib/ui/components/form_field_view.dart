@@ -1,6 +1,10 @@
+import 'package:bitacora/conf/style.dart';
+import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
+import '../../main.dart';
 
 class FormFieldView<T> extends StatefulWidget {
   FormFieldView(this.param, this.controller);
@@ -18,6 +22,7 @@ class _FormFieldViewState extends State<FormFieldView>
 
   @override
   Widget build(BuildContext context) {
+    ThemeData theme = Theme.of(context);
     super.build(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
@@ -27,7 +32,7 @@ class _FormFieldViewState extends State<FormFieldView>
           Text(
             widget.param.title,
             style: new TextStyle(
-              color: Colors.black,
+              color: theme.colorScheme.defaultTextColor,
               fontWeight: FontWeight.bold,
               fontSize: 15.0,
             ),

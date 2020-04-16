@@ -1,4 +1,6 @@
+import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/model/action.dart' as app;
+import 'package:bitacora/model/app_data.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:postgres/postgres.dart';
@@ -8,6 +10,8 @@ import 'package:recase/recase.dart';
 import 'package:bitacora/conf/style.dart' as app;
 import 'package:intl/intl.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
+
+import '../../main.dart';
 
 class PropertyView extends StatefulWidget {
   PropertyView(this.property, this.updater, this.action);
@@ -29,6 +33,7 @@ class _PropertyViewState extends State<PropertyView>
 
   @override
   Widget build(BuildContext context) {
+    ThemeData theme = Theme.of(context);
     super.build(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,7 +43,7 @@ class _PropertyViewState extends State<PropertyView>
             Text(
               ReCase(widget.property.name).sentenceCase,
               style: new TextStyle(
-                color: Colors.black,
+                color: theme.colorScheme.defaultTextColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 19.0,
               ),
@@ -48,11 +53,11 @@ class _PropertyViewState extends State<PropertyView>
               child: Text(
                   widget.property.type.alias,
                   style: new TextStyle(
-                    color: Colors.white,
+                    color: theme.colorScheme.negativeDefaultTxtColor,
                     fontSize: 12.0,
                   )),
               decoration: new BoxDecoration(
-                  color: widget.property.definesLinearity ? app.Style.auto : app.Style.grey,
+                  color: widget.property.definesLinearity ? theme.colorScheme.auto : theme.colorScheme.typeBoxColor,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.all(Radius.circular(5.0))),
               padding:

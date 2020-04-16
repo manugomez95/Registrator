@@ -1,17 +1,17 @@
 import 'package:bitacora/bloc/app_data/app_data_bloc.dart';
+import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/table.dart' as app;
-import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
-class AppData extends Equatable {
-  // TODO que tenga un BLOC
+import 'action.dart' as app;
 
+class AppData {
   // ignore: close_sinks
   final AppDataBloc bloc = AppDataBloc();
   final Set<DbClient> dbs = Set();
-
-  @override
-  List<Object> get props => [dbs];
+  List<app.Action> actions;
 
   Iterable<DbClient> getDbs() {
     return dbs.where((db) => db.isConnected).toList();

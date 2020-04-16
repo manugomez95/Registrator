@@ -1,5 +1,4 @@
 import 'package:bitacora/bloc/database/bloc.dart';
-import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -26,10 +25,10 @@ class DatabaseCard extends StatelessWidget {
           builder: (BuildContext context, DatabaseState state) {
             Widget statusIcon;
             if (state is ConnectionSuccessful) {
-              statusIcon = Icon(Icons.check, size: 18, color: Colors.green);
+              statusIcon = Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.secondary);
             }
             else if (state is ConnectionError) {
-              statusIcon = Icon(Icons.error_outline, size: 18, color: Colors.redAccent);
+              statusIcon = Icon(Icons.error_outline, size: 18, color: Theme.of(context).colorScheme.error);
             }
             else {
               statusIcon = SizedBox(
@@ -42,7 +41,7 @@ class DatabaseCard extends StatelessWidget {
             return Container(
               width: MediaQuery.of(context).size.width,
               padding: EdgeInsets.all(15),
-              color: Colors.white,
+              color: Theme.of(context).primaryColor,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -58,7 +57,7 @@ class DatabaseCard extends StatelessWidget {
                         child: Text(
                           db.params.alias,
                           style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          Theme.of(context).textTheme.title,
                         ),
                       ),
                       Wrap(
@@ -70,7 +69,7 @@ class DatabaseCard extends StatelessWidget {
                           ),
                           Text(
                             db.params.host,
-                            style: TextStyle(color: Style.grey, fontSize: 15),
+                            style: Theme.of(context).textTheme.subtitle, //TextStyle(color: style.hintColor, fontSize: 15),
                           )
                         ],
                       ),
@@ -80,7 +79,7 @@ class DatabaseCard extends StatelessWidget {
                           Icon(Icons.storage, size: 18),
                           Text(
                             db.params.dbName,
-                            style: TextStyle(color: Style.grey, fontSize: 15),
+                            style: Theme.of(context).textTheme.subtitle,
                           )
                         ],
                       ),
@@ -90,7 +89,7 @@ class DatabaseCard extends StatelessWidget {
                           Icon(Icons.person, size: 18),
                           Text(
                             db.params.username,
-                            style: TextStyle(color: Style.grey, fontSize: 15),
+                            style: Theme.of(context).textTheme.subtitle
                           )
                         ],
                       ),

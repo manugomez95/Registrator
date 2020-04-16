@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:bitacora/conf/style.dart' as app;
+import 'package:bitacora/conf/style.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +12,7 @@ import 'ui/destination.dart';
 import 'ui/destination_view.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:bitacora/utils/db_parameter.dart';
+import 'package:dynamic_theme/dynamic_theme.dart';
 
 GetIt getIt = GetIt.asNewInstance();
 
@@ -21,13 +22,15 @@ Future<void> main() async {
   // get AppData
   // for each dbClient recovered
   // - try connecting
-
-  var db1 = PostgresClient(PostgreSQL("My data", "192.168.1.14", 5432, "my_data", "postgres", r"!$36<BD5vuP7", true));
-  var db2 = PostgresClient(PostgreSQL("Alfred", "192.168.1.18", 5433, "postgres", "postgres", r"unit679City", false));
+  var db1 = PostgresClient(PostgreSQL("My data", "192.168.1.14", 5432,
+      "my_data", "postgres", r"!$36<BD5vuP7", true));
+  var db2 = PostgresClient(PostgreSQL("Alfred", "192.168.1.18", 5433,
+      "postgres", "postgres", r"unit679City", false));
   db1.databaseBloc.add(ConnectToDatabase(db1));
   db2.databaseBloc.add(ConnectToDatabase(db2));
   getIt<AppData>().dbs.add(db1);
   getIt<AppData>().dbs.add(db2);
+
   runApp(MyApp());
 }
 
@@ -36,31 +39,28 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'bitacora',
-      theme: ThemeData(
-          primaryColor: Colors.white,
-          brightness: Brightness.light,
-          inputDecorationTheme: InputDecorationTheme(
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.blueAccent, width: 2)
-            )
-          )
-      ),
-      home: Routing(),
-      localizationsDelegates: [
-        // ... app-specific localization delegate[s] here
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: [
-        const Locale('en'), // English
-        const Locale('es'), // Spanish
-        const Locale('fr'), // French
-        const Locale('zh'), // Chinese
-      ],
-    );
+    return DynamicTheme(
+        defaultBrightness: Brightness.light,
+        data: (brightness) => brightness == Brightness.light ? Themes.lightTheme : Themes.darkTheme,
+        themedWidgetBuilder: (context, theme) {
+          return MaterialApp(
+            title: 'bitacora',
+            theme: theme,
+            home: Routing(),
+            localizationsDelegates: [
+              // ... app-specific localization delegate[s] here
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: [
+              const Locale('en'), // English
+              const Locale('es'), // Spanish
+              const Locale('fr'), // French
+              const Locale('zh'), // Chinese
+            ],
+          );
+        });
   }
 }
 
@@ -96,6 +96,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    ThemeData theme = Theme.of(context);
     return WillPopScope(
       onWillPop: _onWillPop,
       child: new Scaffold(
@@ -115,7 +116,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
                 icon: Icon(destination.icon), title: Text(destination.title));
           }).toList(),
           currentIndex: _selectedIndex,
-          selectedItemColor: app.Style.navigationBlue,
+          selectedItemColor: theme.colorScheme.navigationBlue,
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
         ),

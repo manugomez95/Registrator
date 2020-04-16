@@ -7,7 +7,6 @@ import 'package:tuple/tuple.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
 
-
 class PropertiesForm extends StatelessWidget {
   PropertiesForm(this.table, this.action);
 
@@ -31,7 +30,7 @@ class PropertiesForm extends StatelessWidget {
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: table.properties.length,
-        padding: new EdgeInsets.all(Style.scaffoldPadding),
+        padding: new EdgeInsets.all(15),
         separatorBuilder: (BuildContext context, int index) => Divider(height: 20,),
         itemBuilder: (BuildContext context, int index) {
           return PropertyView(properties[index], tableUpdater, action);

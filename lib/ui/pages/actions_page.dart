@@ -1,4 +1,5 @@
 import 'package:bitacora/bloc/app_data/app_data_state.dart';
+import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/ui/components/confirm_dialog.dart';
@@ -11,7 +12,6 @@ import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
-import 'package:bitacora/conf/style.dart' as app;
 
 // TODO maybe this should be Stateful y destination view Stateless
 class ActionsPage extends StatelessWidget {
@@ -21,6 +21,7 @@ class ActionsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // ignore: close_sinks
     final bloc = getIt<AppData>().bloc;
+    ThemeData theme = Theme.of(context);
     return BlocProvider(
         create: (BuildContext context) => bloc,
         child: BlocBuilder(
@@ -36,13 +37,21 @@ class ActionsPage extends StatelessWidget {
                 state.loadingStack.isEmpty) {
               return EmptyView();
             } else
-              return ActionsDropdown(); // TODO test case when DB has no tables
+              return ActionsDropdown(actions: <app.Action>[
+                app.Action(app.ActionType.InsertInto, theme.colorScheme.insertBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.insertTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
+                app.Action(app.ActionType.EditLastFrom, theme.colorScheme.editBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.editTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
+                app.Action(app.ActionType.CreateWidgetFrom, theme.colorScheme.createWidgetBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.createWidgetTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
+              ]); // TODO test case when DB has no tables
           },
         ));
   }
 }
 
 class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
+  final List<app.Action> actions;
+
+  const ActionsDropdown({Key key, this.actions}) : super(key: key);
+
   @override
   _ActionsDropdownState createState() => _ActionsDropdownState();
 
@@ -51,25 +60,25 @@ class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _ActionsDropdownState extends State<ActionsDropdown> {
-  List<app.Action> actions = <app.Action>[];
   app.Action selectedAction;
 
   @override
   void initState() {
     super.initState();
-    actions = app.actions;
-    selectedAction = actions[0]; // TODO I should access persistent data here
+    selectedAction = widget.actions[0]; // TODO I should access persistent data here
   }
 
   @override
   Widget build(BuildContext context) {
+    selectedAction = widget.actions.firstWhere((a) => a == selectedAction); // selectedAction saves the wrong colors when changing theme TODO not too elegant, change in the future
+    ThemeData theme = Theme.of(context);
     return Column(
       children: <Widget>[
         Theme(
-          data: ThemeData(canvasColor: app.Style.darkGrey),
+          data: ThemeData(canvasColor: theme.colorScheme.actionsDropdownBg),
           child: DropdownButtonHideUnderline(
               child: Container(
-            color: selectedAction.primaryColor,
+            color: selectedAction.bgColor,
             child: DropdownButton<app.Action>(
                 value: selectedAction,
                 iconSize: 0,
@@ -79,7 +88,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                     selectedAction = newValue;
                   });
                 },
-                items: actions
+                items: widget.actions
                     .map<DropdownMenuItem<app.Action>>((app.Action action) {
                   return DropdownMenuItem<app.Action>(
                       value: action,
@@ -87,7 +96,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                           child: Text(action.title,
                               style: TextStyle(
                                   color: action.textColor,
-                                  fontWeight: FontWeight.bold))));
+                                  fontWeight: FontWeight.w600))));
                 }).toList()),
           )),
         ),
@@ -118,6 +127,7 @@ class TablesDropdownState extends State<TablesDropdown> {
 
   @override
   Widget build(BuildContext context) {
+    ThemeData theme = Theme.of(context);
     tables = getIt<AppData>().getTables();
     if (!tables.contains(selectedTable)) selectedTable = tables.first;
     return BlocProvider(
@@ -162,11 +172,11 @@ class TablesDropdownState extends State<TablesDropdown> {
                   ),
                   floatingActionButton: Builder(
                     builder: (context) => FloatingActionButton(
-                      backgroundColor: widget.action.primaryColor,
+                      backgroundColor: widget.action.floatButColor,
                       tooltip: "${widget.action.title} ${selectedTable.name}",
                       child: Icon(
                         Icons.check,
-                        color: widget.action.textColor,
+                        color: theme.colorScheme.negativeDefaultTxtColor,
                       ),
                       onPressed: () {
                         if (form.formKey.currentState.validate()) {
@@ -199,13 +209,14 @@ class TablesDropdownState extends State<TablesDropdown> {
   }
 
   Widget buildTablesDropdown() {
+    ThemeData theme = Theme.of(context);
     return PreferredSize(
       preferredSize: Size(double.infinity, kToolbarHeight),
       child: Container(
-        color: app.Style.lightGrey,
+        color: theme.colorScheme.tablesDropdownBg,
         child: DropdownButtonHideUnderline(
             child: Theme(
-          data: ThemeData(canvasColor: app.Style.lightGrey),
+          data: ThemeData(canvasColor: theme.colorScheme.tablesDropdownBg),
           child: DropdownButton<String>(
               value: selectedTable.name,
               iconSize: 0,
@@ -223,7 +234,7 @@ class TablesDropdownState extends State<TablesDropdown> {
                     value: table.name,
                     child: Center(
                         child: Text(table.name,
-                            style: TextStyle(color: Colors.black))));
+                            style: TextStyle(color: theme.colorScheme.tablesDropdownTextColor))));
               }).toList()),
         )),
       ),
