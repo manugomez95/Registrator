@@ -6,7 +6,7 @@ import 'package:bitacora/model/property.dart';
 class Table extends Equatable {
   final DbClient client;
   final String name;
-  final List<Property> properties;
+  final Set<Property> properties;
   bool visible;
 
   Table(this.name, this.properties, this.client);

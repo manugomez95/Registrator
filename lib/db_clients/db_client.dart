@@ -35,7 +35,7 @@ abstract class DbClient<T> extends Equatable {
 
   Future<List<String>> getTables({verbose: false});
 
-  Future<List<Property>> getPropertiesFromTable(String table, {verbose: false});
+  Future<Set<Property>> getPropertiesFromTable(String table, {verbose: false});
 
   getLastRow(app.Table table, {verbose: false});
 
