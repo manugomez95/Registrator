@@ -43,9 +43,14 @@ abstract class DbClient<T> extends Equatable {
 
   Future<bool> updateLastRow(app.Table table, Map<String, String> propertiesForm, {verbose: false});
 
-  // Doesn't needs linearity defined
+  /// Doesn't needs linearity defined
   Future<bool> cancelLastInsertion(app.Table table, Map<String, String> propertiesForm, {verbose: false});
 
-  // Needs linearity defined
+  /// Needs linearity defined
   removeLastEntry(app.Table table, {verbose: false});
+
+  /// Table properties need to be already created and also the rest of the tables
+  getKeys({verbose: false});
+
+  Future<List<String>> getPkDistinctValues(app.Table table, {verbose: false, String pattern});
 }

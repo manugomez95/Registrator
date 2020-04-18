@@ -7,6 +7,7 @@ class Table extends Equatable {
   final DbClient client;
   final String name;
   final Set<Property> properties;
+  Property primaryKey;
   bool visible;
 
   Table(this.name, this.properties, this.client);

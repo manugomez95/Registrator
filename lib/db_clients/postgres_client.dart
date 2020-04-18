@@ -1,10 +1,13 @@
 import 'package:bitacora/bloc/database/bloc.dart' as alt;
 import 'package:bitacora/db_clients/db_client.dart';
+import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:postgres/postgres.dart';
 import 'package:bitacora/utils/db_parameter.dart';
+
+import '../main.dart';
 
 // TODO change to some other class that implements PostgresClient/RelationalDBClient interface
 // ignore: must_be_immutable
@@ -32,7 +35,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   /// Always call asynchronously
   @override
-  Future<bool> connect({verbose: false, fromForm: false}) async {
+  Future<bool> connect({verbose: true, fromForm: false}) async {
     if (connection == null) {
       connection = PostgreSQLConnection(params.host, params.port, params.dbName,
           username: params.username,
@@ -44,9 +47,12 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     try {
       await connection.open(); // TODO Not enough the first time apparently
       if (verbose)
-        debugPrint("connect (${this.params.alias}): Connection established");
+        debugPrint("[1/2] connect (${this.params.alias}): Connection established");
       await updateDatabaseModel();
+      if (verbose)
+        debugPrint("[2/2] connect (${this.params.alias}): DB model updated");
       isConnected = true;
+      if (fromForm) getIt<AppData>().dbs.add(this);
       databaseBloc.add(alt.ConnectionSuccessfulEvent(this, fromForm));
       return true;
     } on Exception catch (e) {
@@ -77,12 +83,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     try {
       await connection.query(sql).timeout(timeout);
       if (verbose) debugPrint("ping (${this.params.alias}): connected");
-      //getIt<DatabaseModelBloc>().add(ConnectionSuccessfulEvent(this, false));
       databaseBloc.add(alt.ConnectionSuccessfulEvent(this, false));
     } on Exception catch (e) {
       if (verbose) debugPrint("ping (${this.params.alias}): not connected");
       await disconnect();
-      //getIt<DatabaseModelBloc>().add(ConnectionErrorEvent(this, e));
       databaseBloc.add(alt.ConnectionErrorEvent(this, e));
     } finally {
       // ignore: control_flow_in_finally
@@ -108,32 +112,39 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     List<app.Table> tables = [];
     for (var tName in tablesNames) {
       /// get properties...
-      Set<Property> properties = await getPropertiesFromTable(tName);
+      try {
+        Set<Property> properties = await getPropertiesFromTable(tName);
 
-      /// identify the "timeline field"...
-      Property linearity;
-      for (final p in properties) {
-        if ([
-          PostgreSQLDataType.date,
-          PostgreSQLDataType.timestampWithTimezone,
-          PostgreSQLDataType.timestampWithoutTimezone
-        ].contains(p.type.complete)) if (linearity == null)
-          linearity = p;
-        else {
-          linearity = null;
-          break;
+        /// identify the "timeline field"...
+        Property linearity;
+        for (final p in properties) {
+          if ([
+            PostgreSQLDataType.date,
+            PostgreSQLDataType.timestampWithTimezone,
+            PostgreSQLDataType.timestampWithoutTimezone
+          ].contains(p.type.complete)) if (linearity == null)
+            linearity = p;
+          else {
+            linearity = null;
+            break;
+          }
         }
-      }
-      if (linearity != null) linearity.definesLinearity = true;
-      tables.add(app.Table(tName, properties, this));
+        if (linearity != null) linearity.definesLinearity = true;
+        tables.add(app.Table(tName, properties, this));
 
-      /// and get last row
-      getLastRow(tables.last);
+        /// and get last row
+        getLastRow(tables.last);
+      } on UnsupportedError catch (e) {
+        if (verbose) debugPrint("updateDatabaseModel (${this.params.alias}): data type in $tName not supported");
+        // TODO add event to show error
+        continue;
+      }
     }
 
     this.tables = tables;
 
-    getForeignKeys();
+    /// get foreign and primary keys info
+    await getKeys();
 
     if (verbose) debugPrint("updateDatabaseModel: ${this.tables.toString()}");
     return this.tables;
@@ -186,11 +197,11 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
           .toSet()
           .cast<Property>();
 
-      if (verbose) debugPrint(r.toString());
+      if (verbose) debugPrint("getPropertiesFromTable ($table): ${r.toString()}");
 
       return r;
-    } on PostgreSQLException catch (e) {
-      debugPrint(e.toString());
+    } on UnsupportedError catch (e) {
+      if (verbose) debugPrint("getPropertiesFromTable ($table): ${e.toString()}");
       throw e;
     }
   }
@@ -256,6 +267,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
+  String formatStrForPostgres(String str) {
+    return str.toLowerCase() == str ? str : "\"${str}\"";
+  }
+
   /// Table properties need to be already created
   getLastRow(app.Table table, {verbose: false}) async {
     Property linearityProperty = table.properties
@@ -265,8 +280,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         debugPrint("getLastRow (${table.name}): No linearity defined");
       return;
     }
+
+    // TODO formatforpostgres also table.name?
     String sql =
-        "SELECT * FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1";
+        "SELECT * FROM ${table.name} ORDER BY ${formatStrForPostgres(linearityProperty.name)} DESC LIMIT 1";
     if (verbose) debugPrint("getLastRow (${table.name}): $sql");
     try {
       List<List<dynamic>> results =
@@ -283,14 +300,13 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   /// Table properties need to be already created and also the rest of the tables
-  getForeignKeys({verbose: true}) async {
-    String sql =
-        "SELECT tc.table_schema, "
-    "tc.table_name, "
-    "kcu.column_name, "
-    "ccu.table_schema AS foreign_table_schema, "
-    "ccu.table_name AS foreign_table_name, "
-    "ccu.column_name AS foreign_column_name "
+  getKeys({verbose: false}) async {
+    String sqlForeign = "SELECT tc.table_schema, "
+        "tc.table_name, "
+        "kcu.column_name, "
+        "ccu.table_schema AS foreign_table_schema, "
+        "ccu.table_name AS foreign_table_name, "
+        "ccu.column_name AS foreign_column_name "
         "FROM information_schema.table_constraints AS tc "
         "JOIN information_schema.key_column_usage AS kcu "
         "ON tc.constraint_name = kcu.constraint_name "
@@ -299,15 +315,50 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         "ON ccu.constraint_name = tc.constraint_name "
         "AND ccu.table_schema = tc.table_schema "
         "WHERE tc.constraint_type = 'FOREIGN KEY';";
+
+    String sqlPrimary = "SELECT tc.table_schema, tc.table_name, ccu.column_name FROM information_schema.table_constraints as tc JOIN "
+    "information_schema.constraint_column_usage AS ccu "
+    "ON ccu.constraint_name = tc.constraint_name WHERE tc.constraint_type = 'PRIMARY KEY';";
+
+    try {
+      // get foreign keys
+      List<List<dynamic>> foreign =
+          await connection.query(sqlForeign).timeout(timeout);
+      if (verbose) debugPrint("getKeys: $foreign");
+
+      foreign.forEach((result) => tables
+          .firstWhere((t) => t.name == result[1], orElse: () => null)
+          ?.properties
+          ?.firstWhere((e) => e.name == result[2])
+          ?.foreignKeyOf = tables?.firstWhere((t) => t.name == result[4]));
+
+      // get primary keys
+      List<List<dynamic>> primary =
+      await connection.query(sqlPrimary).timeout(timeout);
+      if (verbose) debugPrint("getKeys: $primary");
+
+      for (final result in primary) {
+        int i = tables.indexWhere((t) => t.name == result[1]);
+        if (i != -1) {
+          tables[i].primaryKey = tables[i].properties.firstWhere((p) => p.name == result[2]);
+        }
+      }
+    } on PostgreSQLException catch (e) {
+      print("getKeys: $e");
+    }
+  }
+
+  Future<List<String>> getPkDistinctValues(app.Table table, {verbose: false, String pattern}) async {
+    String sql = "SELECT DISTINCT ${formatStrForPostgres(table.primaryKey.name)} FROM ${table.name};"; // TODO LIKE %pattern% to optimize
     try {
       List<List<dynamic>> results =
-      await connection.query(sql).timeout(timeout);
-      if (verbose) debugPrint("getForeignKeys: $results");
+          await connection.query(sql).timeout(timeout);
+      if (verbose) debugPrint("getPkDistinctValues: $results");
 
-      results.forEach((result) => tables.firstWhere((t) => t.name == result[1]).properties.firstWhere((e) => e.name == result[2]).foreignKeyOf = tables.firstWhere((t) => t.name == result[4]));
-
+      return results.expand((i) => i).where((str) => str.contains(pattern)).toList().cast<String>();
     } on PostgreSQLException catch (e) {
-      print("getForeignKeys: $e");
+      debugPrint("getForeignKeys: $e");
+      return null;
     }
   }
 

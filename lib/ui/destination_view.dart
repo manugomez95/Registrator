@@ -2,7 +2,6 @@ import 'package:dynamic_theme/dynamic_theme.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'destination.dart';
-import 'package:bitacora/conf/style.dart';
 
 class DestinationView extends StatefulWidget {
   const DestinationView({Key key, this.destination}) : super(key: key);

@@ -1,8 +1,10 @@
 import 'package:bitacora/conf/style.dart';
+import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/action.dart' as app;
-import 'package:bitacora/model/app_data.dart';
+import 'package:bitacora/model/table.dart' as app;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:postgres/postgres.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:tuple/tuple.dart';
@@ -80,7 +82,36 @@ class _PropertyViewState extends State<PropertyView>
   // TODO shorten
   Widget buildInput(Property property) {
     Widget ret;
-    if ([PostgreSQLDataType.text].contains(property.type.complete)) {
+    if (property.foreignKeyOf != null && [PostgreSQLDataType.text].contains(property.type.complete)) {
+      ret = TypeAheadFormField(
+        textFieldConfiguration: TextFieldConfiguration(
+            controller: TextEditingController(text: value),
+            decoration: InputDecoration.collapsed(hintText: 'Lorem Ipsum...')),
+        suggestionsCallback: (pattern) {
+          return property.foreignKeyOf.client.getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
+        },
+        itemBuilder: (context, suggestion) {
+          return ListTile(
+            title: Text(suggestion),
+          );
+        },
+        transitionBuilder: (context, suggestionsBox, controller) {
+          return suggestionsBox;
+        },
+        onSuggestionSelected: (suggestion) {
+          setState(() {
+            value = suggestion;
+          });
+        },
+        validator: (value) {
+          if (!property.isNullable && value.isEmpty) {
+            return "Field can't be null";
+          }
+          return null;
+        },
+      );
+    }
+    else if ([PostgreSQLDataType.text].contains(property.type.complete)) {
       value = value == null ? (widget.action.type == app.ActionType.EditLastFrom ? property.lastValue : "") : value;
       ret = TextFormField(
           initialValue: value,

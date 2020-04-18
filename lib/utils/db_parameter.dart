@@ -57,7 +57,7 @@ class PostgresDataType {
       case "ARRAY":
         return PostgresDataType(udtName, isArray: true);
       default:
-        throw Exception("$dataType not supported as a type");
+        throw UnsupportedError("$dataType not supported as a type");
     }
   }
 

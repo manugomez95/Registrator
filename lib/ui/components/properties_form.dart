@@ -1,4 +1,3 @@
-import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +23,10 @@ class PropertiesForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     List<Property> properties = table.properties.toList();
+
+    // get last row... TODO shouldn't be async?
     table.client.getLastRow(table);
+
     return Form(
       key: formKey,
       child: ListView.separated(
