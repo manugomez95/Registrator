@@ -8,6 +8,7 @@ import 'package:bitacora/ui/components/db_form.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:bitacora/bloc/database/bloc.dart' as alt;
+import 'package:bitacora/conf/style.dart';
 
 class DataPage extends StatefulWidget {
   @override
@@ -65,7 +66,7 @@ class DataPageState extends State<DataPage> {
                     content: dbForm,
                     actions: <Widget>[
                       FlatButton(
-                        child: Text('Cancel'),
+                        child: Text('Cancel', style: Theme.of(context).textTheme.button.copyWith(color: Theme.of(context).colorScheme.defaultTextColor)),
                         onPressed: () {
                           Navigator.of(context).pop();
                         },

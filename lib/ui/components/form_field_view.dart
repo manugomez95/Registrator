@@ -1,5 +1,4 @@
 import 'package:bitacora/conf/style.dart';
-import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';

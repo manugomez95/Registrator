@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bitacora/conf/style.dart';
 
 Future<bool> asyncConfirmDialog(BuildContext context, {String title: "", String message: ""}) async {
   return showDialog<bool>(
@@ -10,13 +11,13 @@ Future<bool> asyncConfirmDialog(BuildContext context, {String title: "", String 
         content: Text(message),
         actions: <Widget>[
           FlatButton(
-            child: const Text('CANCEL'),
+            child: Text('CANCEL', style: Theme.of(context).textTheme.button.copyWith(color: Theme.of(context).colorScheme.defaultTextColor),),
             onPressed: () {
               Navigator.of(context).pop(false);
             },
           ),
           FlatButton(
-            child: const Text('ACCEPT'),
+            child: Text('ACCEPT', style: Theme.of(context).textTheme.button.copyWith(color: Theme.of(context).colorScheme.defaultTextColor)),
             onPressed: () {
               Navigator.of(context).pop(true);
             },

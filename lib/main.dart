@@ -116,7 +116,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
                 icon: Icon(destination.icon), title: Text(destination.title));
           }).toList(),
           currentIndex: _selectedIndex,
-          selectedItemColor: theme.colorScheme.navigationBlue,
+          selectedItemColor: theme.colorScheme.secondary,
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
         ),

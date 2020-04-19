@@ -349,6 +349,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   Future<List<String>> getPkDistinctValues(app.Table table, {verbose: false, String pattern}) async {
+    if (pattern == "") return null;
     String sql = "SELECT DISTINCT ${formatStrForPostgres(table.primaryKey.name)} FROM ${table.name};"; // TODO LIKE %pattern% to optimize
     try {
       List<List<dynamic>> results =

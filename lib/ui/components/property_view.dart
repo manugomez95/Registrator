@@ -1,5 +1,4 @@
 import 'package:bitacora/conf/style.dart';
-import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
 import 'package:flutter/cupertino.dart';
@@ -13,7 +12,6 @@ import 'package:bitacora/conf/style.dart' as app;
 import 'package:intl/intl.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 
-import '../../main.dart';
 
 class PropertyView extends StatefulWidget {
   PropertyView(this.property, this.updater, this.action);
@@ -52,14 +50,15 @@ class _PropertyViewState extends State<PropertyView>
             ),
             SizedBox(width: 35),
             Container(
-              child: Text(
-                  widget.property.type.alias,
+              child: Text(widget.property.type.alias,
                   style: new TextStyle(
                     color: theme.colorScheme.negativeDefaultTxtColor,
                     fontSize: 12.0,
                   )),
               decoration: new BoxDecoration(
-                  color: widget.property.definesLinearity ? theme.colorScheme.auto : theme.colorScheme.typeBoxColor,
+                  color: widget.property.definesLinearity
+                      ? theme.colorScheme.auto
+                      : theme.colorScheme.typeBoxColor,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.all(Radius.circular(5.0))),
               padding:
@@ -82,19 +81,34 @@ class _PropertyViewState extends State<PropertyView>
   // TODO shorten
   Widget buildInput(Property property) {
     Widget ret;
-    if (property.foreignKeyOf != null && [PostgreSQLDataType.text].contains(property.type.complete)) {
+    if (property.foreignKeyOf != null &&
+        [PostgreSQLDataType.text].contains(property.type.complete)) {
+      value = value == null
+          ? (widget.action.type == app.ActionType.EditLastFrom
+              ? property.lastValue
+              : "")
+          : value;
       ret = TypeAheadFormField(
         textFieldConfiguration: TextFieldConfiguration(
             controller: TextEditingController(text: value),
-            decoration: InputDecoration.collapsed(hintText: 'Lorem Ipsum...')),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+            decoration: InputDecoration(
+                hintText: property.lastValue != null
+                    ? (property.lastValue.toString().length > 40
+                        ? "${property.lastValue.toString().substring(0, 40)}..."
+                        : property.lastValue.toString())
+                    : "Lorem ipsum...")),
         suggestionsCallback: (pattern) {
-          return property.foreignKeyOf.client.getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
+          return property.foreignKeyOf.client
+              .getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
         },
         itemBuilder: (context, suggestion) {
           return ListTile(
             title: Text(suggestion),
           );
         },
+        hideOnEmpty: true,
         transitionBuilder: (context, suggestionsBox, controller) {
           return suggestionsBox;
         },
@@ -110,9 +124,12 @@ class _PropertyViewState extends State<PropertyView>
           return null;
         },
       );
-    }
-    else if ([PostgreSQLDataType.text].contains(property.type.complete)) {
-      value = value == null ? (widget.action.type == app.ActionType.EditLastFrom ? property.lastValue : "") : value;
+    } else if ([PostgreSQLDataType.text].contains(property.type.complete)) {
+      value = value == null
+          ? (widget.action.type == app.ActionType.EditLastFrom
+              ? property.lastValue
+              : "")
+          : value;
       ret = TextFormField(
           initialValue: value,
           validator: (value) {
@@ -130,7 +147,12 @@ class _PropertyViewState extends State<PropertyView>
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          decoration: InputDecoration(hintText: property.lastValue != null ? (property.lastValue.toString().length > 40 ? "${property.lastValue.toString().substring(0, 40)}..." : property.lastValue.toString()) : "Lorem ipsum..."));
+          decoration: InputDecoration(
+              hintText: property.lastValue != null
+                  ? (property.lastValue.toString().length > 40
+                      ? "${property.lastValue.toString().substring(0, 40)}..."
+                      : property.lastValue.toString())
+                  : "Lorem ipsum..."));
     } else if ([
       PostgreSQLDataType.real,
       PostgreSQLDataType.smallInteger,
@@ -138,7 +160,12 @@ class _PropertyViewState extends State<PropertyView>
       PostgreSQLDataType.bigInteger,
       PostgreSQLDataType.uuid
     ].contains(property.type.complete)) {
-      value = value == null ? ((widget.action.type == app.ActionType.EditLastFrom && property.lastValue != null) ? property.lastValue.toString() : "") : value;
+      value = value == null
+          ? ((widget.action.type == app.ActionType.EditLastFrom &&
+                  property.lastValue != null)
+              ? property.lastValue.toString()
+              : "")
+          : value;
       ret = TextFormField(
           initialValue: value,
           validator: (value) {
@@ -153,7 +180,10 @@ class _PropertyViewState extends State<PropertyView>
           onFieldSubmitted: (v) {
             FocusScope.of(context).nextFocus();
           },
-          decoration: new InputDecoration(hintText: property.lastValue != null ? property.lastValue.toString() : "0"));
+          decoration: InputDecoration(
+              hintText: property.lastValue != null
+                  ? property.lastValue.toString()
+                  : "0"));
     } else if (property.type.complete == PostgreSQLDataType.boolean) {
       value = value == null ? false : value;
       ret = Checkbox(
@@ -162,11 +192,19 @@ class _PropertyViewState extends State<PropertyView>
       );
     } else if (property.type.complete == PostgreSQLDataType.date) {
       DateFormat format = DateFormat("yyyy-MM-dd");
-      value = value == null ? (widget.action.type == app.ActionType.EditLastFrom ? property.lastValue : DateTime.now()) : value;
+      value = value == null
+          ? (widget.action.type == app.ActionType.EditLastFrom
+              ? property.lastValue
+              : DateTime.now())
+          : value;
       ret = DateTimeField(
         initialValue: value,
         onChanged: _onChangeController,
         format: format,
+        decoration: InputDecoration(
+            hintText: property.lastValue != null
+                ? format.format(property.lastValue)
+                : format.format(DateTime.now())),
         onShowPicker: (context, currentValue) {
           return showDatePicker(
               context: context,
@@ -180,11 +218,19 @@ class _PropertyViewState extends State<PropertyView>
       PostgreSQLDataType.timestampWithoutTimezone
     ].contains(property.type.complete)) {
       DateFormat format = DateFormat("yyyy-MM-dd HH:mm");
-      value = value == null ? (widget.action.type == app.ActionType.EditLastFrom ? property.lastValue : DateTime.now()) : value;
+      value = value == null
+          ? (widget.action.type == app.ActionType.EditLastFrom
+              ? property.lastValue
+              : DateTime.now())
+          : value;
       ret = DateTimeField(
         initialValue: value,
         onChanged: _onChangeController,
         format: format,
+        decoration: InputDecoration(
+            hintText: property.lastValue != null
+                ? format.format(property.lastValue)
+                : format.format(DateTime.now())),
         onShowPicker: (context, currentValue) async {
           final date = await showDatePicker(
               context: context,
