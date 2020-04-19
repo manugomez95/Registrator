@@ -30,6 +30,7 @@ class PropertyView extends StatefulWidget {
 class _PropertyViewState extends State<PropertyView>
     with AutomaticKeepAliveClientMixin {
   var value;
+  bool first = true;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +75,6 @@ class _PropertyViewState extends State<PropertyView>
   void _onChangeController(newValue) {
     setState(() {
       value = newValue;
-      updateForm(widget.property, value, widget.updater);
     });
   }
 
@@ -192,11 +192,12 @@ class _PropertyViewState extends State<PropertyView>
       );
     } else if (property.type.complete == PostgreSQLDataType.date) {
       DateFormat format = DateFormat("yyyy-MM-dd");
-      value = value == null
+      value = first
           ? (widget.action.type == app.ActionType.EditLastFrom
               ? property.lastValue
               : DateTime.now())
           : value;
+      first = false;
       ret = DateTimeField(
         initialValue: value,
         onChanged: _onChangeController,
@@ -218,11 +219,12 @@ class _PropertyViewState extends State<PropertyView>
       PostgreSQLDataType.timestampWithoutTimezone
     ].contains(property.type.complete)) {
       DateFormat format = DateFormat("yyyy-MM-dd HH:mm");
-      value = value == null
+      value = first
           ? (widget.action.type == app.ActionType.EditLastFrom
               ? property.lastValue
               : DateTime.now())
           : value;
+      first = false;
       ret = DateTimeField(
         initialValue: value,
         onChanged: _onChangeController,
@@ -262,6 +264,7 @@ class _PropertyViewState extends State<PropertyView>
 void updateForm(
     Property property, value, ValueChanged<Tuple2<String, String>> updater) {
   if (value.toString() == "") value = null;
+  print("${property.name} = $value");
   if ([
         PostgreSQLDataType.text,
         PostgreSQLDataType.date,

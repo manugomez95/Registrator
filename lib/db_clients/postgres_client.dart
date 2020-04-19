@@ -272,6 +272,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   /// Table properties need to be already created
+  /// Order by ctid doesn't make sense.
   getLastRow(app.Table table, {verbose: false}) async {
     Property linearityProperty = table.properties
         .firstWhere((p) => p.definesLinearity, orElse: () => null);
@@ -363,7 +364,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
-  /// Deleting with ctid I don't need a PK
+  /// Deleting with ctid I don't need a PK TODO don't use ctid, use combination of columns and check only one is returned, release a warning in the dialog when not having a primary key
   // TODO awesome printing usefulness, copy where I can
   @override
   Future<bool> cancelLastInsertion(
