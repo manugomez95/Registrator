@@ -47,7 +47,7 @@ abstract class DbClient<T> extends Equatable {
   Future<bool> cancelLastInsertion(app.Table table, Map<String, String> propertiesForm, {verbose: false});
 
   /// Needs linearity defined
-  removeLastEntry(app.Table table, {verbose: false});
+  deleteLastFrom(app.Table table, {verbose: false});
 
   /// Table properties need to be already created and also the rest of the tables
   getKeys({verbose: false});

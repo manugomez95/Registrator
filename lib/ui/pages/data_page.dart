@@ -18,41 +18,41 @@ class DataPage extends StatefulWidget {
 class DataPageState extends State<DataPage> {
   final DbForm dbForm = DbForm();
 
+  Map<DbClient, bool> isExpanded = {};
+
   @override
   Widget build(BuildContext context) {
     List<DbClient> dbs = getIt<AppData>().dbs.toList();
+
     return Scaffold(
       body: RefreshIndicator(
-        child: ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: dbs.length,
-          itemBuilder: (context, index) {
-            return Dismissible(
-              key: ValueKey(dbs[index]),
-              onDismissed: (direction) {
-                setState(() {
-                  // Remove the item from the data source.
-                  dbs[index].databaseBloc.add(DisconnectFromDatabase((dbs[index])));
-                  // Then show a snackbar.
-                  Scaffold.of(context).showSnackBar(SnackBar(
-                      content: Text(
-                          "${dbs[index].params.alias} removed"))); // TODO add undo and use made snackbar
-                });
-              },
-              confirmDismiss: (direction) async {
-                return asyncConfirmDialog(context, title: 'Remove ${dbs[index].params.alias}?', message: 'This will close and remove the connection.');
-              },
-              background: Container(color: Colors.red),
-              child: DatabaseCard(dbs[index]),
-            );
-          },
-          separatorBuilder: (BuildContext context, int index) => Divider(
-            height: 20,
-            color: Colors.transparent,
-          ),
+        child: ListView(
+          children: <Widget>[
+            ExpansionPanelList(
+                children: dbs
+                    .map((DbClient db) => ExpansionPanel(
+                          canTapOnHeader: true,
+                          headerBuilder:
+                              (BuildContext context, bool isExpanded) {
+                            return DatabaseCardHeader(db);
+                          },
+                          isExpanded: isExpanded[db] ?? false,
+                          body: new Container(
+                            child: DatabaseCardBody(db),
+                          ),
+                        ))
+                    .toList(),
+                expansionCallback: (int index, bool isExpanded) {
+                  setState(() {
+                    this.isExpanded[dbs[index]] = !isExpanded;
+                  });
+                }),
+          ],
         ),
         onRefresh: () async {
-          getIt<AppData>().dbs.forEach((db) => db.databaseBloc.add(alt.UpdateDbsStatus(db))); // TODO redundant, in the future appdata saves bloc objects
+          getIt<AppData>().dbs.forEach((db) => db.databaseBloc.add(
+              alt.UpdateDbsStatus(
+                  db))); // TODO redundant, in the future appdata saves bloc objects
         },
       ),
       floatingActionButton: FloatingActionButton(
@@ -66,7 +66,11 @@ class DataPageState extends State<DataPage> {
                     content: dbForm,
                     actions: <Widget>[
                       FlatButton(
-                        child: Text('Cancel', style: Theme.of(context).textTheme.button.copyWith(color: Theme.of(context).colorScheme.defaultTextColor)),
+                        child: Text('Cancel',
+                            style: Theme.of(context).textTheme.button.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .defaultTextColor)),
                         onPressed: () {
                           Navigator.of(context).pop();
                         },

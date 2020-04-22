@@ -39,7 +39,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
     }
     else if (event is DeleteLastEntry) {
       try {
-        await event.table.client.removeLastEntry(event.table);
+        await event.table.client.deleteLastFrom(event.table);
         Fluttertoast.showToast(msg: "Removed last row");
         yield DeletedLastRow();
       } on Exception catch (e) {

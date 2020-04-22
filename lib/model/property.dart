@@ -10,18 +10,16 @@ class Property<T> extends Equatable {
   final T columnDefault;
   final bool isNullable;
   final int charMaxLength;
-  bool definesLinearity;
   T lastValue;
   List<T> suggestedValues;
   Table foreignKeyOf;
 
   Property(this.dbPosition, this.name, this.type, this.columnDefault,
-      this.isNullable, this.charMaxLength,
-      {this.definesLinearity: false});
+      this.isNullable, this.charMaxLength);
 
   @override
   String toString() {
-    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength, definesLinearity: $definesLinearity, suggestedValues: $suggestedValues, foreignKeyOf: $foreignKeyOf)";
+    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength, suggestedValues: $suggestedValues, foreignKeyOf: $foreignKeyOf)";
   }
 
   @override

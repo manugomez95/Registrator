@@ -14,10 +14,11 @@ import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 
 
 class PropertyView extends StatefulWidget {
-  PropertyView(this.property, this.updater, this.action);
+  PropertyView(this.property, this.updater, this.action, {this.definesOrder});
 
   final Property property;
   final app.Action action;
+  final bool definesOrder;
 
   /// useful to pass info to parent
   final ValueChanged<Tuple2<String, String>> updater;
@@ -57,7 +58,7 @@ class _PropertyViewState extends State<PropertyView>
                     fontSize: 12.0,
                   )),
               decoration: new BoxDecoration(
-                  color: widget.property.definesLinearity
+                  color: widget.definesOrder
                       ? theme.colorScheme.auto
                       : theme.colorScheme.typeBoxColor,
                   shape: BoxShape.rectangle,
@@ -81,6 +82,7 @@ class _PropertyViewState extends State<PropertyView>
   // TODO shorten
   Widget buildInput(Property property) {
     Widget ret;
+    // TODO switch case might be cooler
     if (property.foreignKeyOf != null &&
         [PostgreSQLDataType.text].contains(property.type.complete)) {
       value = value == null
@@ -158,7 +160,7 @@ class _PropertyViewState extends State<PropertyView>
       PostgreSQLDataType.smallInteger,
       PostgreSQLDataType.integer,
       PostgreSQLDataType.bigInteger,
-      PostgreSQLDataType.uuid
+      PostgreSQLDataType.byteArray
     ].contains(property.type.complete)) {
       value = value == null
           ? ((widget.action.type == app.ActionType.EditLastFrom &&
@@ -264,7 +266,6 @@ class _PropertyViewState extends State<PropertyView>
 void updateForm(
     Property property, value, ValueChanged<Tuple2<String, String>> updater) {
   if (value.toString() == "") value = null;
-  print("${property.name} = $value");
   if ([
         PostgreSQLDataType.text,
         PostgreSQLDataType.date,

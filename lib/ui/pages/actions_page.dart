@@ -159,6 +159,7 @@ class TablesDropdownState extends State<TablesDropdown> {
                           )
                         : form,
                     onRefresh: () async {
+                      // TODO wait for updateDB to remove refresh icon
                       form.formKey.currentState.reset();
                       getIt<AppData>().getDbs().forEach((db) async {
                         // TODO update status?

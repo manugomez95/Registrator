@@ -64,6 +64,7 @@ class Themes {
     primaryColor: Colors.grey[850],
     accentColor: Colors.lightBlueAccent,
     canvasColor: Colors.grey[900],
+    cardColor: Colors.grey[850],
     brightness: Brightness.dark,
     colorScheme: ColorScheme.dark()
         .copyWith(primary: Colors.grey[850], secondary: Colors.lightBlueAccent),

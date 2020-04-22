@@ -8,9 +8,10 @@ class Table extends Equatable {
   final String name;
   final Set<Property> properties;
   Property primaryKey;
+  Property orderBy;
   bool visible;
 
-  Table(this.name, this.properties, this.client);
+  Table(this.name, this.properties, this.client, {this.orderBy});
 
   @override
   List<Object> get props => [name, client];

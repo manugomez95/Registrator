@@ -35,7 +35,7 @@ class PropertiesForm extends StatelessWidget {
         padding: new EdgeInsets.all(15),
         separatorBuilder: (BuildContext context, int index) => Divider(height: 20,),
         itemBuilder: (BuildContext context, int index) {
-          return PropertyView(properties[index], tableUpdater, action);
+          return PropertyView(properties[index], tableUpdater, action, definesOrder: table.orderBy == properties[index],);
         },
       ),
     );

@@ -24,7 +24,7 @@ class PostgreSQL extends DbDescription {
   PostgreSQL(String alias, String host, int port, String dbName, String username, String password, bool useSSL) : super(alias, host, port, dbName, username, password, useSSL);
 }
 
-class PostgresDataType {
+class PostgresDataType extends Equatable {
   final PostgreSQLDataType complete;
   final alias;
   final isArray;
@@ -52,8 +52,10 @@ class PostgresDataType {
         return PostgresDataType._(PostgreSQLDataType.real, "real"+arrayStr, isArray);
       case "date":
         return PostgresDataType._(PostgreSQLDataType.date, "date"+arrayStr, isArray);
-      case "oid":
+      case "uuid":
         return PostgresDataType._(PostgreSQLDataType.uuid, "uuid"+arrayStr, isArray);
+      case "oid":
+        return PostgresDataType._(PostgreSQLDataType.byteArray, "oid"+arrayStr, isArray);
       case "ARRAY":
         return PostgresDataType(udtName, isArray: true);
       default:
@@ -65,6 +67,9 @@ class PostgresDataType {
   String toString() {
     return alias;
   }
+
+  @override
+  List<Object> get props => [complete, alias, isArray];
 }
 
 abstract class DbParameter<T> {

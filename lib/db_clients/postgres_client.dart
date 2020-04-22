@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:bitacora/bloc/database/bloc.dart' as alt;
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/app_data.dart';
@@ -35,7 +37,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   /// Always call asynchronously
   @override
-  Future<bool> connect({verbose: true, fromForm: false}) async {
+  Future<bool> connect({verbose: false, fromForm: false}) async {
     if (connection == null) {
       connection = PostgreSQLConnection(params.host, params.port, params.dbName,
           username: params.username,
@@ -115,22 +117,26 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       try {
         Set<Property> properties = await getPropertiesFromTable(tName);
 
-        /// identify the "timeline field"...
-        Property linearity;
-        for (final p in properties) {
-          if ([
-            PostgreSQLDataType.date,
-            PostgreSQLDataType.timestampWithTimezone,
-            PostgreSQLDataType.timestampWithoutTimezone
-          ].contains(p.type.complete)) if (linearity == null)
-            linearity = p;
-          else {
-            linearity = null;
-            break;
+        /// identify the "ORDER BY field"...
+        Property orderBy;
+        // TODO improve this niapa
+        if (this.tables == null || this.tables.firstWhere((t) => t.name == tName, orElse: () => null)?.orderBy == null) {
+          for (final p in properties) {
+            if ([
+              PostgreSQLDataType.date,
+              PostgreSQLDataType.timestampWithTimezone,
+              PostgreSQLDataType.timestampWithoutTimezone
+            ].contains(p.type.complete)) if (orderBy == null)
+              orderBy = p;
+            else {
+              orderBy = null; // TODO change variables name
+              break;
+            }
           }
+        } else {
+          orderBy = this.tables.firstWhere((t) => t.name == tName).orderBy;
         }
-        if (linearity != null) linearity.definesLinearity = true;
-        tables.add(app.Table(tName, properties, this));
+        tables.add(app.Table(tName, properties, this, orderBy: orderBy));
 
         /// and get last row
         getLastRow(tables.last);
@@ -241,8 +247,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     String values =
         propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
 
-    Property linearityProperty = table.properties
-        .firstWhere((p) => p.definesLinearity, orElse: () => null);
+    Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
       if (verbose)
         debugPrint("updateLastRow (${table.name}): No linearity defined");
@@ -273,9 +278,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   /// Table properties need to be already created
   /// Order by ctid doesn't make sense.
-  getLastRow(app.Table table, {verbose: false}) async {
-    Property linearityProperty = table.properties
-        .firstWhere((p) => p.definesLinearity, orElse: () => null);
+  getLastRow(app.Table table, {verbose: true}) async {
+    Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
       if (verbose)
         debugPrint("getLastRow (${table.name}): No linearity defined");
@@ -284,7 +288,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
     // TODO formatforpostgres also table.name?
     String sql =
-        "SELECT * FROM ${table.name} ORDER BY ${formatStrForPostgres(linearityProperty.name)} DESC LIMIT 1";
+        "SELECT * FROM ${table.name} WHERE ${formatStrForPostgres(linearityProperty.name)} IS NOT NULL ORDER BY ${formatStrForPostgres(linearityProperty.name)} DESC LIMIT 1";
     if (verbose) debugPrint("getLastRow (${table.name}): $sql");
     try {
       List<List<dynamic>> results =
@@ -292,13 +296,28 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (verbose) debugPrint("getLastRow: $results");
 
       for (final p in table.properties) {
-        p.lastValue = results[0][p.dbPosition];
+        if (p.type.complete == PostgreSQLDataType.byteArray) {
+          p.lastValue = fromBytesToInt32(results[0][p.dbPosition][0], results[0][p.dbPosition][1], results[0][p.dbPosition][2], results[0][p.dbPosition][3]);
+        }
+        else {
+          p.lastValue = results[0][p.dbPosition];
+        }
       } // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
 
     } on PostgreSQLException catch (e) {
       print("getLastRow (${table.name}): $e");
     }
   }
+
+  int fromBytesToInt32(int b3, int b2, int b1, int b0) {
+    final int8List = Int8List(4)
+      ..[3] = b3
+      ..[2] = b2
+      ..[1] = b1
+      ..[0] = b0;
+    return ByteData.view(int8List.buffer).getUint32(0, Endian.little);
+  }
+
 
   /// Table properties need to be already created and also the rest of the tables
   getKeys({verbose: false}) async {
@@ -393,18 +412,19 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   // TODO nice, copy in the rest of the functions (exceptions, logging...)
+  /// https://stackoverflow.com/questions/5170546/how-do-i-delete-a-fixed-number-of-rows-with-sorting-in-postgresql
   @override
-  removeLastEntry(app.Table table, {verbose: true}) async {
-    Property linearityProperty = table.properties
-        .firstWhere((p) => p.definesLinearity, orElse: () => null);
+  deleteLastFrom(app.Table table, {verbose: false}) async {
+    Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
       Exception e = Exception("No linearity defined");
       if (verbose)
         debugPrint("removeLastEntry (${table.name}): ${e.toString()}");
       throw e;
     }
+    // TODO come here now is not null
     String sql =
-        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1)";
+        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name} WHERE ${formatStrForPostgres(linearityProperty.name)} is not null ORDER BY ${formatStrForPostgres(linearityProperty.name)} DESC LIMIT 1)";
     if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
     try {
       var results = await connection.execute(sql).timeout(timeout);
