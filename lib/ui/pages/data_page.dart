@@ -2,12 +2,10 @@ import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
-import 'package:bitacora/ui/components/confirm_dialog.dart';
 import 'package:bitacora/ui/components/database_card.dart';
 import 'package:bitacora/ui/components/db_form.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:bitacora/bloc/database/bloc.dart' as alt;
 import 'package:bitacora/conf/style.dart';
 
 class DataPage extends StatefulWidget {
@@ -47,12 +45,14 @@ class DataPageState extends State<DataPage> {
                     this.isExpanded[dbs[index]] = !isExpanded;
                   });
                 }),
+            /// It allows to scroll a bit further so the floating action button doesn't bother
+            SizedBox(height: 50,)
           ],
         ),
         onRefresh: () async {
-          getIt<AppData>().dbs.forEach((db) => db.databaseBloc.add(
-              alt.UpdateDbsStatus(
-                  db))); // TODO redundant, in the future appdata saves bloc objects
+          getIt<AppData>()
+              .dbs
+              .forEach((db) => db.databaseBloc.add(UpdateDbStatus(db)));
         },
       ),
       floatingActionButton: FloatingActionButton(

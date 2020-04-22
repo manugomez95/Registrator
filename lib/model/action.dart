@@ -1,13 +1,9 @@
 import 'dart:ui';
 
-import 'package:bitacora/conf/style.dart' as app;
-import 'package:bitacora/conf/style.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:recase/recase.dart';
 
-import '../main.dart';
-import 'app_data.dart';
 
 enum ActionType { InsertInto, EditLastFrom, CreateWidgetFrom }
 

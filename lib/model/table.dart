@@ -9,7 +9,7 @@ class Table extends Equatable {
   final Set<Property> properties;
   Property primaryKey;
   Property orderBy;
-  bool visible;
+  bool visible = true;
 
   Table(this.name, this.properties, this.client, {this.orderBy});
 

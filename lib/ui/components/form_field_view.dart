@@ -3,8 +3,6 @@ import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../../main.dart';
-
 class FormFieldView<T> extends StatefulWidget {
   FormFieldView(this.param, this.controller);
 

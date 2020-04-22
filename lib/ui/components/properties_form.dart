@@ -13,19 +13,16 @@ class PropertiesForm extends StatelessWidget {
   final app.Action action;
   final formKey = GlobalKey<FormState>();
 
-  // Name, value
-  final Map<String, String> propertiesForm = {};
+  /// property, value
+  final Map<Property, dynamic> propertiesForm = {};
 
-  void tableUpdater(Tuple2<String, String> newProperty) {
-    propertiesForm[newProperty.item1] = newProperty.item2;
+  void tableUpdater(Tuple2<Property, dynamic> propertyValue) {
+    propertiesForm[propertyValue.item1] = propertyValue.item2;
   }
 
   @override
   Widget build(BuildContext context) {
     List<Property> properties = table.properties.toList();
-
-    // get last row... TODO shouldn't be async?
-    table.client.getLastRow(table);
 
     return Form(
       key: formKey,

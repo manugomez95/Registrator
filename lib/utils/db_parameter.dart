@@ -5,8 +5,8 @@ abstract class PropertyType<T> {
   T value;
 }
 
-// TODO doesnt need to be a class, could be a List<DbParams>
-abstract class DbDescription extends Equatable{
+/// Defines the parameters of a connection with a DB
+abstract class DbConnectionParams extends Equatable{
   final String alias;
   final String host;
   final int port;
@@ -15,13 +15,13 @@ abstract class DbDescription extends Equatable{
   final String password;
   final bool useSSL;
 
-  DbDescription(this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL);
+  DbConnectionParams(this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL);
 
   List<Object> get props => [this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL];
 }
 
-class PostgreSQL extends DbDescription {
-  PostgreSQL(String alias, String host, int port, String dbName, String username, String password, bool useSSL) : super(alias, host, port, dbName, username, password, useSSL);
+class PgConnectionParams extends DbConnectionParams {
+  PgConnectionParams(String alias, String host, int port, String dbName, String username, String password, bool useSSL) : super(alias, host, port, dbName, username, password, useSSL);
 }
 
 class PostgresDataType extends Equatable {

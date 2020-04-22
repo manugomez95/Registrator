@@ -11,12 +11,41 @@ import 'package:bitacora/utils/db_parameter.dart';
 
 import '../main.dart';
 
+extension PgString on String {
+  String pgFormat() {
+    return this.toLowerCase() == this ? this : "\"$this\"";
+  }
+
+  // TODO change array part, very cutre for the moment
+  static fromPgValue(dynamic value, PostgresDataType type) {
+    if (value.toString() == "") value = null;
+    if ([
+      PostgreSQLDataType.text,
+      PostgreSQLDataType.date,
+      PostgreSQLDataType.timestampWithoutTimezone,
+      PostgreSQLDataType.timestampWithTimezone,
+    ].contains(type.complete) &&
+        value != null &&
+        !type.isArray)
+      value = "'${value.toString()}'";
+    else if (type.isArray && value != null)
+      value = "ARRAY ${(value as String).split(", ").map((s) => ([
+        PostgreSQLDataType.text,
+        PostgreSQLDataType.date,
+      ].contains(type.complete)) ? "'$s'" : s)}"
+          .replaceAll("(", "[")
+          .replaceAll(")", "]");
+
+    return value.toString();
+  }
+}
+
 // TODO change to some other class that implements PostgresClient/RelationalDBClient interface
 // ignore: must_be_immutable
 class PostgresClient extends DbClient<PostgreSQLConnection> {
-  PostgresClient(DbDescription params,
+  PostgresClient(DbConnectionParams params,
       {Duration timeout: const Duration(seconds: 3),
-      Duration queryTimeout: const Duration(seconds: 2)})
+        Duration queryTimeout: const Duration(seconds: 2)})
       : super(params, timeout: timeout, queryTimeout: queryTimeout) {
     connection = PostgreSQLConnection(params.host, params.port, params.dbName,
         username: params.username,
@@ -28,7 +57,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  List<Object> get props => [
+  List<Object> get props =>
+      [
         this.params.host,
         this.params.port,
         this.params.dbName,
@@ -49,7 +79,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     try {
       await connection.open(); // TODO Not enough the first time apparently
       if (verbose)
-        debugPrint("[1/2] connect (${this.params.alias}): Connection established");
+        debugPrint(
+            "[1/2] connect (${this.params.alias}): Connection established");
       await updateDatabaseModel();
       if (verbose)
         debugPrint("[2/2] connect (${this.params.alias}): DB model updated");
@@ -104,7 +135,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
             "updateDatabaseModel (${this.params.alias}): Updating model");
       else
         debugPrint(
-            "updateDatabaseModel (${this.params.alias}): Getting model for the first time");
+            "updateDatabaseModel (${this.params
+                .alias}): Getting model for the first time");
     }
 
     /// Get tables
@@ -120,7 +152,9 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         /// identify the "ORDER BY field"...
         Property orderBy;
         // TODO improve this niapa
-        if (this.tables == null || this.tables.firstWhere((t) => t.name == tName, orElse: () => null)?.orderBy == null) {
+        if (this.tables == null || this.tables
+            .firstWhere((t) => t.name == tName, orElse: () => null)
+            ?.orderBy == null) {
           for (final p in properties) {
             if ([
               PostgreSQLDataType.date,
@@ -134,14 +168,17 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
             }
           }
         } else {
-          orderBy = this.tables.firstWhere((t) => t.name == tName).orderBy;
+          orderBy = this.tables
+              .firstWhere((t) => t.name == tName)
+              .orderBy;
         }
         tables.add(app.Table(tName, properties, this, orderBy: orderBy));
 
         /// and get last row
         getLastRow(tables.last);
-      } on UnsupportedError catch (e) {
-        if (verbose) debugPrint("updateDatabaseModel (${this.params.alias}): data type in $tName not supported");
+      } on UnsupportedError {
+        if (verbose) debugPrint("updateDatabaseModel (${this.params
+            .alias}): data type in $tName not supported");
         // TODO add event to show error
         continue;
       }
@@ -166,7 +203,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
           substitutionValues: {"tableSchema": "public"}).timeout(timeout);
 
       List<String> tablesNames =
-          tablesResponse.expand((i) => i).toList().cast<String>();
+      tablesResponse.expand((i) => i).toList().cast<String>();
 
       if (verbose)
         debugPrint(
@@ -192,60 +229,65 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
       var r = results
           .map((res) {
-            return Property(
-                res[0] - 1,
-                res[1],
-                PostgresDataType(res[2], udtName: res[6]),
-                res[3],
-                res[4] == 'YES' ? true : false,
-                res[5]);
-          })
+        return Property(
+            res[0] - 1,
+            res[1],
+            PostgresDataType(res[2], udtName: res[6]),
+            res[3],
+            res[4] == 'YES' ? true : false,
+            res[5]);
+      })
           .toSet()
           .cast<Property>();
 
-      if (verbose) debugPrint("getPropertiesFromTable ($table): ${r.toString()}");
+      if (verbose) debugPrint(
+          "getPropertiesFromTable ($table): ${r.toString()}");
 
       return r;
     } on UnsupportedError catch (e) {
-      if (verbose) debugPrint("getPropertiesFromTable ($table): ${e.toString()}");
+      if (verbose) debugPrint(
+          "getPropertiesFromTable ($table): ${e.toString()}");
       throw e;
     }
   }
 
   @override
-  Future<bool> insertRowIntoTable(
-      app.Table table, Map<String, String> propertiesForm,
+  Future<bool> insertRowIntoTable(app.Table table,
+      Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
     String properties = propertiesForm.keys
-        .map((e) => e.toLowerCase() == e ? e : "\"$e\"")
+        .map((Property p) => p.name.pgFormat())
         .join(", ");
     String values =
-        propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
+    propertiesForm.keys.map((Property p) => PgString.fromPgValue(propertiesForm[p], p.type)).join(", ");
 
     String sql =
         "INSERT INTO ${table.toString()} ($properties) VALUES ($values)";
-    debugPrint(sql);
+    if (verbose) debugPrint(sql);
     try {
       var results = await connection.execute(sql).timeout(timeout);
-      debugPrint("insertRowIntoTable: $results");
-      if (results == 1)
-        return Future.value(true);
+      if (verbose) debugPrint("insertRowIntoTable: $results");
+      if (results == 1) {
+        /// Update official last row
+        table.properties.forEach((p) => p.lastValue = propertiesForm[p]); // TODO check if it works
+        return true;
+      }
       else
-        return Future.value(false);
+        return false;
     } on PostgreSQLException catch (e) {
-      print(e);
+      if (verbose) debugPrint(e.toString());
       throw e;
     }
   }
 
-  Future<bool> updateLastRow(
-      app.Table table, Map<String, String> propertiesForm,
+  Future<bool> updateLastRow(app.Table table,
+      Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
     String properties = propertiesForm.keys
-        .map((e) => e.toLowerCase() == e ? e : "\"$e\"")
+        .map((Property p) => p.name.pgFormat())
         .join(", ");
     String values =
-        propertiesForm.keys.map((k) => propertiesForm[k]).join(", ");
+    propertiesForm.keys.map((p) => PgString.fromPgValue(propertiesForm[p], p.type)).join(", ");
 
     Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
@@ -254,16 +296,23 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       return false;
     }
     String last =
-        "SELECT ctid FROM ${table.name} ORDER BY ${linearityProperty.name.toLowerCase() == linearityProperty.name ? linearityProperty.name : "\"${linearityProperty.name}\""} DESC LIMIT 1";
+        "SELECT ctid FROM ${table.name} ORDER BY ${linearityProperty.name
+        .toLowerCase() == linearityProperty.name
+        ? linearityProperty.name
+        : "\"${linearityProperty.name}\""} DESC LIMIT 1";
 
     String sql =
-        "UPDATE ${table.name} SET ($properties) = ($values) WHERE ctid IN ($last)";
+        "UPDATE ${table
+        .name} SET ($properties) = ($values) WHERE ctid IN ($last)";
     debugPrint(sql);
     try {
       var results = await connection.execute(sql).timeout(timeout);
       debugPrint("updateLastRow: $results");
-      if (results == 1)
+      if (results == 1) {
+        /// Update official last row
+        table.properties.forEach((p) => p.lastValue = propertiesForm[p]); // TODO check if it works
         return true;
+      }
       else
         return false;
     } on PostgreSQLException catch (e) {
@@ -272,13 +321,9 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
-  String formatStrForPostgres(String str) {
-    return str.toLowerCase() == str ? str : "\"${str}\"";
-  }
-
   /// Table properties need to be already created
   /// Order by ctid doesn't make sense.
-  getLastRow(app.Table table, {verbose: true}) async {
+  getLastRow(app.Table table, {verbose: false}) async {
     Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
       if (verbose)
@@ -288,7 +333,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
     // TODO formatforpostgres also table.name?
     String sql =
-        "SELECT * FROM ${table.name} WHERE ${formatStrForPostgres(linearityProperty.name)} IS NOT NULL ORDER BY ${formatStrForPostgres(linearityProperty.name)} DESC LIMIT 1";
+        "SELECT * FROM ${table.name} WHERE ${linearityProperty.name.pgFormat()} IS NOT NULL ORDER BY ${linearityProperty.name.pgFormat()} DESC LIMIT 1";
     if (verbose) debugPrint("getLastRow (${table.name}): $sql");
     try {
       List<List<dynamic>> results =
@@ -370,7 +415,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   Future<List<String>> getPkDistinctValues(app.Table table, {verbose: false, String pattern}) async {
     if (pattern == "") return null;
-    String sql = "SELECT DISTINCT ${formatStrForPostgres(table.primaryKey.name)} FROM ${table.name};"; // TODO LIKE %pattern% to optimize
+    String sql = "SELECT DISTINCT ${table.primaryKey.name.pgFormat()} FROM ${table.name.pgFormat()};"; // TODO LIKE %pattern% to optimize
     try {
       List<List<dynamic>> results =
           await connection.query(sql).timeout(timeout);
@@ -387,22 +432,26 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   // TODO awesome printing usefulness, copy where I can
   @override
   Future<bool> cancelLastInsertion(
-      app.Table table, Map<String, String> propertiesForm,
+      app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
     String whereString = propertiesForm.keys
-        .map((e) =>
-            "${e.toLowerCase() == e ? e : "\"$e\""} ${propertiesForm[e] == "null" ? "is null" : "= ${propertiesForm[e]}"}")
+        .map((Property p) {
+          var valueStr = PgString.fromPgValue(propertiesForm[p], p.type);
+          return "${p.name.pgFormat()} ${valueStr == "null" ? "is null" : "= $valueStr"}";
+        })
         .join(" AND ");
 
     String sql =
-        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name} WHERE $whereString LIMIT 1)";
+        "DELETE FROM ${table.name.pgFormat()} WHERE ctid IN (SELECT ctid FROM ${table.name.pgFormat()} WHERE $whereString LIMIT 1)";
     if (verbose) debugPrint("cancelLastInsertion (${this.params.alias}): $sql");
     try {
       var results = await connection.execute(sql).timeout(timeout);
       if (verbose)
         debugPrint("cancelLastInsertion (${this.params.alias}): $results");
-      if (results == 1)
+      if (results == 1) {
+        await getLastRow(table);
         return true;
+      }
       else
         return false;
     } on PostgreSQLException catch (e) {
@@ -422,9 +471,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         debugPrint("removeLastEntry (${table.name}): ${e.toString()}");
       throw e;
     }
-    // TODO come here now is not null
     String sql =
-        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name} WHERE ${formatStrForPostgres(linearityProperty.name)} is not null ORDER BY ${formatStrForPostgres(linearityProperty.name)} DESC LIMIT 1)";
+        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name.pgFormat()} WHERE ${linearityProperty.name.pgFormat()} is not null ORDER BY ${linearityProperty.name.pgFormat()} DESC LIMIT 1)";
     if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
     try {
       var results = await connection.execute(sql).timeout(timeout);

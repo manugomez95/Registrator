@@ -22,9 +22,9 @@ Future<void> main() async {
   // get AppData
   // for each dbClient recovered
   // - try connecting
-  var db1 = PostgresClient(PostgreSQL("My data", "192.168.1.14", 5432,
+  var db1 = PostgresClient(PgConnectionParams("My data", "192.168.1.14", 5432,
       "my_data", "postgres", r"!$36<BD5vuP7", true));
-  var db2 = PostgresClient(PostgreSQL("Alfred", "192.168.1.18", 5433,
+  var db2 = PostgresClient(PgConnectionParams("Alfred", "192.168.1.18", 5433,
       "postgres", "postgres", r"unit679City", false));
   db1.databaseBloc.add(ConnectToDatabase(db1));
   db2.databaseBloc.add(ConnectToDatabase(db2));

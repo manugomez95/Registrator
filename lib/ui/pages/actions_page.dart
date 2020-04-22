@@ -120,10 +120,11 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class TablesDropdownState extends State<TablesDropdown> {
-  List<app.Table> tables;
+  List<app.Table> tables; // TODO not part of the state? Explain this decission if nothing changes
   app.Table selectedTable;
-  final _formBloc =
-      FormBloc(); // TODO necessary? maybe not for the moment (we don't need to manage state)
+
+  /// necessary? YES, re-builds the form when an event is released (like editLastFrom, removeLastFrom...)
+  final _formBloc = FormBloc();
 
   @override
   Widget build(BuildContext context) {
@@ -159,14 +160,9 @@ class TablesDropdownState extends State<TablesDropdown> {
                           )
                         : form,
                     onRefresh: () async {
-                      // TODO wait for updateDB to remove refresh icon
-                      form.formKey.currentState.reset();
-                      getIt<AppData>().getDbs().forEach((db) async {
-                        // TODO update status?
-                        await db.updateDatabaseModel();
-                      });
+                      await selectedTable.client.getLastRow(selectedTable);
                       setState(() {
-                        tables = getIt<AppData>().getTables();
+                        form.formKey.currentState.reset();
                       });
                       return null;
                     },

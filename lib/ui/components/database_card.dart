@@ -1,11 +1,15 @@
+import 'package:bitacora/bloc/app_data/app_data_event.dart';
 import 'package:bitacora/bloc/database/bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
+import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../main.dart';
 
 final String assetName = 'assets/images/postgresql_elephant.svg';
 final Widget svg = SvgPicture.asset(assetName,
@@ -172,13 +176,13 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
             padding: EdgeInsets.only(left: 15, right: 15, top: 10, bottom: 10),
             child: Column(
               children: widget.db.tables
-                  ?.map((t) => Container(
+                  ?.map((app.Table table) => Container(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: <Widget>[
                             SizedBox(
                               child: Text(
-                                "${t.name}",
+                                "${table.name}",
                                 style: TextStyle(
                                     //fontWeight: FontWeight.bold,
                                     fontSize: 16),
@@ -209,16 +213,16 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                 ),
                                 child: DropdownButton<Property>(
                                   iconSize: 0,
-                                  value: t.orderBy,
-                                  onChanged: (Property newValue) {
+                                  value: table.orderBy,
+                                  onChanged: (Property newProperty) {
                                     setState(() {
-                                      t.orderBy =
-                                          newValue;
-                                      // TODO check if possible
+                                      /// the user can choose to order a table by any field, doesn't matter its type
+                                      table.orderBy =
+                                          newProperty;
                                       // TODO get last raw and update actionsPage form
                                     });
                                   },
-                                  items: t.properties
+                                  items: table.properties
                                       .map<DropdownMenuItem<Property>>(
                                           (Property property) {
                                     return DropdownMenuItem<Property>(
@@ -240,11 +244,16 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                               ),
                             ),
                             IconButton(
-                              onPressed: () {},
                               icon: Icon(
                                 Icons.visibility,
-                                color: Colors.grey[300],
+                                color: table.visible ? Colors.blue : Colors.grey[300],
                               ),
+                              onPressed: () {
+                                setState(() {
+                                  table.visible = !table.visible;
+                                });
+                                getIt<AppData>().bloc.add(AltUpdateUIEvent(UniqueKey())); // TODO check if good idea
+                              },
                             )
                           ],
                         ),

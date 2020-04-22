@@ -1,10 +1,18 @@
 import 'package:bitacora/bloc/database/bloc.dart';
-import 'package:bitacora/db_clients/db_client.dart';
 import 'package:equatable/equatable.dart';
-import 'package:stack/stack.dart';
+import 'package:flutter/cupertino.dart';
 
 abstract class AppDataEvent extends Equatable {
   const AppDataEvent();
+}
+
+class AltUpdateUIEvent extends AppDataEvent {
+  final UniqueKey key;
+
+  AltUpdateUIEvent(this.key);
+
+  @override
+  List<Object> get props => [key];
 }
 
 class UpdateUIEvent extends AppDataEvent {

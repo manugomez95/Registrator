@@ -1,3 +1,4 @@
+import 'package:bitacora/model/property.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
@@ -11,7 +12,7 @@ abstract class FormEvent extends Equatable {
 }
 
 abstract class SubmitFormEvent extends FormEvent {
-  final Map<String, String> propertiesForm;
+  final Map<Property, dynamic> propertiesForm;
   final app.Action action;
   final app.Table table;
   final BuildContext context;
@@ -25,7 +26,7 @@ abstract class SubmitFormEvent extends FormEvent {
 }
 
 class InsertSubmitForm extends SubmitFormEvent {
-  InsertSubmitForm(BuildContext context, Map<String, String> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
+  InsertSubmitForm(BuildContext context, Map<Property, dynamic> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
 
   @override
   Future<void> undo() async {
@@ -40,7 +41,7 @@ class InsertSubmitForm extends SubmitFormEvent {
 }
 
 class EditSubmitForm extends SubmitFormEvent {
-  EditSubmitForm(BuildContext context, Map<String, String> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
+  EditSubmitForm(BuildContext context, Map<Property, dynamic> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
 
   @override
   Future<void> undo() async {

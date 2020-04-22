@@ -13,7 +13,7 @@ abstract class DbClient<T> extends Equatable {
   DatabaseBloc databaseBloc;
 
   /// Database model TODO might be an object because not final properties
-  DbDescription params;
+  DbConnectionParams params;
   List<app.Table> tables;
   final Duration timeout;
   final Duration queryTimeout;
@@ -39,12 +39,12 @@ abstract class DbClient<T> extends Equatable {
 
   getLastRow(app.Table table, {verbose: false});
 
-  Future<bool> insertRowIntoTable(app.Table table, Map<String, String> propertiesForm, {verbose: false});
+  Future<bool> insertRowIntoTable(app.Table table, Map<Property, dynamic> propertiesForm, {verbose: false});
 
-  Future<bool> updateLastRow(app.Table table, Map<String, String> propertiesForm, {verbose: false});
+  Future<bool> updateLastRow(app.Table table, Map<Property, dynamic> propertiesForm, {verbose: false});
 
   /// Doesn't needs linearity defined
-  Future<bool> cancelLastInsertion(app.Table table, Map<String, String> propertiesForm, {verbose: false});
+  Future<bool> cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm, {verbose: false});
 
   /// Needs linearity defined
   deleteLastFrom(app.Table table, {verbose: false});

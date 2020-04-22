@@ -41,7 +41,7 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
         add(ConnectionErrorEvent(event.client, e));
       }
     }
-    else if (event is UpdateDbsStatus) {
+    else if (event is UpdateDbStatus) {
       yield CheckingConnection();
       if (!await event.client.ping()) event.client.connect();
     }

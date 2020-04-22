@@ -20,7 +20,7 @@ class DbForm extends StatefulWidget {
   State<StatefulWidget> createState() => DbFormState();
 
   void submit(BuildContext context) {
-    PostgresClient db = PostgresClient(PostgreSQL(
+    PostgresClient db = PostgresClient(PgConnectionParams(
         nameController.text,
         hostController.text,
         int.parse(portController.text),

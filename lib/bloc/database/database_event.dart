@@ -47,10 +47,10 @@ class DisconnectFromDatabase extends DatabaseEvent {
   List<Object> get props => [client];
 }
 
-class UpdateDbsStatus extends DatabaseEvent {
+class UpdateDbStatus extends DatabaseEvent {
   final DbClient client;
 
-  UpdateDbsStatus(this.client);
+  UpdateDbStatus(this.client);
 
   @override
   List<Object> get props => [client];

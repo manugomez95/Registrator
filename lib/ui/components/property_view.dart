@@ -12,7 +12,6 @@ import 'package:bitacora/conf/style.dart' as app;
 import 'package:intl/intl.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 
-
 class PropertyView extends StatefulWidget {
   PropertyView(this.property, this.updater, this.action, {this.definesOrder});
 
@@ -21,7 +20,7 @@ class PropertyView extends StatefulWidget {
   final bool definesOrder;
 
   /// useful to pass info to parent
-  final ValueChanged<Tuple2<String, String>> updater;
+  final ValueChanged<Tuple2<Property, dynamic>> updater;
 
   @override
   State<StatefulWidget> createState() => _PropertyViewState();
@@ -254,34 +253,10 @@ class _PropertyViewState extends State<PropertyView>
         },
       );
     }
-    updateForm(widget.property, value, widget.updater);
+    widget.updater(Tuple2(property, value));
     return ret;
   }
 
   @override
   bool get wantKeepAlive => true;
-}
-
-// TODO change array part, very cutre for the moment
-void updateForm(
-    Property property, value, ValueChanged<Tuple2<String, String>> updater) {
-  if (value.toString() == "") value = null;
-  if ([
-        PostgreSQLDataType.text,
-        PostgreSQLDataType.date,
-        PostgreSQLDataType.timestampWithoutTimezone,
-        PostgreSQLDataType.timestampWithTimezone,
-      ].contains(property.type.complete) &&
-      value != null &&
-      !property.type.isArray)
-    value = "'${value.toString()}'";
-  else if (property.type.isArray && value != null)
-    value = "ARRAY ${(value as String).split(", ").map((s) => ([
-              PostgreSQLDataType.text,
-              PostgreSQLDataType.date,
-            ].contains(property.type.complete)) ? "'$s'" : s)}"
-        .replaceAll("(", "[")
-        .replaceAll(")", "]");
-
-  updater(Tuple2(property.name, value.toString()));
 }
