@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:bitacora/bloc/app_data/app_data_event.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
@@ -24,19 +25,19 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
     }
     else if (event is ConnectionSuccessfulEvent) {
       yield ConnectionSuccessful();
-      getIt<AppData>().bloc.add(UpdateUIEvent(event));
+      getIt<AppData>().bloc.add(UpdateUIEvent());
     }
     else if (event is ConnectionErrorEvent) {
       Fluttertoast.showToast(msg: "${event.client.params.alias}: ${event.exception.toString()}", toastLength: Toast.LENGTH_LONG);
       yield ConnectionError(event.exception);
-      getIt<AppData>().bloc.add(UpdateUIEvent(event));
+      getIt<AppData>().bloc.add(UpdateUIEvent());
     }
     else if (event is DisconnectFromDatabase) {
       try {
         await event.client.disconnect();
         getIt<AppData>().dbs.remove(event.client);
         yield DisconnectionSuccessful();
-        getIt<AppData>().bloc.add(UpdateUIEvent(event));
+        getIt<AppData>().bloc.add(UpdateUIEvent());
       } on Exception catch (e) {
         add(ConnectionErrorEvent(event.client, e));
       }

@@ -219,9 +219,9 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                   onChanged: (Property newProperty) {
                                     setState(() {
                                       /// the user can choose to order a table by any field, doesn't matter its type
-                                      table.orderBy =
-                                          newProperty;
-                                      // TODO get last raw and update actionsPage form
+                                      table.orderBy = newProperty;
+                                      // TODO is last row gotten?
+                                      getIt<AppData>().bloc.add(UpdateUIEvent());
                                     });
                                   },
                                   items: table.properties
@@ -254,7 +254,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                 setState(() {
                                   table.visible = !table.visible;
                                 });
-                                getIt<AppData>().bloc.add(AltUpdateUIEvent(UniqueKey())); // TODO change by int?
+                                getIt<AppData>().bloc.add(UpdateUIEvent());
                               },
                             )
                           ],

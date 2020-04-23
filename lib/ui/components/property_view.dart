@@ -129,7 +129,7 @@ class _PropertyViewState extends State<PropertyView>
       value = value == null
           ? (widget.action.type == app.ActionType.EditLastFrom
               ? property.lastValue
-              : "")
+              : value)
           : value;
       ret = TextFormField(
           initialValue: value,
@@ -165,7 +165,7 @@ class _PropertyViewState extends State<PropertyView>
           ? ((widget.action.type == app.ActionType.EditLastFrom &&
                   property.lastValue != null)
               ? property.lastValue.toString()
-              : "")
+              : value)
           : value;
       ret = TextFormField(
           initialValue: value,

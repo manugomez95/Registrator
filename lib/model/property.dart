@@ -10,8 +10,7 @@ class Property<T> extends Equatable {
   final T columnDefault;
   final bool isNullable;
   final int charMaxLength;
-  T lastValue;
-  List<T> suggestedValues;
+  T lastValue; /// do save for when you don't want an ordered table
   Table foreignKeyOf;
 
   Property(this.dbPosition, this.name, this.type, this.columnDefault,
@@ -19,7 +18,7 @@ class Property<T> extends Equatable {
 
   @override
   String toString() {
-    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength, suggestedValues: $suggestedValues, foreignKeyOf: $foreignKeyOf)";
+    return "\n$name ($type, columnDefault: $columnDefault, isNullable: $isNullable, charMaxLength: $charMaxLength, foreignKeyOf: $foreignKeyOf)";
   }
 
   @override

@@ -41,7 +41,7 @@ abstract class DbClient<T> extends Equatable {
 
   Future<bool> insertRowIntoTable(app.Table table, Map<Property, dynamic> propertiesForm, {verbose: false});
 
-  Future<bool> updateLastRow(app.Table table, Map<Property, dynamic> propertiesForm, {verbose: false});
+  Future<bool> editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm, {verbose: false});
 
   /// Doesn't needs linearity defined
   Future<bool> cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm, {verbose: false});

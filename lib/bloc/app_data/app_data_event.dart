@@ -1,27 +1,15 @@
-import 'package:bitacora/bloc/database/bloc.dart';
+import 'dart:math';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
 
 abstract class AppDataEvent extends Equatable {
   const AppDataEvent();
 }
 
-class AltUpdateUIEvent extends AppDataEvent {
-  final UniqueKey event;
-
-  AltUpdateUIEvent(this.event);
-
-  @override
-  List<Object> get props => [event];
-}
-
 class UpdateUIEvent extends AppDataEvent {
-  final DatabaseEvent event;
-
-  UpdateUIEvent(this.event);
+  final int id = Random().nextInt(10000);
 
   @override
-  List<Object> get props => [event];
+  List<Object> get props => [id];
 }
 
 class LoadingEvent extends AppDataEvent {

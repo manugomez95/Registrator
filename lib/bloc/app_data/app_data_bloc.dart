@@ -17,10 +17,6 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
       if (loadingStack.isNotEmpty) loadingStack.pop();
       yield UpdateUI(event, loadingStack);
     }
-    // TODO review
-    else if (event is AltUpdateUIEvent) {
-      yield AltUpdateUI(event, loadingStack);
-    }
     else if (event is LoadingEvent) {
       loadingStack.push(event);
       yield Loading(loadingStack);

@@ -26,15 +26,20 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
           final prefs = await SharedPreferences.getInstance();
           // set value
           prefs.setString('last_table', event.table.name);
-        } on PostgreSQLException catch (e) {
+
+        } on Exception catch (e) {
           showErrorSnackBar(event.context, e.toString());
         }
       } else if (event.action.type == ActionType.EditLastFrom) {
-        await event.table.client.updateLastRow(
-            event.table, event.propertiesForm);
-        submitFormSnackBar(
-            event, "${event.action.title} ${event.table.name}",
-            undoAction: event.undo);
+        try {
+          await event.table.client.editLastFrom(
+              event.table, event.propertiesForm);
+          submitFormSnackBar(
+              event, "${event.action.title} ${event.table.name}",
+              undoAction: event.undo);
+        } on Exception catch (e) {
+          showErrorSnackBar(event.context, e.toString());
+        }
       }
     }
     else if (event is DeleteLastEntry) {

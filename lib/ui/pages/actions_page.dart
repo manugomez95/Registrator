@@ -27,7 +27,6 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
-            print("hola 1");
             if (state is InitialAppDataState ||
                 (state.loadingStack.isNotEmpty &&
                     getIt<AppData>().getTables().isEmpty)) {
@@ -42,7 +41,7 @@ class ActionsPage extends StatelessWidget {
                 app.Action(app.ActionType.InsertInto, theme.colorScheme.insertBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.insertTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.EditLastFrom, theme.colorScheme.editBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.editTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.CreateWidgetFrom, theme.colorScheme.createWidgetBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.createWidgetTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
-              ]); // TODO test case when DB has no tables
+              ]); // TODO test case when DB has no tables // TODO put the actions somewhere nicer
           },
         ));
   }
@@ -129,7 +128,6 @@ class TablesDropdownState extends State<TablesDropdown> {
 
   @override
   Widget build(BuildContext context) {
-    print("hola 2");
     ThemeData theme = Theme.of(context);
     /// this needs to be here to update the tables when refreshing
     tables = getIt<AppData>().getTables();
