@@ -27,6 +27,7 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
+            print("hola 1");
             if (state is InitialAppDataState ||
                 (state.loadingStack.isNotEmpty &&
                     getIt<AppData>().getTables().isEmpty)) {
@@ -120,7 +121,7 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class TablesDropdownState extends State<TablesDropdown> {
-  List<app.Table> tables; // TODO not part of the state? Explain this decission if nothing changes
+  List<app.Table> tables;
   app.Table selectedTable;
 
   /// necessary? YES, re-builds the form when an event is released (like editLastFrom, removeLastFrom...)
@@ -128,7 +129,9 @@ class TablesDropdownState extends State<TablesDropdown> {
 
   @override
   Widget build(BuildContext context) {
+    print("hola 2");
     ThemeData theme = Theme.of(context);
+    /// this needs to be here to update the tables when refreshing
     tables = getIt<AppData>().getTables();
     if (!tables.contains(selectedTable)) selectedTable = tables.first;
     return BlocProvider(
@@ -214,21 +217,19 @@ class TablesDropdownState extends State<TablesDropdown> {
         child: DropdownButtonHideUnderline(
             child: Theme(
           data: ThemeData(canvasColor: theme.colorScheme.tablesDropdownBg),
-          child: DropdownButton<String>(
-              value: selectedTable.name,
+          child: DropdownButton<app.Table>(
+              value: selectedTable,
               iconSize: 0,
               elevation: 0,
               isExpanded: true,
-              onChanged: (String newValue) {
+              onChanged: (app.Table newTable) {
                 setState(() {
-                  selectedTable = tables
-                      .where((t) => t.name == newValue)
-                      .first; // TODO not very clean and not robust
+                  selectedTable = newTable;
                 });
               },
-              items: tables.map<DropdownMenuItem<String>>((app.Table table) {
-                return DropdownMenuItem<String>(
-                    value: table.name,
+              items: tables.map<DropdownMenuItem<app.Table>>((app.Table table) {
+                return DropdownMenuItem<app.Table>(
+                    value: table,
                     child: Center(
                         child: Text(table.name,
                             style: TextStyle(color: theme.colorScheme.tablesDropdownTextColor))));

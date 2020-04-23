@@ -13,10 +13,13 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
   Stream<AppDataState> mapEventToState(
     AppDataEvent event,
   ) async* {
-    if (event is UpdateUIEvent || event is AltUpdateUIEvent) {
+    if (event is UpdateUIEvent) {
       if (loadingStack.isNotEmpty) loadingStack.pop();
-      print("hola");
       yield UpdateUI(event, loadingStack);
+    }
+    // TODO review
+    else if (event is AltUpdateUIEvent) {
+      yield AltUpdateUI(event, loadingStack);
     }
     else if (event is LoadingEvent) {
       loadingStack.push(event);

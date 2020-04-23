@@ -7,12 +7,12 @@ abstract class AppDataEvent extends Equatable {
 }
 
 class AltUpdateUIEvent extends AppDataEvent {
-  final UniqueKey key;
+  final UniqueKey event;
 
-  AltUpdateUIEvent(this.key);
+  AltUpdateUIEvent(this.event);
 
   @override
-  List<Object> get props => [key];
+  List<Object> get props => [event];
 }
 
 class UpdateUIEvent extends AppDataEvent {

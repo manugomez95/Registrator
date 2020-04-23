@@ -21,12 +21,21 @@ class UpdateUI extends AppDataState {
   UpdateUI(this.event, Stack<AppDataEvent> loadingStack) : super(loadingStack);
 
   @override
-  List<Object> get props => [event];
+  List<Object> get props => [event]; // todo add loading stack?
+}
+
+class AltUpdateUI extends AppDataState {
+  final AltUpdateUIEvent event;
+
+  AltUpdateUI(this.event, Stack<AppDataEvent> loadingStack) : super(loadingStack);
+
+  @override
+  List<Object> get props => [event]; // todo add loading stack?
 }
 
 class Loading extends AppDataState {
   Loading(Stack<AppDataEvent> loadingStack) : super(loadingStack);
 
   @override
-  List<Object> get props => [];
+  List<Object> get props => []; // todo add loading stack?
 }

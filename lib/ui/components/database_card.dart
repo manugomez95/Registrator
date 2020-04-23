@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:bitacora/bloc/app_data/app_data_event.dart';
 import 'package:bitacora/bloc/database/bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
@@ -252,7 +254,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                 setState(() {
                                   table.visible = !table.visible;
                                 });
-                                getIt<AppData>().bloc.add(AltUpdateUIEvent(UniqueKey())); // TODO check if good idea
+                                getIt<AppData>().bloc.add(AltUpdateUIEvent(UniqueKey())); // TODO change by int?
                               },
                             )
                           ],
