@@ -122,6 +122,7 @@ class DatabaseCardBody extends StatefulWidget {
 }
 
 class DatabaseCardBodyState extends State<DatabaseCardBody> {
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -147,8 +148,18 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                     onPressed: () {},
                   ),
                   IconButton(
-                    icon: Icon(Icons.visibility, color: Colors.grey),
-                    onPressed: () {},
+                    icon: Icon(widget.db.tables.any((table) => table.visible) ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                    onPressed: () {
+                      setState(() {
+                        if (widget.db.tables.any((table) => !table.visible)) {
+                          widget.db.tables.forEach((table) => table.visible = true);
+                        }
+                        else {
+                          widget.db.tables.forEach((table) => table.visible = false);
+                        }
+                      });
+                      getIt<AppData>().bloc.add(UpdateUIEvent());
+                    },
                   ),
                   IconButton(
                     icon: Icon(
@@ -220,7 +231,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                     setState(() {
                                       /// the user can choose to order a table by any field, doesn't matter its type
                                       table.orderBy = newProperty;
-                                      // TODO is last row gotten?
+                                      // TODO is last row gotten? Not yet, do it
                                       getIt<AppData>().bloc.add(UpdateUIEvent());
                                     });
                                   },
@@ -247,8 +258,8 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                             ),
                             IconButton(
                               icon: Icon(
-                                Icons.visibility,
-                                color: table.visible ? Colors.blue : Colors.grey[300],
+                                table.visible ? Icons.visibility : Icons.visibility_off,
+                                color: Colors.grey[300],
                               ),
                               onPressed: () {
                                 setState(() {

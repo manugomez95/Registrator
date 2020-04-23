@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:postgres/postgres.dart';
 import 'package:bitacora/model/action.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:shared_preferences/shared_preferences.dart';

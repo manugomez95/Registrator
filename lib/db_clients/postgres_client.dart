@@ -270,7 +270,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (results == 1) {
         /// Update official last row
         table.properties.forEach(
-            (p) => p.lastValue = propertiesForm[p]); // TODO check if it works
+            (p) => p.lastValue = propertiesForm[p]);
         return true;
       } else
         return false;
@@ -280,7 +280,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
-  /// I will always check the lastValues to avoid editing an incorrect row.
+  /// I will always check the lastValues to avoid editing an incorrect row. // TODO do the same with deleteLastFrom
   editLastFrom(
       app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
