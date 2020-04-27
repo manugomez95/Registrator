@@ -1,5 +1,4 @@
-import 'dart:math';
-
+import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/bloc/app_data/app_data_event.dart';
 import 'package:bitacora/bloc/database/bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
@@ -12,6 +11,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../main.dart';
+import 'confirm_dialog.dart';
+import 'db_form.dart';
 
 final String assetName = 'assets/images/postgresql_elephant.svg';
 final Widget svg = SvgPicture.asset(assetName,
@@ -122,6 +123,7 @@ class DatabaseCardBody extends StatefulWidget {
 }
 
 class DatabaseCardBodyState extends State<DatabaseCardBody> {
+  final DbForm dbForm = DbForm();
 
   @override
   Widget build(BuildContext context) {
@@ -145,20 +147,55 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                       Icons.edit,
                       color: Colors.grey,
                     ),
-                    onPressed: () {},
+                      onPressed: () {
+                        showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                  title: Text("Add Postgres DB"),
+                                  content: dbForm,
+                                  actions: <Widget>[
+                                    FlatButton(
+                                      child: Text('Cancel',
+                                          style: Theme.of(context).textTheme.button.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .defaultTextColor)),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                    ),
+                                    RaisedButton(
+                                      child: Text('Submit'),
+                                      onPressed: () async {
+                                        if (dbForm.formKey.currentState.validate()) {
+                                          await dbForm.changeConnection(widget.db); // TODO it should be an event like when normal submitting
+                                        }
+                                      },
+                                    )
+                                  ]);
+                            });
+                      }
                   ),
                   IconButton(
-                    icon: Icon(widget.db.tables.any((table) => table.visible) ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                    icon: Icon(
+                        (widget.db.isConnected && widget.db.tables.any((table) => table.visible))
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: Colors.grey),
                     onPressed: () {
-                      setState(() {
-                        if (widget.db.tables.any((table) => !table.visible)) {
-                          widget.db.tables.forEach((table) => table.visible = true);
-                        }
-                        else {
-                          widget.db.tables.forEach((table) => table.visible = false);
-                        }
-                      });
-                      getIt<AppData>().bloc.add(UpdateUIEvent());
+                      if (widget.db.isConnected) {
+                        setState(() {
+                          if (widget.db.tables.any((table) => !table.visible)) {
+                            widget.db.tables
+                                .forEach((table) => table.visible = true);
+                          } else {
+                            widget.db.tables
+                                .forEach((table) => table.visible = false);
+                          }
+                        });
+                        getIt<AppData>().bloc.add(UpdateUIEvent());
+                      }
                     },
                   ),
                   IconButton(
@@ -166,7 +203,18 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                       Icons.delete,
                       color: Colors.grey,
                     ),
-                    onPressed: () {},
+                    onPressed: () async {
+                      if (await asyncConfirmDialog(context, title: 'Remove ${widget.db.params.alias}?', message: 'This will close and remove the connection.')) {
+                        setState(() {
+                          // Remove the item from the data source.
+                          widget.db.databaseBloc.add(DisconnectFromDatabase((widget.db)));
+                          // Then show a snackbar.
+                          Scaffold.of(context).showSnackBar(SnackBar(
+                              content: Text(
+                                  "${widget.db.params.alias} removed"))); // TODO add undo and use made snackbar
+                        });
+                      }
+                    },
                   )
                 ],
               ),
@@ -232,7 +280,9 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                       /// the user can choose to order a table by any field, doesn't matter its type
                                       table.orderBy = newProperty;
                                       // TODO is last row gotten? Not yet, do it
-                                      getIt<AppData>().bloc.add(UpdateUIEvent());
+                                      getIt<AppData>()
+                                          .bloc
+                                          .add(UpdateUIEvent());
                                     });
                                   },
                                   items: table.properties
@@ -258,7 +308,9 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                             ),
                             IconButton(
                               icon: Icon(
-                                table.visible ? Icons.visibility : Icons.visibility_off,
+                                table.visible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                                 color: Colors.grey[300],
                               ),
                               onPressed: () {

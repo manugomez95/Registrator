@@ -504,4 +504,20 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       throw e;
     }
   }
+
+  @override
+  changeConnection(DbConnectionParams params, {verbose}) async {
+    try{
+      await disconnect();
+      connection = PostgreSQLConnection(params.host, params.port, params.dbName,
+          username: params.username,
+          password: params.password,
+          useSSL: params.useSSL,
+          timeoutInSeconds: timeout.inSeconds,
+          queryTimeoutInSeconds: queryTimeout.inSeconds);
+      await connect();
+    } on Exception catch (e) {
+      throw e;
+    }
+  }
 }

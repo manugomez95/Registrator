@@ -27,6 +27,8 @@ abstract class DbClient<T> extends Equatable {
 
   Future<bool> connect({verbose: false});
 
+  changeConnection(DbConnectionParams params, {verbose});
+
   disconnect({verbose: false});
 
   Future<bool> ping({verbose: false});

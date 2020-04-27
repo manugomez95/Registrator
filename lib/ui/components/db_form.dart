@@ -1,4 +1,5 @@
 import 'package:bitacora/bloc/database/database_event.dart';
+import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
@@ -18,6 +19,18 @@ class DbForm extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() => DbFormState();
+
+  changeConnection(DbClient db) async {
+    final params = PgConnectionParams(
+        nameController.text,
+        hostController.text,
+        int.parse(portController.text),
+        dbNameController.text,
+        userController.text,
+        passwordController.text,
+        useSSL.value);
+    await db.changeConnection(params);
+  }
 
   void submit(BuildContext context) {
     PostgresClient db = PostgresClient(PgConnectionParams(
