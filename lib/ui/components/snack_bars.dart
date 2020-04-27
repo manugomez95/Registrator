@@ -14,7 +14,7 @@ void submitFormSnackBar(FormEvent event, String message,
     {Function undoAction}) {
   final snackBar = SnackBar(
       content: Text(message),
-      action: undoAction == null ? SnackBarAction(
+      action: undoAction != null ? SnackBarAction(
         label: "Undo",
         onPressed: () {
           undoAction();
