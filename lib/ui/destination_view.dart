@@ -13,10 +13,6 @@ class DestinationView extends StatefulWidget {
 }
 
 class _DestinationViewState extends State<DestinationView> {
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +30,7 @@ class _DestinationViewState extends State<DestinationView> {
           )
         ],
       ),
-      body: widget.destination.page, // TextField(controller: _textController)
+      body: widget.destination.page,
     );
   }
 

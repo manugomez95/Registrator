@@ -132,6 +132,7 @@ class _PropertyViewState extends State<PropertyView>
               : value)
           : value;
       ret = TextFormField(
+          keyboardAppearance: Theme.of(context).brightness,
           initialValue: value,
           validator: (value) {
             if (!property.isNullable && value.isEmpty) {
@@ -168,6 +169,7 @@ class _PropertyViewState extends State<PropertyView>
               : value)
           : value;
       ret = TextFormField(
+          keyboardAppearance: Theme.of(context).brightness,
           initialValue: value,
           validator: (value) {
             if (!property.isNullable && value.isEmpty) {

@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:bitacora/conf/style.dart';
+import 'package:bitacora/model/action.dart' as app;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,10 +27,14 @@ Future<void> main() async {
       "my_data", "postgres", r"!$36<BD5vuP7", true));
   var db2 = PostgresClient(PgConnectionParams("Alfred", "192.168.1.18", 5433,
       "postgres", "postgres", r"unit679City", false));
+  var db3 = PostgresClient(PgConnectionParams("Empty", "192.168.1.14", 5432,
+      "postgres", "postgres", r"!$36<BD5vuP7", true));
   db1.databaseBloc.add(ConnectToDatabase(db1));
   db2.databaseBloc.add(ConnectToDatabase(db2));
+  db2.databaseBloc.add(ConnectToDatabase(db3));
   getIt<AppData>().dbs.add(db1);
   getIt<AppData>().dbs.add(db2);
+  getIt<AppData>().dbs.add(db3);
 
   runApp(MyApp());
 }
@@ -72,24 +77,9 @@ class Routing extends StatefulWidget {
 // SingleTickerProviderStateMixin is used for animation
 class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
-  LinkedHashSet<int> _pStack = LinkedHashSet();
-
-  // ignore: missing_return
-  Future<bool> _onWillPop() {
-    setState(() {
-      if (_pStack.isEmpty)
-        SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-      // Pop
-      _selectedIndex = _pStack.last;
-      _pStack.remove(_selectedIndex);
-    });
-  }
 
   void _onItemTapped(int index) {
     setState(() {
-      // push
-      if (_pStack.contains(index)) _pStack.remove(index);
-      _pStack.add(_selectedIndex);
       _selectedIndex = index;
     });
   }
@@ -97,9 +87,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: new Scaffold(
+    return Scaffold(
         body: SafeArea(
           top: false,
           child: IndexedStack(
@@ -120,8 +108,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
           type: BottomNavigationBarType.fixed,
           onTap: _onItemTapped,
         ),
-      ),
-    );
+      );
   }
 }
 

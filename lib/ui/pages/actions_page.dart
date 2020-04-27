@@ -13,7 +13,7 @@ import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 
-// TODO maybe this should be Stateful y destination view Stateless
+
 class ActionsPage extends StatelessWidget {
   const ActionsPage();
 
@@ -41,7 +41,7 @@ class ActionsPage extends StatelessWidget {
                 app.Action(app.ActionType.InsertInto, theme.colorScheme.insertBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.insertTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.EditLastFrom, theme.colorScheme.editBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.editTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.CreateWidgetFrom, theme.colorScheme.createWidgetBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.createWidgetTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
-              ]); // TODO test case when DB has no tables // TODO put the actions somewhere nicer
+              ]);
           },
         ));
   }
@@ -65,12 +65,13 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
   @override
   void initState() {
     super.initState();
-    selectedAction = widget.actions[0]; // TODO I should access persistent data here
+    selectedAction = widget.actions.firstWhere((a) => a.type == getIt<AppData>().selectedActionType, orElse: () => widget.actions.first);
   }
 
   @override
   Widget build(BuildContext context) {
-    selectedAction = widget.actions.firstWhere((a) => a == selectedAction); // selectedAction saves the wrong colors when changing theme TODO not too elegant, change in the future
+    /// to update selected action's colors.
+    selectedAction = widget.actions.firstWhere((a) => a == selectedAction); // TODO not too elegant, change in the future
     ThemeData theme = Theme.of(context);
     return Column(
       children: <Widget>[
@@ -223,6 +224,7 @@ class TablesDropdownState extends State<TablesDropdown> {
               onChanged: (app.Table newTable) {
                 setState(() {
                   selectedTable = newTable;
+                  getIt<AppData>().selectedTable = selectedTable; /// TODO how to use getIt appropriately?
                 });
               },
               items: tables.map<DropdownMenuItem<app.Table>>((app.Table table) {

@@ -10,16 +10,16 @@ void showErrorSnackBar(BuildContext context, String message) {
   Scaffold.of(context).showSnackBar(snackBar);
 }
 
-void submitFormSnackBar(SubmitFormEvent event, String message,
+void submitFormSnackBar(FormEvent event, String message,
     {Function undoAction}) {
   final snackBar = SnackBar(
       content: Text(message),
-      action: SnackBarAction(
+      action: undoAction == null ? SnackBarAction(
         label: "Undo",
         onPressed: () {
           undoAction();
         },
-      ));
+      ) : null);
 
   Scaffold.of(event.context).showSnackBar(snackBar);
 }

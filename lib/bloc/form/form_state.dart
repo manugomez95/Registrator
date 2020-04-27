@@ -11,12 +11,7 @@ class InitialFormState extends PropertiesFormState {
   List<Object> get props => [];
 }
 
-class SubmittingFormState extends PropertiesFormState {
-  @override
-  List<Object> get props => [];
-}
-
-// TODO not used
+/// It seems to not be used but it actually updates the form when yielded
 class DeletedLastRow extends PropertiesFormState {
   final int id = Random().nextInt(100000);
 

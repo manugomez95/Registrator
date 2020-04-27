@@ -40,7 +40,6 @@ extension PgString on String {
   }
 }
 
-// TODO change to some other class that implements PostgresClient/RelationalDBClient interface
 // ignore: must_be_immutable
 class PostgresClient extends DbClient<PostgreSQLConnection> {
   PostgresClient(DbConnectionParams params,
@@ -76,7 +75,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
           queryTimeoutInSeconds: queryTimeout.inSeconds);
     }
     try {
-      await connection.open(); // TODO Not enough the first time apparently
+      await connection.open();
       if (verbose)
         debugPrint(
             "[1/2] connect (${this.params.alias}): Connection established");
@@ -164,7 +163,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
             ].contains(p.type.complete)) if (orderBy == null)
               orderBy = p;
             else {
-              orderBy = null; // TODO change variables name
+              orderBy = null;
               break;
             }
           }
@@ -174,7 +173,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         tables.add(app.Table(tName, properties, this, orderBy: orderBy));
 
         /// and get last row
-        getLastRow(tables.last);
+        await getLastRow(tables.last);
       } on UnsupportedError {
         if (verbose)
           debugPrint(
@@ -317,7 +316,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
     String sql =
         "UPDATE ${table.name} SET ($properties) = ($values) WHERE ctid IN ($last)";
-    debugPrint(sql);
+
+    if (verbose) debugPrint(sql);
 
     try {
       var results = await connection.execute(sql).timeout(timeout);
@@ -325,7 +325,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (results == 1) {
         /// Update official last row
         table.properties.forEach(
-            (p) => p.lastValue = propertiesForm[p]); // TODO check if it works
+            (p) => p.lastValue = propertiesForm[p]);
         return true;
       } else
         return false;
@@ -345,9 +345,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       return;
     }
 
-    // TODO formatforpostgres also table.name?
     String sql =
-        "SELECT * FROM ${table.name} WHERE ${linearityProperty.name.pgFormat()} IS NOT NULL ORDER BY ${linearityProperty.name.pgFormat()} DESC LIMIT 1";
+        "SELECT * FROM ${table.name.pgFormat()} WHERE ${linearityProperty.name.pgFormat()} IS NOT NULL ORDER BY ${linearityProperty.name.pgFormat()} DESC LIMIT 1";
     if (verbose) debugPrint("getLastRow (${table.name}): $sql");
     try {
       List<List<dynamic>> results =
@@ -455,7 +454,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   /// Deleting with ctid I don't need a PK TODO don't use ctid, use combination of columns and check only one is returned, release a warning in the dialog when not having a primary key
   // TODO awesome printing usefulness, copy where I can
   @override
-  Future<bool> cancelLastInsertion(
+  cancelLastInsertion(
       app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
     String whereString = propertiesForm.keys.map((Property p) {
@@ -465,16 +464,14 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
     String sql =
         "DELETE FROM ${table.name.pgFormat()} WHERE ctid IN (SELECT ctid FROM ${table.name.pgFormat()} WHERE $whereString LIMIT 1)";
+
     if (verbose) debugPrint("cancelLastInsertion (${this.params.alias}): $sql");
     try {
       var results = await connection.execute(sql).timeout(timeout);
+      /// if there's no linearity there's no lastValues
+      if (table.orderBy == null) table.properties.forEach((p) => p.lastValue = null);
       if (verbose)
         debugPrint("cancelLastInsertion (${this.params.alias}): $results");
-      if (results == 1) {
-        await getLastRow(table);
-        return true;
-      } else
-        return false;
     } on PostgreSQLException catch (e) {
       print(e);
       throw e;
@@ -486,17 +483,37 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   @override
   deleteLastFrom(app.Table table, {verbose: false}) async {
     Property orderBy = table.orderBy;
-    if (orderBy == null) {
-      Exception e = Exception("No linearity defined");
+
+    /// if there's no order nor last values...
+    if (orderBy == null && table.properties.every((p) => p.lastValue == null)) {
+      String exception = "No linearity nor lastValue defined";
       if (verbose)
-        debugPrint("removeLastEntry (${table.name}): ${e.toString()}");
-      throw e;
+        debugPrint("deleteLastFrom (${table.name}): $exception");
+      throw Exception(exception);
     }
+
+    /// last values
+    String where = "WHERE " +
+        table.properties.map((Property p) {
+          var valueStr = PgString.fromPgValue(p.lastValue, p.type);
+          return "${p.name.pgFormat()} ${valueStr == "null" ? "is null" : "= $valueStr"}";
+        }).join(" AND ");
+
+    /// if orderBy is used
+    String order = orderBy != null ? "ORDER BY ${orderBy.name.pgFormat()} DESC" : "";
+
+    String last =
+        "SELECT ctid FROM ${table.name.pgFormat()} $where $order LIMIT 1";
+
     String sql =
-        "DELETE FROM ${table.name} WHERE ctid IN (SELECT ctid FROM ${table.name.pgFormat()} WHERE ${orderBy.name.pgFormat()} is not null ORDER BY ${orderBy.name.pgFormat()} DESC LIMIT 1)";
+        "DELETE FROM ${table.name} WHERE ctid IN ($last)";
+
     if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
+
     try {
       var results = await connection.execute(sql).timeout(timeout);
+      /// if there's no linearity there's no lastValues
+      if (table.orderBy == null) table.properties.forEach((p) => p.lastValue = null);
       if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
     } on PostgreSQLException catch (e) {
       if (verbose)

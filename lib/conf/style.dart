@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 
 extension CustomColorScheme on ColorScheme {
   static Color lightInsert = Colors.blue;
-  static Color lightEdit = Colors.amber;
+  static Color lightEdit = Colors.amber[700];
   static Color lightCreateWidget = Colors.green;
 
-  static Color darkInsert = Colors.lightBlueAccent;
+  static Color darkInsert = Colors.cyanAccent;
   static Color darkEdit = Colors.amberAccent;
-  static Color darkCreateWidget = Colors.lightGreen;
+  static Color darkCreateWidget = Colors.greenAccent;
 
   Color get defaultTextColor =>
       this.brightness == Brightness.light ? Colors.black : Colors.white;
@@ -55,18 +55,18 @@ class Themes {
       accentColor: Colors.blueAccent,
       brightness: Brightness.light,
       colorScheme: ColorScheme.light()
-          .copyWith(primary: Colors.white, secondary: Colors.blueAccent),
+          .copyWith(primary: Colors.blueAccent, secondary: Colors.blueAccent),
       inputDecorationTheme: InputDecorationTheme(
           focusedBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: Colors.blueAccent, width: 2))));
 
   static ThemeData darkTheme = ThemeData(
     primaryColor: Colors.grey[850],
-    accentColor: Colors.lightBlueAccent,
+    accentColor: Colors.tealAccent,
     canvasColor: Colors.grey[900],
     cardColor: Colors.grey[850],
     brightness: Brightness.dark,
     colorScheme: ColorScheme.dark()
-        .copyWith(primary: Colors.grey[850], secondary: Colors.lightBlueAccent),
+        .copyWith(primary: Colors.grey[850], secondary: Colors.tealAccent[200]),
   );
 }

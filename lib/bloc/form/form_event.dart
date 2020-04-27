@@ -8,31 +8,33 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:postgres/postgres.dart';
 
 abstract class FormEvent extends Equatable {
-  const FormEvent();
+  final app.Table table;
+  final BuildContext context;
+
+  const FormEvent(this.table, this.context);
+
+  @override
+  List<Object> get props => [table, context];
 }
 
 abstract class SubmitFormEvent extends FormEvent {
   final Map<Property, dynamic> propertiesForm;
   final app.Action action;
-  final app.Table table;
-  final BuildContext context;
 
-  SubmitFormEvent(this.context, this.propertiesForm, this.action, this.table);
+  SubmitFormEvent(context, this.propertiesForm, this.action, table) : super(table, context);
 
   @override
   List<Object> get props => [propertiesForm, action, table];
-
-  void undo();
 }
 
 class InsertSubmitForm extends SubmitFormEvent {
   InsertSubmitForm(BuildContext context, Map<Property, dynamic> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
 
-  @override
   Future<void> undo() async {
     try {
       await table.client.cancelLastInsertion(
           table, propertiesForm);
+      await table.client.getLastRow(table);
       Fluttertoast.showToast(msg: "Undo");
     } on PostgreSQLException catch (e) {
       showErrorSnackBar(context, e.toString());
@@ -42,28 +44,8 @@ class InsertSubmitForm extends SubmitFormEvent {
 
 class EditSubmitForm extends SubmitFormEvent {
   EditSubmitForm(BuildContext context, Map<Property, dynamic> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
-
-  @override
-  Future<void> undo() async {
-    try {
-      // TODO Cancel last update instead of insertion
-      await table.client.cancelLastInsertion(
-          table, propertiesForm);
-      Fluttertoast.showToast(msg: "Undo");
-    } on PostgreSQLException catch (e) {
-      showErrorSnackBar(context, e.toString());
-    }
-  }
-
 }
 
 class DeleteLastEntry extends FormEvent {
-  final app.Table table;
-  final BuildContext context;
-
-  DeleteLastEntry(this.table, this.context);
-
-  @override
-  List<Object> get props => [table, context];
-
+  DeleteLastEntry(app.Table table, BuildContext context) : super(table, context);
 }

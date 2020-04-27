@@ -14,11 +14,7 @@ import '../../main.dart';
 import 'confirm_dialog.dart';
 import 'db_form.dart';
 
-final String assetName = 'assets/images/postgresql_elephant.svg';
-final Widget svg = SvgPicture.asset(assetName,
-    height: 75, width: 75, semanticsLabel: 'Postgres Logo');
 
-// TODO improve layout so logo fills instead of having defined size
 class DatabaseCardHeader extends StatelessWidget {
   DatabaseCardHeader(this.db);
 
@@ -55,7 +51,8 @@ class DatabaseCardHeader extends StatelessWidget {
               child: Row(
                 children: <Widget>[
                   Container(
-                    child: svg,
+                    child: SvgPicture.asset('assets/images/postgresql_elephant.svg',
+                        height: 75, width: 75, semanticsLabel: 'Postgres Logo'),
                     padding: EdgeInsets.only(left: 5, right: 25),
                   ),
                   Column(
@@ -179,7 +176,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                   ),
                   IconButton(
                     icon: Icon(
-                        (widget.db.isConnected && widget.db.tables.any((table) => table.visible))
+                        ((widget.db?.tables?.isEmpty ?? true) || (widget.db?.tables?.any((table) => table.visible) ?? true))
                             ? Icons.visibility
                             : Icons.visibility_off,
                         color: Colors.grey),
@@ -255,7 +252,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
-                                  color: Colors.green),
+                                  color: Theme.of(context).colorScheme.secondary),
                             ),
                             DropdownButtonHideUnderline(
                               child: Container(
@@ -267,7 +264,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                     side: BorderSide(
                                         width: 1.5,
                                         style: BorderStyle.solid,
-                                        color: Colors.green),
+                                        color: Theme.of(context).colorScheme.secondary),
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10.0)),
                                   ),
@@ -299,7 +296,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                                     style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color: Colors.green)))),
+                                                        color: Theme.of(context).colorScheme.secondary)))),
                                       ),
                                     );
                                   }).toList(),
