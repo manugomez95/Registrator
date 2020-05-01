@@ -1,7 +1,6 @@
 import 'dart:collection';
 
 import 'package:bitacora/conf/style.dart';
-import 'package:bitacora/model/action.dart' as app;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,8 +13,10 @@ import 'ui/destination_view.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:dynamic_theme/dynamic_theme.dart';
+import 'package:flutter/services.dart';
 
 GetIt getIt = GetIt.asNewInstance();
+
 
 Future<void> main() async {
   // TODO get all saved connections
@@ -48,6 +49,18 @@ class MyApp extends StatelessWidget {
         defaultBrightness: Brightness.light,
         data: (brightness) => brightness == Brightness.light ? Themes.lightTheme : Themes.darkTheme,
         themedWidgetBuilder: (context, theme) {
+
+          /// Allows me to reconnect to the databases when the connection is lost and the app is resumed
+          SystemChannels.lifecycle.setMessageHandler((msg) {
+            debugPrint('SystemChannels> $msg');
+            if(msg==AppLifecycleState.resumed.toString()) {
+              getIt<AppData>()
+                  .dbs
+                  .forEach((db) => db.databaseBloc.add(UpdateDbStatus(db)));
+            }
+            return null;
+          });
+
           return MaterialApp(
             title: 'bitacora',
             theme: theme,
