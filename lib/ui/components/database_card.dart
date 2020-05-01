@@ -47,7 +47,6 @@ class DatabaseCardHeader extends StatelessWidget {
             return Container(
               width: MediaQuery.of(context).size.width,
               padding: EdgeInsets.all(15),
-              color: Theme.of(context).primaryColor,
               child: Row(
                 children: <Widget>[
                   Container(

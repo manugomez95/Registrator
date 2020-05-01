@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'bloc/database/database_event.dart';
 import 'db_clients/postgres_client.dart';
 import 'model/app_data.dart';
@@ -13,7 +14,6 @@ import 'ui/destination_view.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:dynamic_theme/dynamic_theme.dart';
-import 'package:flutter/services.dart';
 
 GetIt getIt = GetIt.asNewInstance();
 
@@ -45,22 +45,26 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+
+    /// Get shared preferences
+    getIt<AppData>().sharedPrefs = SharedPreferences.getInstance();
+
+    /// Allows me to reconnect to the databases when the connection is lost and the app is resumed
+    /// Has to be inside runApp
+    SystemChannels.lifecycle.setMessageHandler((msg) {
+      debugPrint('SystemChannels> $msg');
+      if(msg==AppLifecycleState.resumed.toString()) {
+        getIt<AppData>()
+            .dbs
+            .forEach((db) => db.databaseBloc.add(UpdateDbStatus(db)));
+      }
+      return null;
+    });
+
     return DynamicTheme(
         defaultBrightness: Brightness.light,
         data: (brightness) => brightness == Brightness.light ? Themes.lightTheme : Themes.darkTheme,
         themedWidgetBuilder: (context, theme) {
-
-          /// Allows me to reconnect to the databases when the connection is lost and the app is resumed
-          SystemChannels.lifecycle.setMessageHandler((msg) {
-            debugPrint('SystemChannels> $msg');
-            if(msg==AppLifecycleState.resumed.toString()) {
-              getIt<AppData>()
-                  .dbs
-                  .forEach((db) => db.databaseBloc.add(UpdateDbStatus(db)));
-            }
-            return null;
-          });
-
           return MaterialApp(
             title: 'bitacora',
             theme: theme,
@@ -89,16 +93,25 @@ class Routing extends StatefulWidget {
 
 // SingleTickerProviderStateMixin is used for animation
 class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
-  int _selectedIndex = 0;
+
+  int _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    getIt<AppData>().sharedPrefs.then((prefs) => _selectedIndex = prefs.getInt("pageIndex") ?? 0);
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      getIt<AppData>().sharedPrefs.then((prefs) => prefs.setInt("pageIndex", _selectedIndex));
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    _selectedIndex = _selectedIndex ?? 0;
     ThemeData theme = Theme.of(context);
     return Scaffold(
         body: SafeArea(
@@ -125,6 +138,7 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
   }
 }
 
+// TODO use for no linearity defined?
 Widget noConnectionBanner() {
   return Material(
     child: Container(

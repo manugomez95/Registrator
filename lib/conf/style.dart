@@ -10,6 +10,8 @@ extension CustomColorScheme on ColorScheme {
   static Color darkEdit = Colors.amberAccent;
   static Color darkCreateWidget = Colors.greenAccent;
 
+  Color get appBarColor =>
+      this.brightness == Brightness.light ? Colors.grey[50] : Colors.grey[900];
   Color get defaultTextColor =>
       this.brightness == Brightness.light ? Colors.black : Colors.white;
   Color get negativeDefaultTxtColor =>
@@ -50,23 +52,7 @@ extension CustomColorScheme on ColorScheme {
 }
 
 class Themes {
-  static ThemeData lightTheme = ThemeData(
-      primaryColor: Colors.white,
-      accentColor: Colors.blueAccent,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.light()
-          .copyWith(primary: Colors.blueAccent, secondary: Colors.blueAccent),
-      inputDecorationTheme: InputDecorationTheme(
-          focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.blueAccent, width: 2))));
+  static ThemeData lightTheme = ThemeData.light();
 
-  static ThemeData darkTheme = ThemeData(
-    primaryColor: Colors.grey[850],
-    accentColor: Colors.tealAccent,
-    canvasColor: Colors.grey[900],
-    cardColor: Colors.grey[850],
-    brightness: Brightness.dark,
-    colorScheme: ColorScheme.dark()
-        .copyWith(primary: Colors.grey[850], secondary: Colors.tealAccent[200]),
-  );
+  static ThemeData darkTheme = ThemeData.dark();
 }

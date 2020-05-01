@@ -1,6 +1,7 @@
 import 'package:bitacora/bloc/app_data/app_data_bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/table.dart' as app;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'action.dart' as app;
 
 
@@ -10,10 +11,7 @@ class AppData {
   final AppDataBloc bloc = AppDataBloc();
 
   final Set<DbClient> dbs = Set();
-
-  /// we save this because is less heavy
-  app.ActionType selectedActionType;
-  app.Table selectedTable;
+  Future<SharedPreferences> sharedPrefs;
 
   Iterable<DbClient> getDbs() {
     return dbs.where((db) => db.isConnected).toList();

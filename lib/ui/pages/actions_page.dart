@@ -13,7 +13,6 @@ import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 
-
 class ActionsPage extends StatelessWidget {
   const ActionsPage();
 
@@ -62,16 +61,15 @@ class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
 class _ActionsDropdownState extends State<ActionsDropdown> {
   app.Action selectedAction;
 
-  @override
-  void initState() {
-    super.initState();
-    selectedAction = widget.actions.firstWhere((a) => a.type == getIt<AppData>().selectedActionType, orElse: () => widget.actions.first);
+  setLastAction(app.Action action) async {
+    final prefs = await getIt<AppData>().sharedPrefs;
+    return prefs.setInt("lastAction", action.type.index);
   }
 
   @override
   Widget build(BuildContext context) {
     /// to update selected action's colors.
-    selectedAction = widget.actions.firstWhere((a) => a == selectedAction); // TODO not too elegant, change in the future
+    selectedAction = widget.actions.firstWhere((a) => a == selectedAction, orElse: () => widget.actions.first); // TODO optimizable?
     ThemeData theme = Theme.of(context);
     return Column(
       children: <Widget>[
@@ -87,6 +85,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 onChanged: (app.Action newValue) {
                   setState(() {
                     selectedAction = newValue;
+                    setLastAction(selectedAction);
                   });
                 },
                 items: widget.actions
@@ -138,7 +137,8 @@ class TablesDropdownState extends State<TablesDropdown> {
         child: BlocBuilder(
             bloc: _formBloc,
             builder: (BuildContext context, PropertiesFormState state) {
-              PropertiesForm form = PropertiesForm(selectedTable, widget.action);
+              PropertiesForm form =
+                  PropertiesForm(selectedTable, widget.action);
               return Expanded(
                 child: Scaffold(
                   appBar: buildTablesDropdown(),
@@ -224,7 +224,6 @@ class TablesDropdownState extends State<TablesDropdown> {
               onChanged: (app.Table newTable) {
                 setState(() {
                   selectedTable = newTable;
-                  getIt<AppData>().selectedTable = selectedTable; /// TODO how to use getIt appropriately?
                 });
               },
               items: tables.map<DropdownMenuItem<app.Table>>((app.Table table) {
@@ -232,7 +231,9 @@ class TablesDropdownState extends State<TablesDropdown> {
                     value: table,
                     child: Center(
                         child: Text(table.name,
-                            style: TextStyle(color: theme.colorScheme.tablesDropdownTextColor))));
+                            style: TextStyle(
+                                color: theme
+                                    .colorScheme.tablesDropdownTextColor))));
               }).toList()),
         )),
       ),

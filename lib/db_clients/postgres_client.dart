@@ -337,7 +337,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   /// Table properties need to be already created
   /// Order by ctid doesn't make sense.
-  getLastRow(app.Table table, {verbose: false}) async {
+  getLastRow(app.Table table, {verbose: true}) async {
     Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
       if (verbose)
@@ -352,18 +352,19 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       List<List<dynamic>> results =
           await connection.query(sql).timeout(timeout);
       if (verbose) debugPrint("getLastRow: $results");
-
-      for (final p in table.properties) {
-        if (p.type.complete == PostgreSQLDataType.byteArray) {
-          p.lastValue = fromBytesToInt32(
-              results[0][p.dbPosition][0],
-              results[0][p.dbPosition][1],
-              results[0][p.dbPosition][2],
-              results[0][p.dbPosition][3]);
-        } else {
-          p.lastValue = results[0][p.dbPosition];
-        }
-      } // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
+      if (results.isNotEmpty) {
+        for (final p in table.properties) {
+          if (p.type.complete == PostgreSQLDataType.byteArray) {
+            p.lastValue = fromBytesToInt32(
+                results[0][p.dbPosition][0],
+                results[0][p.dbPosition][1],
+                results[0][p.dbPosition][2],
+                results[0][p.dbPosition][3]);
+          } else {
+            p.lastValue = results[0][p.dbPosition];
+          }
+        } // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
+      }
 
     } on PostgreSQLException catch (e) {
       print("getLastRow (${table.name}): $e");

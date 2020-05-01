@@ -1,4 +1,3 @@
-import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -16,27 +15,28 @@ class FormFieldView<T> extends StatefulWidget {
 /// keep alive when out of view (to not lose state)
 class _FormFieldViewState extends State<FormFieldView>
     with AutomaticKeepAliveClientMixin {
-
   @override
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
     super.build(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(0, 10, 0, 0),
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            widget.param.title,
-            style: new TextStyle(
-              color: theme.colorScheme.defaultTextColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 15.0,
-            ),
-          ),
-          buildInput(widget.param)
+          TextFormField(
+              controller: widget.controller,
+              validator: validator,
+              textInputAction: TextInputAction.next,
+              keyboardType:
+              widget.param is Port ? TextInputType.number : TextInputType.text,
+              onFieldSubmitted: (v) {
+                FocusScope.of(context).nextFocus();
+              },
+              obscureText: widget.param is Password ? true : false,
+              decoration: InputDecoration(
+                hintText: widget.param.defaultValue.toString(),
+                labelText: widget.param.title,
+              ))
         ],
-      ),
     );
   }
 
@@ -48,36 +48,5 @@ class _FormFieldViewState extends State<FormFieldView>
       return "Field can't be null";
     }
     return null;
-  }
-
-  Widget buildInput(DbParameter param) {
-    if (param is Host || param is Username || param is DatabaseName || param is Port || param is Alias) {
-      return TextFormField(
-          controller: widget.controller,
-          validator: validator,
-          textInputAction: TextInputAction.next,
-          keyboardType: param is Port ? TextInputType.number : TextInputType.text,
-          onFieldSubmitted: (v) {
-            FocusScope.of(context).nextFocus();
-          },
-          decoration:
-              new InputDecoration(
-                  hintText: param.defaultValue.toString()
-              ));
-    }
-    else if (param is Password) {
-      return TextFormField(
-          controller: widget.controller,
-          validator: validator,
-          textInputAction: TextInputAction.next,
-          onFieldSubmitted: (v) {
-            FocusScope.of(context).nextFocus();
-          },
-          obscureText: true,
-          decoration:
-          new InputDecoration(hintText: param.defaultValue));
-    }
-    else
-      throw Exception;
   }
 }
