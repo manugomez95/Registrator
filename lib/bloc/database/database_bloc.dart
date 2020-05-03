@@ -23,6 +23,12 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       getIt<AppData>().bloc.add(LoadingEvent());
     }
     else if (event is ConnectionSuccessfulEvent) {
+      /// if first time connection (connection from form) save it TODO check if works
+      if (event.fromForm) {
+        getIt<AppData>().dbs.add(event.client);
+        await getIt<AppData>().saveConnection(event.client);
+        print(await getIt<AppData>().connections());
+      }
       yield ConnectionSuccessful();
       getIt<AppData>().bloc.add(UpdateUIEvent());
     }
@@ -31,11 +37,15 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       yield ConnectionError(event.exception);
       getIt<AppData>().bloc.add(UpdateUIEvent());
     }
-    else if (event is DisconnectFromDatabase) {
+    else if (event is RemoveConnection) {
       try {
         await event.client.disconnect();
+
         getIt<AppData>().dbs.remove(event.client);
-        yield DisconnectionSuccessful();
+        await getIt<AppData>().removeConnection(event.client);
+        print(await getIt<AppData>().connections());
+
+        yield DisconnectionSuccessful(); // TODO useless since it's only for the database and... its gone?
         getIt<AppData>().bloc.add(UpdateUIEvent());
       } on Exception catch (e) {
         add(ConnectionErrorEvent(event.client, e));

@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import 'package:bitacora/bloc/app_data/bloc.dart';
 import 'package:bitacora/conf/style.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -7,35 +8,24 @@ import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'bloc/database/database_event.dart';
-import 'db_clients/postgres_client.dart';
 import 'model/app_data.dart';
 import 'ui/destination.dart';
 import 'ui/destination_view.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:bitacora/utils/db_parameter.dart';
 import 'package:dynamic_theme/dynamic_theme.dart';
 
 GetIt getIt = GetIt.asNewInstance();
 
 
 Future<void> main() async {
-  // TODO get all saved connections
   getIt.registerSingleton<AppData>(AppData());
-  // get AppData
-  // for each dbClient recovered
-  // - try connecting
-  var db1 = PostgresClient(PgConnectionParams("My data", "192.168.1.14", 5432,
+
+  /*var db1 = PostgresClient(PgConnectionParams("My data", "192.168.1.14", 5432,
       "my_data", "postgres", r"!$36<BD5vuP7", true));
   var db2 = PostgresClient(PgConnectionParams("Alfred", "192.168.1.18", 5433,
       "postgres", "postgres", r"unit679City", false));
   var db3 = PostgresClient(PgConnectionParams("Empty", "192.168.1.14", 5432,
-      "postgres", "postgres", r"!$36<BD5vuP7", true));
-  db1.databaseBloc.add(ConnectToDatabase(db1));
-  db2.databaseBloc.add(ConnectToDatabase(db2));
-  db2.databaseBloc.add(ConnectToDatabase(db3));
-  getIt<AppData>().dbs.add(db1);
-  getIt<AppData>().dbs.add(db2);
-  getIt<AppData>().dbs.add(db3);
+      "postgres", "postgres", r"!$36<BD5vuP7", true));*/
 
   runApp(MyApp());
 }
@@ -45,6 +35,8 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+
+    getIt<AppData>().bloc.add(InitializeEvent());
 
     /// Get shared preferences
     getIt<AppData>().sharedPrefs = SharedPreferences.getInstance();

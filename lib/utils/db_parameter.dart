@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:postgres/postgres.dart';
+import 'package:simple_rsa/simple_rsa.dart';
 
 abstract class PropertyType<T> {
   T value;
@@ -14,6 +15,27 @@ abstract class DbConnectionParams extends Equatable{
   final String username;
   final String password;
   final bool useSSL;
+
+  final PUBLIC_KEY =
+      "MIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBuAGGBgg9nuf6D2c5AIHc8" +
+          "vZ6KoVwd0imeFVYbpMdgv4yYi5obtB/VYqLryLsucZLFeko+q1fi871ZzGjFtYXY" +
+          "9Hh1Q5e10E5hwN1Tx6nIlIztrh5S9uV4uzAR47k2nng7hh6vuZ33kak2hY940RSL" +
+          "H5l9E5cKoUXuQNtrIKTS4kPZ5IOUSxZ5xfWBXWoldhe+Nk7VIxxL97Tk0BjM0fJ3" +
+          "8rBwv3++eAZxwZoLNmHx9wF92XKG+26I+gVGKKagyToU/xEjIqlpuZ90zesYdjV+" +
+          "u0iQjowgbzt3ASOnvJSpJu/oJ6XrWR3egPoTSx+HyX1dKv9+q7uLl6pXqGVVNs+/" +
+          "AgMBAAE=";
+
+  Future<Map<String, dynamic>> toMap() async {
+    return {
+      'alias': alias,
+      'host': host,
+      'port': port,
+      'db_name': dbName,
+      'username': username,
+      'password': await encryptString(password, PUBLIC_KEY),
+      'ssl': useSSL ? 1 : 0,
+    };
+  }
 
   DbConnectionParams(this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL);
 

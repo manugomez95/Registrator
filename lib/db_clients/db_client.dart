@@ -18,6 +18,10 @@ abstract class DbClient<T> extends Equatable {
   final Duration timeout;
   final Duration queryTimeout;
 
+  Future<Map<String, dynamic>> toMap() async {
+    return await params.toMap();
+  }
+
   /// Connection
   @protected
   T connection;

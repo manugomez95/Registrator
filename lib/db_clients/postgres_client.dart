@@ -1,15 +1,13 @@
 import 'dart:typed_data';
-
-import 'package:bitacora/bloc/database/bloc.dart' as alt;
+import 'package:bitacora/bloc/database/bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
-import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:postgres/postgres.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 
-import '../main.dart';
+/// IMPORTANT: Not using getIt<AppData> in this file, this kind of logic is better in the bloc
 
 extension PgString on String {
   String pgFormat() {
@@ -52,7 +50,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         useSSL: params.useSSL,
         timeoutInSeconds: timeout.inSeconds,
         queryTimeoutInSeconds: queryTimeout.inSeconds);
-    databaseBloc = alt.DatabaseBloc();
+    databaseBloc = DatabaseBloc();
   }
 
   @override
@@ -83,14 +81,13 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (verbose)
         debugPrint("[2/2] connect (${this.params.alias}): DB model updated");
       isConnected = true;
-      if (fromForm) getIt<AppData>().dbs.add(this);
-      databaseBloc.add(alt.ConnectionSuccessfulEvent(this, fromForm));
+      databaseBloc.add(ConnectionSuccessfulEvent(this, fromForm));
       return true;
     } on Exception catch (e) {
       if (verbose)
         debugPrint("connect (${this.params.alias}): ${e.toString()}");
       await disconnect(); // todo add with all the connection errors?
-      databaseBloc.add(alt.ConnectionErrorEvent(this, e));
+      databaseBloc.add(ConnectionErrorEvent(this, e));
       return false;
     }
   }
@@ -114,11 +111,11 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     try {
       await connection.query(sql).timeout(timeout);
       if (verbose) debugPrint("ping (${this.params.alias}): connected");
-      databaseBloc.add(alt.ConnectionSuccessfulEvent(this, false));
+      databaseBloc.add(ConnectionSuccessfulEvent(this, false));
     } on Exception catch (e) {
       if (verbose) debugPrint("ping (${this.params.alias}): not connected");
       await disconnect();
-      databaseBloc.add(alt.ConnectionErrorEvent(this, e));
+      databaseBloc.add(ConnectionErrorEvent(this, e));
     } finally {
       // ignore: control_flow_in_finally
       return isConnected;
@@ -337,7 +334,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   /// Table properties need to be already created
   /// Order by ctid doesn't make sense.
-  getLastRow(app.Table table, {verbose: true}) async {
+  getLastRow(app.Table table, {verbose: false}) async {
     Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
       if (verbose)

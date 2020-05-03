@@ -15,6 +15,13 @@ class InitialAppDataState extends AppDataState {
   List<Object> get props => [];
 }
 
+class InitCompleted extends AppDataState {
+  InitCompleted(Stack<AppDataEvent> loadingStack) : super(loadingStack);
+
+  @override
+  List<Object> get props => [];
+}
+
 class UpdateUI extends AppDataState {
   final UpdateUIEvent id;
 

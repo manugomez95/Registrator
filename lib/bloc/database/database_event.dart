@@ -38,10 +38,10 @@ class ConnectionErrorEvent extends DatabaseEvent {
   List<Object> get props => [this.client, this.exception];
 }
 
-class DisconnectFromDatabase extends DatabaseEvent {
+class RemoveConnection extends DatabaseEvent {
   final DbClient client;
 
-  DisconnectFromDatabase(this.client);
+  RemoveConnection(this.client);
 
   @override
   List<Object> get props => [client];

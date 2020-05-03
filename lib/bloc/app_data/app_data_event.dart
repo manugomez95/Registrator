@@ -5,6 +5,11 @@ abstract class AppDataEvent extends Equatable {
   const AppDataEvent();
 }
 
+class InitializeEvent extends AppDataEvent {
+  @override
+  List<Object> get props => [];
+}
+
 class UpdateUIEvent extends AppDataEvent {
   final int id = Random().nextInt(10000);
 

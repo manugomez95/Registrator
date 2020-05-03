@@ -203,7 +203,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                       if (await asyncConfirmDialog(context, title: 'Remove ${widget.db.params.alias}?', message: 'This will close and remove the connection.')) {
                         setState(() {
                           // Remove the item from the data source.
-                          widget.db.databaseBloc.add(DisconnectFromDatabase((widget.db)));
+                          widget.db.databaseBloc.add(RemoveConnection((widget.db)));
                           // Then show a snackbar.
                           Scaffold.of(context).showSnackBar(SnackBar(
                               content: Text(
