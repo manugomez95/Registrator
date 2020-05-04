@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/main.dart';
@@ -41,7 +40,7 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
           "ymmKJA9DgQpPgEIjHAnw2dUDR+wI/Loywb0AGLIbszseCOlc2Q==";
 
   @override
-  AppDataState get initialState => InitialAppDataState(loadingStack);
+  AppDataState get initialState => Loading(loadingStack);
 
   @override
   Stream<AppDataState> mapEventToState(

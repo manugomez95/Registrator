@@ -26,15 +26,15 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
-            if (state is InitialAppDataState ||
-                (state.loadingStack.isNotEmpty &&
-                    getIt<AppData>().getTables().isEmpty)) {
-              return Center(
-                child: CircularProgressIndicator(),
-              );
-            } else if (getIt<AppData>().getTables().isEmpty &&
-                state.loadingStack.isEmpty) {
-              return EmptyView();
+            if (getIt<AppData>().getTables().isEmpty) {
+              if (state.loadingStack.isNotEmpty || state is Loading) {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+              else {
+                return EmptyView();
+              }
             } else
               return ActionsDropdown(actions: <app.Action>[
                 app.Action(app.ActionType.InsertInto, theme.colorScheme.insertBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.insertTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
@@ -68,8 +68,8 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
 
   @override
   Widget build(BuildContext context) {
-    /// to update selected action's colors.
-    selectedAction = widget.actions.firstWhere((a) => a == selectedAction, orElse: () => widget.actions.first); // TODO optimizable?
+    /// to update selected action's colors. I haven't come up with a more efficient way...
+    selectedAction = widget.actions.firstWhere((a) => a == selectedAction, orElse: () => widget.actions.first);
     ThemeData theme = Theme.of(context);
     return Column(
       children: <Widget>[

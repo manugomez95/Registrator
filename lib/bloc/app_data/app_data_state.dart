@@ -8,13 +8,6 @@ abstract class AppDataState extends Equatable {
   const AppDataState(this.loadingStack);
 }
 
-class InitialAppDataState extends AppDataState {
-  InitialAppDataState(Stack<AppDataEvent> loadingStack) : super(loadingStack);
-
-  @override
-  List<Object> get props => [];
-}
-
 class InitCompleted extends AppDataState {
   InitCompleted(Stack<AppDataEvent> loadingStack) : super(loadingStack);
 

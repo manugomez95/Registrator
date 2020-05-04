@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
   @override
-  DatabaseState get initialState => DatabaseInitial();
+  DatabaseState get initialState => CheckingConnection();
 
   @override
   Stream<DatabaseState> mapEventToState(
@@ -23,7 +23,7 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       getIt<AppData>().bloc.add(LoadingEvent());
     }
     else if (event is ConnectionSuccessfulEvent) {
-      /// if first time connection (connection from form) save it TODO check if works
+      /// if first time connection (connection from form) save it
       if (event.fromForm) {
         getIt<AppData>().dbs.add(event.client);
         await getIt<AppData>().saveConnection(event.client);
@@ -45,16 +45,19 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
         await getIt<AppData>().removeConnection(event.client);
         print(await getIt<AppData>().connections());
 
-        yield DisconnectionSuccessful(); // TODO useless since it's only for the database and... its gone?
         getIt<AppData>().bloc.add(UpdateUIEvent());
       } on Exception catch (e) {
-        add(ConnectionErrorEvent(event.client, e));
+        add(ConnectionErrorEvent(event.client, e)); // TODO never the case
       }
     }
     else if (event is UpdateDbStatus) {
       yield CheckingConnection();
       if (!await event.client.ping()) event.client.connect();
     }
-
+    /// useful for general cases where we want to execute async code and then update the UI
+    else if (event is UpdateUIAfter) {
+      await event.code();
+      getIt<AppData>().bloc.add(UpdateUIEvent());
+    }
   }
 }

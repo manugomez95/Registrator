@@ -9,6 +9,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../main.dart';
 import 'confirm_dialog.dart';
@@ -204,17 +205,14 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                         setState(() {
                           // Remove the item from the data source.
                           widget.db.databaseBloc.add(RemoveConnection((widget.db)));
-                          // Then show a snackbar.
-                          Scaffold.of(context).showSnackBar(SnackBar(
-                              content: Text(
-                                  "${widget.db.params.alias} removed"))); // TODO add undo and use made snackbar
+                          // Then show toast.
+                          Fluttertoast.showToast(msg: "${widget.db.params.alias} connection removed");
                         });
                       }
                     },
                   )
                 ],
               ),
-              //color: Colors.grey[600],
             ),
             if (widget.db.tables?.isEmpty == false ?? false)
               buildTablesView(widget.db.tables)
@@ -274,11 +272,10 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                   onChanged: (Property newProperty) {
                                     setState(() {
                                       /// the user can choose to order a table by any field, doesn't matter its type
-                                      table.orderBy = newProperty;
-                                      // TODO is last row gotten? Not yet, do it
-                                      getIt<AppData>()
-                                          .bloc
-                                          .add(UpdateUIEvent());
+                                      table.client.databaseBloc.add(UpdateUIAfter(() async {
+                                        table.orderBy = newProperty;
+                                        await table.client.getLastRow(table);
+                                      }));
                                     });
                                   },
                                   items: table.properties

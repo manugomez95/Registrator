@@ -55,3 +55,12 @@ class UpdateDbStatus extends DatabaseEvent {
   @override
   List<Object> get props => [client];
 }
+
+class UpdateUIAfter extends DatabaseEvent {
+  final Function code;
+
+  UpdateUIAfter(this.code);
+
+  @override
+  List<Object> get props => [code];
+}

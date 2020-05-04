@@ -4,28 +4,18 @@ abstract class DatabaseState extends Equatable {
   const DatabaseState();
 }
 
-class DatabaseInitial extends DatabaseState {
-  @override
-  List<Object> get props => null;
-}
-
 class CheckingConnection extends DatabaseState {
   @override
   List<Object> get props => [];
 }
 
+/// This state manifests itself as the green icon in the db panel
 class ConnectionSuccessful extends DatabaseState {
   @override
   List<Object> get props => [];
 }
 
-class DisconnectionSuccessful extends DatabaseState {
-  DisconnectionSuccessful();
-
-  @override
-  List<Object> get props => [];
-}
-
+/// This state manifests itself as the red icon in the db panel
 class ConnectionError extends DatabaseState {
   final Exception e;
 
