@@ -8,6 +8,7 @@ import 'package:postgres/postgres.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 
 /// IMPORTANT: Not using getIt<AppData> in this file, this kind of logic is better in the bloc
+/// Simplify as much as possible, good for using many dbs, the hard work will be in the general code
 
 extension PgString on String {
   String pgFormat() {
@@ -74,7 +75,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
     await connection.open();
     isConnected = true;
-    databaseBloc.add(ConnectionSuccessfulEvent(this));
     if (verbose)
       debugPrint("connect (${this.params.alias}): Connection established");
   }
@@ -116,10 +116,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     if (verbose) {
       if (this.tables != null)
         debugPrint(
-            "updateDatabaseModel (${this.params.alias}): Updating model");
+            "pullDatabaseModel (${this.params.alias}): Updating model");
       else
         debugPrint(
-            "updateDatabaseModel (${this.params.alias}): Getting model for the first time");
+            "pullDatabaseModel (${this.params.alias}): Getting model for the first time");
     }
 
     /// Get tables
@@ -163,7 +163,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       } on UnsupportedError {
         if (verbose)
           debugPrint(
-              "updateDatabaseModel (${this.params.alias}): data type in $tName not supported");
+              "pullDatabaseModel (${this.params.alias}): data type in $tName not supported");
         // TODO add event to show error
         continue;
       }

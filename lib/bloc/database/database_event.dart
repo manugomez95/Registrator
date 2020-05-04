@@ -19,12 +19,12 @@ class ConnectToDatabase extends DatabaseEvent {
 }
 
 class ConnectionSuccessfulEvent extends DatabaseEvent {
-  final DbClient client;
+  final DbClient dbClient;
 
-  ConnectionSuccessfulEvent(this.client);
+  ConnectionSuccessfulEvent(this.dbClient);
 
   @override
-  List<Object> get props => [this.client];
+  List<Object> get props => [this.dbClient];
 }
 
 class ConnectionErrorEvent extends DatabaseEvent {
@@ -37,21 +37,21 @@ class ConnectionErrorEvent extends DatabaseEvent {
 }
 
 class RemoveConnection extends DatabaseEvent {
-  final DbClient client;
+  final DbClient dbClient;
 
-  RemoveConnection(this.client);
+  RemoveConnection(this.dbClient);
 
   @override
-  List<Object> get props => [client];
+  List<Object> get props => [dbClient];
 }
 
 class UpdateDbStatus extends DatabaseEvent {
-  final DbClient client;
+  final DbClient dbClient;
 
-  UpdateDbStatus(this.client);
+  UpdateDbStatus(this.dbClient);
 
   @override
-  List<Object> get props => [client];
+  List<Object> get props => [dbClient];
 }
 
 class UpdateUIAfter extends DatabaseEvent {

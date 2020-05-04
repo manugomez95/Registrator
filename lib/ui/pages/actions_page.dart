@@ -26,6 +26,7 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
+            print(state);
             if (getIt<AppData>().getTables().isEmpty) {
               if (state.loadingStack.isNotEmpty || state is Loading) {
                 return Center(
@@ -35,12 +36,13 @@ class ActionsPage extends StatelessWidget {
               else {
                 return EmptyView();
               }
-            } else
+            } else {
               return ActionsDropdown(actions: <app.Action>[
                 app.Action(app.ActionType.InsertInto, theme.colorScheme.insertBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.insertTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.EditLastFrom, theme.colorScheme.editBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.editTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.CreateWidgetFrom, theme.colorScheme.createWidgetBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.createWidgetTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
               ]);
+            }
           },
         ));
   }
@@ -61,11 +63,6 @@ class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
 class _ActionsDropdownState extends State<ActionsDropdown> {
   app.Action selectedAction;
 
-  setLastAction(app.Action action) async {
-    final prefs = await getIt<AppData>().sharedPrefs;
-    return prefs.setInt("lastAction", action.type.index);
-  }
-
   @override
   Widget build(BuildContext context) {
     /// to update selected action's colors. I haven't come up with a more efficient way...
@@ -85,7 +82,6 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 onChanged: (app.Action newValue) {
                   setState(() {
                     selectedAction = newValue;
-                    setLastAction(selectedAction);
                   });
                 },
                 items: widget.actions

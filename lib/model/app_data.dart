@@ -23,8 +23,8 @@ class AppData {
   Iterable<app.Table> getTables({bool onlyVisibles: true}) {
     return getDbs()
         .map((DbClient db) => onlyVisibles
-            ? db.tables.where((table) => table.visible)
-            : db.tables)
+            ? db.tables?.where((table) => table.visible) ?? []
+            : db.tables ?? [])
         ?.expand((i) => i)
         ?.toList();
   }
