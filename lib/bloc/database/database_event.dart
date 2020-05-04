@@ -8,34 +8,32 @@ abstract class DatabaseEvent extends Equatable {
 }
 
 class ConnectToDatabase extends DatabaseEvent {
-  final PostgresClient client;
+  final DbClient dbClient;
   final BuildContext context;
   final bool fromForm;
 
-  ConnectToDatabase(this.client, {this.context, this.fromForm: false});
+  ConnectToDatabase(this.dbClient, {this.context, this.fromForm: false});
 
   @override
-  List<Object> get props => [this.client, this.context, this.fromForm];
+  List<Object> get props => [this.dbClient, this.context, this.fromForm];
 }
 
 class ConnectionSuccessfulEvent extends DatabaseEvent {
   final DbClient client;
-  final bool fromForm;
 
-  ConnectionSuccessfulEvent(this.client, this.fromForm);
+  ConnectionSuccessfulEvent(this.client);
 
   @override
-  List<Object> get props => [this.client, this.fromForm];
+  List<Object> get props => [this.client];
 }
 
 class ConnectionErrorEvent extends DatabaseEvent {
-  final DbClient client;
   final Exception exception;
 
-  ConnectionErrorEvent(this.client, this.exception);
+  ConnectionErrorEvent(this.exception);
 
   @override
-  List<Object> get props => [this.client, this.exception];
+  List<Object> get props => [this.exception];
 }
 
 class RemoveConnection extends DatabaseEvent {

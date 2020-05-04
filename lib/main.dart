@@ -16,7 +16,6 @@ import 'package:dynamic_theme/dynamic_theme.dart';
 
 GetIt getIt = GetIt.asNewInstance();
 
-
 Future<void> main() async {
   getIt.registerSingleton<AppData>(AppData());
 
@@ -30,12 +29,18 @@ Future<void> main() async {
   runApp(MyApp());
 }
 
-// TODO not closing db connection for the moment
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+class MyApp extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
+  State<StatefulWidget> createState() => _MyAppState();
+}
 
+// TODO not closing db connection for the moment
+class _MyAppState extends State<MyApp> {
+  /// Before, MyApp was a stateless widget and for some reason the build
+  /// function was called twice at the beginning therefore executing initialization code twice
+  @override
+  void initState() {
+    super.initState();
     getIt<AppData>().bloc.add(InitializeEvent());
 
     /// Get shared preferences
@@ -45,17 +50,23 @@ class MyApp extends StatelessWidget {
     /// Has to be inside runApp
     SystemChannels.lifecycle.setMessageHandler((msg) {
       debugPrint('SystemChannels> $msg');
-      if(msg==AppLifecycleState.resumed.toString()) {
+      if (msg == AppLifecycleState.resumed.toString()) {
         getIt<AppData>()
             .dbs
             .forEach((db) => db.databaseBloc.add(UpdateDbStatus(db)));
       }
       return null;
     });
+  }
 
+  // This widget is the root of your application.
+  @override
+  Widget build(BuildContext context) {
     return DynamicTheme(
         defaultBrightness: Brightness.light,
-        data: (brightness) => brightness == Brightness.light ? Themes.lightTheme : Themes.darkTheme,
+        data: (brightness) => brightness == Brightness.light
+            ? Themes.lightTheme
+            : Themes.darkTheme,
         themedWidgetBuilder: (context, theme) {
           return MaterialApp(
             title: 'bitacora',
@@ -85,19 +96,22 @@ class Routing extends StatefulWidget {
 
 // SingleTickerProviderStateMixin is used for animation
 class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
-
   int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
-    getIt<AppData>().sharedPrefs.then((prefs) => _selectedIndex = prefs.getInt("pageIndex") ?? 0);
+    getIt<AppData>()
+        .sharedPrefs
+        .then((prefs) => _selectedIndex = prefs.getInt("pageIndex") ?? 0);
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      getIt<AppData>().sharedPrefs.then((prefs) => prefs.setInt("pageIndex", _selectedIndex));
+      getIt<AppData>()
+          .sharedPrefs
+          .then((prefs) => prefs.setInt("pageIndex", _selectedIndex));
     });
   }
 
@@ -106,27 +120,27 @@ class RoutingState extends State<Routing> with SingleTickerProviderStateMixin {
     _selectedIndex = _selectedIndex ?? 0;
     ThemeData theme = Theme.of(context);
     return Scaffold(
-        body: SafeArea(
-          top: false,
-          child: IndexedStack(
-            index: _selectedIndex,
-            children: allDestinations.map<Widget>((Destination destination) {
-              return DestinationView(destination: destination);
-            }).toList(),
-          ),
-        ),
-        // drawer: new AppNavigationDrawer(),
-        bottomNavigationBar: BottomNavigationBar(
-          items: allDestinations.map((Destination destination) {
-            return BottomNavigationBarItem(
-                icon: Icon(destination.icon), title: Text(destination.title));
+      body: SafeArea(
+        top: false,
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: allDestinations.map<Widget>((Destination destination) {
+            return DestinationView(destination: destination);
           }).toList(),
-          currentIndex: _selectedIndex,
-          selectedItemColor: theme.colorScheme.secondary,
-          type: BottomNavigationBarType.fixed,
-          onTap: _onItemTapped,
         ),
-      );
+      ),
+      // drawer: new AppNavigationDrawer(),
+      bottomNavigationBar: BottomNavigationBar(
+        items: allDestinations.map((Destination destination) {
+          return BottomNavigationBarItem(
+              icon: Icon(destination.icon), title: Text(destination.title));
+        }).toList(),
+        currentIndex: _selectedIndex,
+        selectedItemColor: theme.colorScheme.secondary,
+        type: BottomNavigationBarType.fixed,
+        onTap: _onItemTapped,
+      ),
+    );
   }
 }
 

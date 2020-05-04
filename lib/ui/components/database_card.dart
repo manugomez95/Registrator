@@ -166,7 +166,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                       child: Text('Submit'),
                                       onPressed: () async {
                                         if (dbForm.formKey.currentState.validate()) {
-                                          await dbForm.changeConnection(widget.db); // TODO it should be an event like when normal submitting
+                                          await dbForm.changeConnection(widget.db); // TODO REVIEW function // it should be an event like when normal submitting
                                         }
                                       },
                                     )

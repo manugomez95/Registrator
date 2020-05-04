@@ -21,15 +21,22 @@ class DbForm extends StatefulWidget {
   State<StatefulWidget> createState() => DbFormState();
 
   changeConnection(DbClient db) async {
-    final params = PgConnectionParams(
-        nameController.text,
-        hostController.text,
-        int.parse(portController.text),
-        dbNameController.text,
-        userController.text,
-        passwordController.text,
-        useSSL.value);
-    await db.changeConnection(params);
+    try{
+      await db.disconnect();
+      final params = PgConnectionParams(
+          nameController.text,
+          hostController.text,
+          int.parse(portController.text),
+          dbNameController.text,
+          userController.text,
+          passwordController.text,
+          useSSL.value);
+      await db.setConnectionParams(params);
+      await db.connect();
+      await db.pullDatabaseModel();
+    } on Exception catch (e) {
+      throw e;
+    }
   }
 
   void submit(BuildContext context) {

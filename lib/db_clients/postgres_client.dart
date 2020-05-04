@@ -63,7 +63,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   /// Always call asynchronously
   @override
-  Future<bool> connect({verbose: false, fromForm: false}) async {
+  connect({verbose: false}) async {
     if (connection == null) {
       connection = PostgreSQLConnection(params.host, params.port, params.dbName,
           username: params.username,
@@ -72,30 +72,19 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
           timeoutInSeconds: timeout.inSeconds,
           queryTimeoutInSeconds: queryTimeout.inSeconds);
     }
-    try {
-      await connection.open();
-      if (verbose)
-        debugPrint(
-            "[1/2] connect (${this.params.alias}): Connection established");
-      await updateDatabaseModel();
-      if (verbose)
-        debugPrint("[2/2] connect (${this.params.alias}): DB model updated");
-      isConnected = true;
-      databaseBloc.add(ConnectionSuccessfulEvent(this, fromForm));
-      return true;
-    } on Exception catch (e) {
-      if (verbose)
-        debugPrint("connect (${this.params.alias}): ${e.toString()}");
-      await disconnect(); // todo add with all the connection errors?
-      databaseBloc.add(ConnectionErrorEvent(this, e));
-      return false;
-    }
+    await connection.open();
+    isConnected = true;
+    databaseBloc.add(ConnectionSuccessfulEvent(this));
+    if (verbose)
+      debugPrint("connect (${this.params.alias}): Connection established");
   }
 
+  /// Not to be called everywhere
   @override
   disconnect({verbose: false}) async {
     try {
       await connection?.close()?.timeout(timeout);
+      if (verbose) debugPrint("disconnect (${this.params.alias}): completed");
     } on Exception catch (e) {
       if (verbose) debugPrint("disconnect (${this.params.alias}): $e");
     } finally {
@@ -111,11 +100,11 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     try {
       await connection.query(sql).timeout(timeout);
       if (verbose) debugPrint("ping (${this.params.alias}): connected");
-      databaseBloc.add(ConnectionSuccessfulEvent(this, false));
+      databaseBloc.add(ConnectionSuccessfulEvent(this));
     } on Exception catch (e) {
       if (verbose) debugPrint("ping (${this.params.alias}): not connected");
       await disconnect();
-      databaseBloc.add(ConnectionErrorEvent(this, e));
+      databaseBloc.add(ConnectionErrorEvent(e));
     } finally {
       // ignore: control_flow_in_finally
       return isConnected;
@@ -123,7 +112,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  Future<List<app.Table>> updateDatabaseModel({verbose: false}) async {
+  Future<List<app.Table>> pullDatabaseModel({verbose: false}) async {
     if (verbose) {
       if (this.tables != null)
         debugPrint(
@@ -265,8 +254,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (verbose) debugPrint("insertRowIntoTable: $results");
       if (results == 1) {
         /// Update official last row
-        table.properties.forEach(
-            (p) => p.lastValue = propertiesForm[p]);
+        table.properties.forEach((p) => p.lastValue = propertiesForm[p]);
         return true;
       } else
         return false;
@@ -277,17 +265,14 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   /// I will always check the lastValues to avoid editing an incorrect row. // TODO do the same with deleteLastFrom
-  editLastFrom(
-      app.Table table, Map<Property, dynamic> propertiesForm,
+  editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
-
     Property orderBy = table.orderBy;
 
     /// if there's no order nor last values...
     if (orderBy == null && table.properties.every((p) => p.lastValue == null)) {
       String exception = "No linearity nor lastValue defined";
-      if (verbose)
-        debugPrint("editLastFrom (${table.name}): $exception");
+      if (verbose) debugPrint("editLastFrom (${table.name}): $exception");
       throw Exception(exception);
     }
 
@@ -306,7 +291,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         .join(", ");
 
     /// if orderBy is used
-    String order = orderBy != null ? "ORDER BY ${orderBy.name.pgFormat()} DESC" : "";
+    String order =
+        orderBy != null ? "ORDER BY ${orderBy.name.pgFormat()} DESC" : "";
 
     String last =
         "SELECT ctid FROM ${table.name.pgFormat()} $where $order LIMIT 1";
@@ -321,8 +307,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       debugPrint("editLastFrom (${table.name}): $results");
       if (results == 1) {
         /// Update official last row
-        table.properties.forEach(
-            (p) => p.lastValue = propertiesForm[p]);
+        table.properties.forEach((p) => p.lastValue = propertiesForm[p]);
         return true;
       } else
         return false;
@@ -362,7 +347,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
           }
         } // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
       }
-
     } on PostgreSQLException catch (e) {
       print("getLastRow (${table.name}): $e");
     }
@@ -452,8 +436,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   /// Deleting with ctid I don't need a PK TODO don't use ctid, use combination of columns and check only one is returned, release a warning in the dialog when not having a primary key
   // TODO awesome printing usefulness, copy where I can
   @override
-  cancelLastInsertion(
-      app.Table table, Map<Property, dynamic> propertiesForm,
+  cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
     String whereString = propertiesForm.keys.map((Property p) {
       var valueStr = PgString.fromPgValue(propertiesForm[p], p.type);
@@ -466,8 +449,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     if (verbose) debugPrint("cancelLastInsertion (${this.params.alias}): $sql");
     try {
       var results = await connection.execute(sql).timeout(timeout);
+
       /// if there's no linearity there's no lastValues
-      if (table.orderBy == null) table.properties.forEach((p) => p.lastValue = null);
+      if (table.orderBy == null)
+        table.properties.forEach((p) => p.lastValue = null);
       if (verbose)
         debugPrint("cancelLastInsertion (${this.params.alias}): $results");
     } on PostgreSQLException catch (e) {
@@ -485,8 +470,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     /// if there's no order nor last values...
     if (orderBy == null && table.properties.every((p) => p.lastValue == null)) {
       String exception = "No linearity nor lastValue defined";
-      if (verbose)
-        debugPrint("deleteLastFrom (${table.name}): $exception");
+      if (verbose) debugPrint("deleteLastFrom (${table.name}): $exception");
       throw Exception(exception);
     }
 
@@ -498,20 +482,22 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         }).join(" AND ");
 
     /// if orderBy is used
-    String order = orderBy != null ? "ORDER BY ${orderBy.name.pgFormat()} DESC" : "";
+    String order =
+        orderBy != null ? "ORDER BY ${orderBy.name.pgFormat()} DESC" : "";
 
     String last =
         "SELECT ctid FROM ${table.name.pgFormat()} $where $order LIMIT 1";
 
-    String sql =
-        "DELETE FROM ${table.name} WHERE ctid IN ($last)";
+    String sql = "DELETE FROM ${table.name} WHERE ctid IN ($last)";
 
     if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
 
     try {
       var results = await connection.execute(sql).timeout(timeout);
+
       /// if there's no linearity there's no lastValues
-      if (table.orderBy == null) table.properties.forEach((p) => p.lastValue = null);
+      if (table.orderBy == null)
+        table.properties.forEach((p) => p.lastValue = null);
       if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
     } on PostgreSQLException catch (e) {
       if (verbose)
@@ -521,18 +507,12 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  changeConnection(DbConnectionParams params, {verbose}) async {
-    try{
-      await disconnect();
-      connection = PostgreSQLConnection(params.host, params.port, params.dbName,
-          username: params.username,
-          password: params.password,
-          useSSL: params.useSSL,
-          timeoutInSeconds: timeout.inSeconds,
-          queryTimeoutInSeconds: queryTimeout.inSeconds);
-      await connect();
-    } on Exception catch (e) {
-      throw e;
-    }
+  setConnectionParams(DbConnectionParams params, {verbose}) async {
+    connection = PostgreSQLConnection(params.host, params.port, params.dbName,
+        username: params.username,
+        password: params.password,
+        useSSL: params.useSSL,
+        timeoutInSeconds: timeout.inSeconds,
+        queryTimeoutInSeconds: queryTimeout.inSeconds);
   }
 }
