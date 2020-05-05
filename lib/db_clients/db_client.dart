@@ -44,9 +44,9 @@ abstract class DbClient<T> extends Equatable {
 
   disconnect({verbose: false});
 
-  ping({verbose: false});
+  Future<bool> ping({verbose: false});
 
-  pullDatabaseModel({verbose: false});
+  pullDatabaseModel({verbose: false, getLastRows: true});
 
   Future<List<String>> getTables({verbose: false});
 

@@ -103,7 +103,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  Future<Set<app.Table>> pullDatabaseModel({verbose: false}) async {
+  pullDatabaseModel({verbose: false, getLastRows: true}) async {
     if (verbose) {
       if (this.tables != null)
         debugPrint("pullDatabaseModel (${this.params.alias}): Updating model");
@@ -119,44 +119,23 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     Set<app.Table> tables = Set();
     for (var tName in tablesNames) {
       /// get properties...
-      try {
-        Set<Property> properties = await getPropertiesFromTable(tName);
+      Set<Property> properties = await getPropertiesFromTable(tName);
 
-        /// identify the "ORDER BY field"...
-        Property orderBy;
-        // TODO improve this niapa
-        if (this.tables == null ||
-            this
-                    .tables
-                    .firstWhere((t) => t.name == tName, orElse: () => null)
-                    ?.orderBy ==
-                null) {
-          for (final p in properties) {
-            if ([
+      tables.add(app.Table(tName, properties, this));
+
+      /// if first time loading DB model identify the "ORDER BY field"...
+      if (this.tables == null) {
+        var orderByCandidates = properties.where((property) => [
               PostgreSQLDataType.date,
               PostgreSQLDataType.timestampWithTimezone,
               PostgreSQLDataType.timestampWithoutTimezone
-            ].contains(p.type.complete)) if (orderBy == null)
-              orderBy = p;
-            else {
-              orderBy = null;
-              break;
-            }
-          }
-        } else {
-          orderBy = this.tables.firstWhere((t) => t.name == tName).orderBy;
-        }
-        tables.add(app.Table(tName, properties, this, orderBy: orderBy));
-
-        /// and get last row
-        await getLastRow(tables.last);
-      } on UnsupportedError {
-        if (verbose)
-          debugPrint(
-              "pullDatabaseModel (${this.params.alias}): data type in $tName not supported");
-        // TODO add event to show error
-        continue;
+            ].contains(property.type.complete));
+        if (orderByCandidates.length == 1)
+          tables.last.orderBy = orderByCandidates.first;
       }
+
+      /// [optionally] and get last row
+      if (getLastRows) await getLastRow(tables.last);
     }
 
     this.tables = tables;
@@ -165,7 +144,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     await getKeys();
 
     if (verbose) debugPrint("updateDatabaseModel: ${this.tables.toString()}");
-    return this.tables;
   }
 
   Future<List<String>> getTables({verbose: false}) async {
@@ -254,7 +232,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
-  /// I will always check the lastValues to avoid editing an incorrect row. // TODO do the same with deleteLastFrom
+  /// I will always check the lastValues to avoid editing an incorrect row.
   editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
     Property orderBy = table.orderBy;
@@ -391,7 +369,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (verbose) debugPrint("getKeys: $primary");
 
       for (final result in primary) {
-        app.Table table = tables.firstWhere((t) => t.name == result[1], orElse: () => null);
+        app.Table table =
+            tables.firstWhere((t) => t.name == result[1], orElse: () => null);
         if (table != null) {
           table.primaryKey =
               table.properties.firstWhere((p) => p.name == result[2]);
@@ -405,26 +384,22 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   Future<List<String>> getPkDistinctValues(app.Table table,
       {verbose: false, String pattern}) async {
     if (pattern == "") return null;
+    String pk = table.primaryKey.name.pgFormat();
     String sql =
-        "SELECT DISTINCT ${table.primaryKey.name.pgFormat()} FROM ${table.name.pgFormat()};"; // TODO LIKE %pattern% to optimize
+        "SELECT DISTINCT $pk FROM ${table.name.pgFormat()} WHERE $pk LIKE '%$pattern%';";
     try {
       List<List<dynamic>> results =
           await connection.query(sql).timeout(timeout);
       if (verbose) debugPrint("getPkDistinctValues: $results");
 
-      return results
-          .expand((i) => i)
-          .where((str) => str.contains(pattern))
-          .toList()
-          .cast<String>();
+      return results.expand((i) => i).toList().cast<String>();
     } on PostgreSQLException catch (e) {
       debugPrint("getForeignKeys: $e");
       return null;
     }
   }
 
-  /// Deleting with ctid I don't need a PK TODO don't use ctid, use combination of columns and check only one is returned, release a warning in the dialog when not having a primary key
-  // TODO awesome printing usefulness, copy where I can
+  /// Deleting with ctid I don't need a PK
   @override
   cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose: false}) async {
@@ -451,7 +426,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
-  // TODO nice, copy in the rest of the functions (exceptions, logging...)
   /// https://stackoverflow.com/questions/5170546/how-do-i-delete-a-fixed-number-of-rows-with-sorting-in-postgresql
   @override
   deleteLastFrom(app.Table table, {verbose: false}) async {

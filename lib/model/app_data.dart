@@ -32,10 +32,13 @@ class AppData {
       // Set the path to the database.
       join(await getDatabasesPath(), 'app_data.db'),
       // When the database is first created, create a table to store app data.
-      onCreate: (db, version) {
+      onCreate: (db, version) async {
         // Run the CREATE TABLE statement on the database.
-        return db.execute(
+        await db.execute(
           "CREATE TABLE connections(alias TEXT, host TEXT, port INTEGER, db_name TEXT, username TEXT, password TEXT, ssl INTEGER)",
+        );
+        await db.execute(
+          "CREATE TABLE tables(name TEXT, primary_key TEXT, order_by TEXT, visible INTEGER, host TEXT, port INTEGER, db_name TEXT)",
         );
       },
       // Set the version. This executes the onCreate function and provides a
@@ -45,15 +48,21 @@ class AppData {
   }
 
   saveConnection(DbClient dbClient) async {
-    // Insert the Dog into the correct table. You might also specify the
-    // `conflictAlgorithm` to use in case the same dog is inserted twice.
-    //
-    // In this case, replace any previous data.
+    /// insert in connections
     await database.insert(
       'connections',
       await dbClient.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    /// for each table
+    dbClient.tables.forEach((table) async {
+      await database.insert(
+        'tables',
+        await table.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
   }
 
   removeConnection(DbClient dbClient) async {
@@ -66,16 +75,25 @@ class AppData {
       // Use a `where` clause to delete a specific dog.
       where: "host = ? AND port = ? AND db_name = ?",
       // Pass the Dog's id as a whereArg to prevent SQL injection.
-      whereArgs: [dbClient.params.host, dbClient.params.port, dbClient.params.dbName],
+      whereArgs: [
+        dbClient.params.host,
+        dbClient.params.port,
+        dbClient.params.dbName
+      ],
     );
+
+    await database.delete("tables",
+        where: "host = ? AND port = ? AND db_name = ?",
+        whereArgs: [
+          dbClient.params.host,
+          dbClient.params.port,
+          dbClient.params.dbName
+        ]);
   }
 
-  // A method that retrieves all the dogs from the dogs table.
-  Future<List<Map<String, dynamic>>> connections() async {
+  checkLocalDataStatus() async {
     // Query the table for all The Dogs.
-    final List<Map<String, dynamic>> maps = await database.query('connections');
-
-    // Convert the List<Map<String, dynamic> into a List<Dog>.
-    return maps;
+    print("Connections: ${await database.query('connections')}");
+    print("Tables: ${await database.query('tables')}");
   }
 }

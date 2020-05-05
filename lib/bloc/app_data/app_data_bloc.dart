@@ -48,22 +48,25 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
   ) async* {
     if (event is InitializeEvent) {
       await getIt<AppData>().initializeLocalDb();
-      getIt<AppData>().connections().then((connections) => connections.forEach(
-          (c) async {
-            var password = await decryptString(c["password"], PRIVATE_KEY);
-            var db1 = PostgresClient(PgConnectionParams(c["alias"], c["host"], c["port"],
-                c["db_name"], c["username"], password, c["ssl"] == 0 ? false : true));
-            db1.databaseBloc.add(ConnectToDatabase(db1));
-            getIt<AppData>().dbs.add(db1);
-          }
-      ));
+      for (var c in await getIt<AppData>().database.query('connections')) {
+        var password = await decryptString(c["password"], PRIVATE_KEY);
+        var db1 = PostgresClient(PgConnectionParams(
+            c["alias"],
+            c["host"],
+            c["port"],
+            c["db_name"],
+            c["username"],
+            password,
+            c["ssl"] == 0 ? false : true));
+        db1.databaseBloc.add(ConnectToDatabase(db1));
+        getIt<AppData>().dbs.add(db1);
+      }
       yield InitCompleted(loadingStack);
     }
     if (event is UpdateUIEvent) {
       if (loadingStack.isNotEmpty) loadingStack.pop();
       yield UpdateUI(event, loadingStack);
-    }
-    else if (event is LoadingEvent) {
+    } else if (event is LoadingEvent) {
       loadingStack.push(event);
       yield Loading(loadingStack);
     }

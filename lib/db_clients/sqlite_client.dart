@@ -20,36 +20,25 @@ class SQLiteClient extends DbClient<Database> {
 
   @override
   connect({verbose: false, fromForm: false}) async {
-    try {
-      connection = await openDatabase(
-        join(await getDatabasesPath(), 'demo.db'),
-        // When the database is first created, create a table to store app data.
-        onCreate: (db, version) {
-          // Run the CREATE TABLE statement on the database.
-          return db.execute(
-            "CREATE TABLE connections(alias TEXT, host TEXT, port INTEGER, db_name TEXT, username TEXT, password TEXT, ssl INTEGER)",
-          );
-        },
-        // Set the version. This executes the onCreate function and provides a
-        // path to perform database upgrades and downgrades.
-        version: 1,
-      );
-
-      if (verbose)
-        debugPrint(
-            "[1/2] connect (${this.params.alias}): Connection established");
-      await pullDatabaseModel();
-      if (verbose)
-        debugPrint("[2/2] connect (${this.params.alias}): DB model updated");
-      isConnected = true;
-      return true;
-    } on Exception catch (e) {
-      if (verbose)
-        debugPrint("connect (${this.params.alias}): ${e.toString()}");
-      await disconnect();
-      databaseBloc.add(ConnectionErrorEvent(e));
-      return false;
-    }
+    connection = await openDatabase(
+      join(await getDatabasesPath(), 'demo.db'),
+      // When the database is first created, create a table to store app data.
+      onCreate: (db, version) async {
+        // Run the CREATE TABLE statement on the database.
+        await db.execute(
+          "CREATE TABLE training(type TEXT, reps INTEGER, weight INTEGER, date_time TEXT)",
+        );
+        await db.execute(
+          "CREATE TABLE ufos(description TEXT, time INTEGER)",
+        );
+      },
+      // Set the version. This executes the onCreate function and provides a
+      // path to perform database upgrades and downgrades.
+      version: 1,
+    );
+    isConnected = true;
+    if (verbose)
+      debugPrint("connect (${this.params.alias}): Connection established");
   }
 
   @override
@@ -111,13 +100,12 @@ class SQLiteClient extends DbClient<Database> {
   }
 
   @override
-  ping({verbose = false}) {
-    // TODO: implement ping
-    return null;
+  Future<bool> ping({verbose = false}) async {
+    return true;
   }
 
   @override
-  pullDatabaseModel({verbose = false}) {
+  pullDatabaseModel({verbose: false, getLastRows: true}) {
     // TODO: implement updateDatabaseModel
     return null;
   }
