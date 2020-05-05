@@ -7,7 +7,8 @@ import 'package:bitacora/model/table.dart' as app;
 
 // TODO comment on Exceptions vs booleans: https://softwareengineering.stackexchange.com/questions/330824/function-returning-true-false-vs-void-when-succeeding-and-throwing-an-exception
 // commenting on previous: the bottleneck in this functions is usually the network and I/O operations so we can afford to throw exceptions
-// TODO does it need to extend Equatable
+/// It needs to be equatable to:
+/// - be able to compare tables
 // ignore: must_be_immutable
 abstract class DbClient<T> extends Equatable {
   /// BLoC
@@ -16,7 +17,7 @@ abstract class DbClient<T> extends Equatable {
 
   /// Database model
   DbConnectionParams params;
-  List<app.Table> tables;
+  Set<app.Table> tables;
   final Duration timeout;
   final Duration queryTimeout;
 
@@ -29,7 +30,12 @@ abstract class DbClient<T> extends Equatable {
   T connection;
   bool isConnected = false;
 
-  DbClient(this.params, {this.timeout: const Duration(seconds: 3), this.queryTimeout: const Duration(seconds: 2)});
+  DbClient(this.params, {this.timeout: const Duration(seconds: 3), this.queryTimeout: const Duration(seconds: 2)}) {
+    databaseBloc = DatabaseBloc();
+  }
+
+  @override
+  List<Object> get props => [this.params];
 
   /// Opens the connection already defined and updates the DB model // TODO not really aligned with the name?
   connect({verbose: false});

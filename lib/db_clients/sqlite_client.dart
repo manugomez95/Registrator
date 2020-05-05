@@ -117,10 +117,6 @@ class SQLiteClient extends DbClient<Database> {
   }
 
   @override
-  // TODO: implement props
-  List<Object> get props => null;
-
-  @override
   pullDatabaseModel({verbose = false}) {
     // TODO: implement updateDatabaseModel
     return null;

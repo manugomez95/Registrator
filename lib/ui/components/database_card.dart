@@ -220,7 +220,7 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
         ));
   }
 
-  buildTablesView(List<app.Table> tables) {
+  buildTablesView(Set<app.Table> tables) {
     return Column(
       children: <Widget>[
         Divider(

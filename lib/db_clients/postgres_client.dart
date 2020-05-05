@@ -51,16 +51,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         useSSL: params.useSSL,
         timeoutInSeconds: timeout.inSeconds,
         queryTimeoutInSeconds: queryTimeout.inSeconds);
-    databaseBloc = DatabaseBloc();
   }
-
-  @override
-  List<Object> get props => [
-        this.params.host,
-        this.params.port,
-        this.params.dbName,
-        this.params.username
-      ];
 
   /// Always call asynchronously
   @override
@@ -112,11 +103,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  Future<List<app.Table>> pullDatabaseModel({verbose: false}) async {
+  Future<Set<app.Table>> pullDatabaseModel({verbose: false}) async {
     if (verbose) {
       if (this.tables != null)
-        debugPrint(
-            "pullDatabaseModel (${this.params.alias}): Updating model");
+        debugPrint("pullDatabaseModel (${this.params.alias}): Updating model");
       else
         debugPrint(
             "pullDatabaseModel (${this.params.alias}): Getting model for the first time");
@@ -126,7 +116,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     List<String> tablesNames = await getTables(verbose: verbose);
 
     /// For each table:
-    List<app.Table> tables = [];
+    Set<app.Table> tables = Set();
     for (var tName in tablesNames) {
       /// get properties...
       try {
@@ -401,10 +391,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (verbose) debugPrint("getKeys: $primary");
 
       for (final result in primary) {
-        int i = tables.indexWhere((t) => t.name == result[1]);
-        if (i != -1) {
-          tables[i].primaryKey =
-              tables[i].properties.firstWhere((p) => p.name == result[2]);
+        app.Table table = tables.firstWhere((t) => t.name == result[1], orElse: () => null);
+        if (table != null) {
+          table.primaryKey =
+              table.properties.firstWhere((p) => p.name == result[2]);
         }
       }
     } on PostgreSQLException catch (e) {

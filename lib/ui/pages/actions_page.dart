@@ -26,7 +26,6 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
-            print(state);
             if (getIt<AppData>().getTables().isEmpty) {
               if (state.loadingStack.isNotEmpty || state is Loading) {
                 return Center(
@@ -116,7 +115,7 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class TablesDropdownState extends State<TablesDropdown> {
-  List<app.Table> tables;
+  Iterable<app.Table> tables;
   app.Table selectedTable;
 
   /// necessary? YES, re-builds the form when an event is released (like editLastFrom, removeLastFrom...)

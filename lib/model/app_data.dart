@@ -2,7 +2,6 @@ import 'package:bitacora/bloc/app_data/app_data_bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:path/path.dart';
-import 'package:pointycastle/api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'action.dart' as app;
@@ -17,7 +16,7 @@ class AppData {
   Database database;
 
   Iterable<DbClient> getDbs() {
-    return dbs.where((db) => db.isConnected).toList();
+    return dbs.where((db) => db.isConnected);
   }
 
   Iterable<app.Table> getTables({bool onlyVisibles: true}) {
@@ -25,8 +24,7 @@ class AppData {
         .map((DbClient db) => onlyVisibles
             ? db.tables?.where((table) => table.visible) ?? []
             : db.tables ?? [])
-        ?.expand((i) => i)
-        ?.toList();
+        ?.expand((i) => i);
   }
 
   initializeLocalDb() async {
