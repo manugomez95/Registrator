@@ -33,7 +33,7 @@ class DbForm extends StatefulWidget {
           useSSL.value);
       await db.setConnectionParams(params);
       await db.connect();
-      await db.pullDatabaseModel();
+      await db.pullDatabaseModel(); // TODO review that works after last changes in databasebloc
     } on Exception catch (e) {
       throw e;
     }

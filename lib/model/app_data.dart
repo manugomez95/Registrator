@@ -35,15 +35,15 @@ class AppData {
       onCreate: (db, version) async {
         // Run the CREATE TABLE statement on the database.
         await db.execute(
-          "CREATE TABLE connections(alias TEXT, host TEXT, port INTEGER, db_name TEXT, username TEXT, password TEXT, ssl INTEGER)",
+          "CREATE TABLE connections(alias TEXT, host TEXT, port INTEGER, db_name TEXT, username TEXT, password TEXT, ssl INTEGER, PRIMARY KEY (host, port, db_name))",
         );
         await db.execute(
-          "CREATE TABLE tables(name TEXT, primary_key TEXT, order_by TEXT, visible INTEGER, host TEXT, port INTEGER, db_name TEXT)",
+          "CREATE TABLE tables(name TEXT, primary_key TEXT, order_by TEXT, visible INTEGER, host TEXT, port INTEGER, db_name TEXT, PRIMARY KEY (name, host, port, db_name))",
         );
       },
       // Set the version. This executes the onCreate function and provides a
       // path to perform database upgrades and downgrades.
-      version: 1,
+      version: 2,
     );
   }
 

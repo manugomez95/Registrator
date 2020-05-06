@@ -3,6 +3,7 @@ import 'package:bitacora/main.dart';
 import 'package:equatable/equatable.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/app_data.dart';
+import 'package:sqflite/sqflite.dart';
 
 // ignore: must_be_immutable
 class Table extends Equatable {
@@ -26,16 +27,16 @@ class Table extends Equatable {
     save();
   }
 
-  Table(this.name, this.properties, this.client);
+  Table(this.name, this.properties, this.client) {
+    save(conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
 
-  save() async {
-    getIt<AppData>().database.update(
-        'tables',
-        await toMap(),
-    where: "name = ? AND host = ? AND port = ? AND db_name = ?",
-    // Pass the Dog's id as a whereArg to prevent SQL injection.
-    whereArgs: [name, client.params.host, client.params.port, client.params.dbName],
-    );
+  save({ConflictAlgorithm conflictAlgorithm: ConflictAlgorithm.replace}) async {
+    getIt<AppData>().database.insert(
+          'tables',
+          await toMap(),
+          conflictAlgorithm: conflictAlgorithm,
+        );
   }
 
   @override

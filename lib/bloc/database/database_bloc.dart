@@ -9,6 +9,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import './bloc.dart';
 import 'package:flutter/material.dart';
 
+// TODO starting to desmadrarse a bit
 class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
   @override
   DatabaseState get initialState => CheckingConnection();
@@ -22,21 +23,19 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       if (fromForm) {
         getIt<AppData>().dbs.add(dbClient);
         await getIt<AppData>().saveConnection(dbClient);
-        await getIt<AppData>().checkLocalDataStatus(); // TODO remove
       }
 
       /// if not, we want to apply the saved user preferences to the table objects
       else {
-        applySavedPreferences(dbClient);
+        await applySavedPreferences(dbClient);
       }
 
       /// get last row now that we have the saved orderBys
       for (var table in dbClient.tables) {
         await dbClient.getLastRow(table);
       }
-
+      await getIt<AppData>().checkLocalDataStatus();
       add(ConnectionSuccessfulEvent(dbClient));
-
     } on Exception catch (e) {
       debugPrint("connect (${dbClient.params.alias}): ${e.toString()}");
       await dbClient.disconnect();
@@ -47,20 +46,37 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
     }
   }
 
+  /// specifically visibility and orderBy of table
   applySavedPreferences(DbClient dbClient) async {
     final List<Map<String, dynamic>> savedTables = await getIt<AppData>()
         .database
         .query('tables',
-        where: "host = ? AND port = ? AND db_name = ?",
-        whereArgs: [
+            where: "host = ? AND port = ? AND db_name = ?",
+            whereArgs: [
           dbClient.params.host,
           dbClient.params.port,
           dbClient.params.dbName
         ]);
-    savedTables.forEach((savedTable) {
-      app.Table t =  dbClient.tables.firstWhere((t) => t.name == savedTable["name"]);
-      t.visible = savedTable["visible"] == 0 ? false : true;
-      if(savedTable["order_by"] != null) t.orderBy = t.properties.firstWhere((property) => property.name == savedTable["order_by"]);
+    savedTables.forEach((savedTable) async {
+      app.Table t = dbClient.tables
+          .firstWhere((t) => t.name == savedTable["name"], orElse: () => null);
+
+      /// if table was deleted... then delete in local too
+      if (t == null)
+        await getIt<AppData>().database.delete("tables",
+            where: "host = ? AND port = ? AND db_name = ? AND name = ?",
+            whereArgs: [
+              dbClient.params.host,
+              dbClient.params.port,
+              dbClient.params.dbName,
+              savedTable["name"]
+            ]);
+      else {
+        t.visible = savedTable["visible"] == 0 ? false : true;
+        if (savedTable["order_by"] != null)
+          t.orderBy = t.properties
+              .firstWhere((property) => property.name == savedTable["order_by"]);
+      }
     });
   }
 
@@ -97,8 +113,16 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       yield CheckingConnection();
       if (!await event.dbClient.ping())
         connectAndPull(event.dbClient);
-      else
-        await event.dbClient.pullDatabaseModel();
+      else {
+        await event.dbClient.pullDatabaseModel(getLastRows: false);
+        await applySavedPreferences(event.dbClient);
+
+        /// get last row now that we have the saved orderBys
+        for (var table in event.dbClient.tables) {
+          await event.dbClient.getLastRow(table);
+        }
+      }
+      await getIt<AppData>().checkLocalDataStatus();
     }
 
     /// useful for general cases where we want to execute async code and then update the UI
