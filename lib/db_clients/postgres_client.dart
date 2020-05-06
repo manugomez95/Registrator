@@ -16,26 +16,57 @@ extension PgString on String {
   }
 
   // TODO change array part, very cutre for the moment
-  static fromPgValue(dynamic value, PostgresDataType type) {
+  static fromPgValue(dynamic value, DataType type) {
     if (value.toString() == "") value = null;
     if ([
-          PostgreSQLDataType.text,
-          PostgreSQLDataType.date,
-          PostgreSQLDataType.timestampWithoutTimezone,
-          PostgreSQLDataType.timestampWithTimezone,
-        ].contains(type.complete) &&
+          PrimitiveType.text,
+          PrimitiveType.varchar,
+          PrimitiveType.date,
+          PrimitiveType.timestamp,
+        ].contains(type.primitive) &&
         value != null &&
         !type.isArray)
       value = "'${value.toString()}'";
     else if (type.isArray && value != null)
       value = "ARRAY ${(value as String).split(", ").map((s) => ([
-                PostgreSQLDataType.text,
-                PostgreSQLDataType.date,
-              ].contains(type.complete)) ? "'$s'" : s)}"
+                PrimitiveType.text,
+                PrimitiveType.varchar,
+                PrimitiveType.date,
+              ].contains(type.primitive)) ? "'$s'" : s)}"
           .replaceAll("(", "[")
           .replaceAll(")", "]");
 
     return value.toString();
+  }
+
+  DataType toDataType({String udtName, isArray: false}) {
+    String arrayStr = isArray ? "[ ]" : "";
+    switch (this) {
+      case "timestamp without time zone":
+      case "timestamp with time zone":
+        return DataType(PrimitiveType.timestamp, "timestamp"+arrayStr, isArray);
+      case "character varying":
+        return DataType(PrimitiveType.varchar, "varchar"+arrayStr, isArray);
+      case "text":
+      case "_text":
+        return DataType(PrimitiveType.text, "text"+arrayStr, isArray);
+      case "integer":
+        return DataType(PrimitiveType.integer, "integer"+arrayStr, isArray);
+      case "smallint":
+        return DataType(PrimitiveType.smallInt, "smallInt"+arrayStr, isArray);
+      case "boolean":
+        return DataType(PrimitiveType.boolean, "boolean"+arrayStr, isArray);
+      case "real":
+        return DataType(PrimitiveType.real, "real"+arrayStr, isArray);
+      case "date":
+        return DataType(PrimitiveType.date, "date"+arrayStr, isArray);
+      case "oid":
+        return DataType(PrimitiveType.byteArray, "oid"+arrayStr, isArray);
+      case "ARRAY":
+        return udtName.toDataType(isArray: true);
+      default:
+        throw UnsupportedError("$this not supported as a type");
+    }
   }
 }
 
@@ -126,10 +157,9 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       /// if first time loading DB model identify the "ORDER BY field"...
       if (this.tables == null) {
         var orderByCandidates = properties.where((property) => [
-              PostgreSQLDataType.date,
-              PostgreSQLDataType.timestampWithTimezone,
-              PostgreSQLDataType.timestampWithoutTimezone
-            ].contains(property.type.complete));
+              PrimitiveType.date,
+              PrimitiveType.timestamp,
+            ].contains(property.type.primitive));
         if (orderByCandidates.length == 1)
           tables.last.orderBy = orderByCandidates.first;
       }
@@ -185,7 +215,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
             return Property(
                 res[0] - 1,
                 res[1],
-                PostgresDataType(res[2], udtName: res[6]),
+                res[2].toString().toDataType(udtName: res[6]),
                 res[3],
                 res[4] == 'YES' ? true : false,
                 res[5]);
@@ -304,7 +334,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (verbose) debugPrint("getLastRow: $results");
       if (results.isNotEmpty) {
         for (final p in table.properties) {
-          if (p.type.complete == PostgreSQLDataType.byteArray) {
+          if (p.type.primitive == PrimitiveType.byteArray) {
             p.lastValue = fromBytesToInt32(
                 results[0][p.dbPosition][0],
                 results[0][p.dbPosition][1],

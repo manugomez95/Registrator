@@ -6,7 +6,7 @@ import 'package:equatable/equatable.dart';
 class Property<T> extends Equatable {
   final int dbPosition;
   final String name;
-  final PostgresDataType type;
+  final DataType type;
   final T columnDefault;
   final bool isNullable;
   final int charMaxLength;

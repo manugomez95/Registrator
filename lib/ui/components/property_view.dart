@@ -1,6 +1,7 @@
 import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
+import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
@@ -78,182 +79,179 @@ class _PropertyViewState extends State<PropertyView>
     });
   }
 
+  String _validator(value) {
+    if (!widget.property.isNullable && value.isEmpty) {
+      return "Field can't be null";
+    }
+    return null;
+  }
+
   // TODO shorten
   Widget buildInput(Property property) {
     Widget ret;
-    // TODO switch case might be cooler
-    if (property.foreignKeyOf != null &&
-        [PostgreSQLDataType.text].contains(property.type.complete)) {
-      value = value == null
-          ? (widget.action.type == app.ActionType.EditLastFrom
-              ? property.lastValue
-              : "")
-          : value;
-      ret = TypeAheadFormField(
-        textFieldConfiguration: TextFieldConfiguration(
-            controller: TextEditingController(text: value),
+    switch (property.type.primitive) {
+      case PrimitiveType.text:
+      case PrimitiveType.varchar:
+        if (property.foreignKeyOf != null) {
+          /// autocomplete
+          value = value == null
+              ? (widget.action.type == app.ActionType.EditLastFrom
+                  ? property.lastValue
+                  : "")
+              : value;
+          ret = TypeAheadFormField(
+            textFieldConfiguration: TextFieldConfiguration(
+                controller: TextEditingController(text: value),
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                decoration: InputDecoration(
+                    hintText: property.lastValue != null
+                        ? (property.lastValue.toString().length > 40
+                            ? "${property.lastValue.toString().substring(0, 40)}..."
+                            : property.lastValue.toString())
+                        : "Lorem ipsum...")),
+            suggestionsCallback: (pattern) {
+              return property.foreignKeyOf.client
+                  .getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
+            },
+            itemBuilder: (context, suggestion) {
+              return ListTile(
+                title: Text(suggestion),
+              );
+            },
+            hideOnEmpty: true,
+            transitionBuilder: (context, suggestionsBox, controller) {
+              return suggestionsBox;
+            },
+            onSuggestionSelected: (suggestion) {
+              setState(() {
+                value = suggestion;
+              });
+            },
+            validator: _validator,
+          );
+        } else {
+          value = value == null
+              ? (widget.action.type == app.ActionType.EditLastFrom
+                  ? property.lastValue
+                  : value)
+              : value;
+          ret = TextFormField(
+              keyboardAppearance: Theme.of(context).brightness,
+              initialValue: value,
+              validator: _validator,
+              maxLength: property.charMaxLength,
+              textInputAction: TextInputAction.newline,
+              minLines: 1,
+              maxLines: 5,
+              keyboardType: TextInputType.multiline,
+              onChanged: (newValue) => _onChangeController(newValue),
+              onFieldSubmitted: (v) {
+                FocusScope.of(context).nextFocus();
+              },
+              decoration: InputDecoration(
+                  hintText: property.lastValue != null
+                      ? (property.lastValue.toString().length > 40
+                          ? "${property.lastValue.toString().substring(0, 40)}..."
+                          : property.lastValue.toString())
+                      : "Lorem ipsum..."));
+        }
+        break;
+      case PrimitiveType.integer:
+      case PrimitiveType.smallInt:
+      case PrimitiveType.bigInt:
+      case PrimitiveType.real:
+      case PrimitiveType.byteArray:
+        value = value == null
+            ? ((widget.action.type == app.ActionType.EditLastFrom &&
+                    property.lastValue != null)
+                ? property.lastValue.toString()
+                : value)
+            : value;
+        ret = TextFormField(
+            keyboardAppearance: Theme.of(context).brightness,
+            initialValue: value,
+            validator: _validator,
             textInputAction: TextInputAction.next,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+            keyboardType: TextInputType.number,
+            onChanged: (newValue) => _onChangeController(newValue),
+            onFieldSubmitted: (v) {
+              FocusScope.of(context).nextFocus();
+            },
             decoration: InputDecoration(
                 hintText: property.lastValue != null
-                    ? (property.lastValue.toString().length > 40
-                        ? "${property.lastValue.toString().substring(0, 40)}..."
-                        : property.lastValue.toString())
-                    : "Lorem ipsum...")),
-        suggestionsCallback: (pattern) {
-          return property.foreignKeyOf.client
-              .getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
-        },
-        itemBuilder: (context, suggestion) {
-          return ListTile(
-            title: Text(suggestion),
-          );
-        },
-        hideOnEmpty: true,
-        transitionBuilder: (context, suggestionsBox, controller) {
-          return suggestionsBox;
-        },
-        onSuggestionSelected: (suggestion) {
-          setState(() {
-            value = suggestion;
-          });
-        },
-        validator: (value) {
-          if (!property.isNullable && value.isEmpty) {
-            return "Field can't be null";
-          }
-          return null;
-        },
-      );
-    } else if ([PostgreSQLDataType.text].contains(property.type.complete)) {
-      value = value == null
-          ? (widget.action.type == app.ActionType.EditLastFrom
-              ? property.lastValue
-              : value)
-          : value;
-      ret = TextFormField(
-          keyboardAppearance: Theme.of(context).brightness,
-          initialValue: value,
-          validator: (value) {
-            if (!property.isNullable && value.isEmpty) {
-              return "Field can't be null";
-            }
-            return null;
-          },
-          maxLength: property.charMaxLength,
-          textInputAction: TextInputAction.newline,
-          minLines: 1,
-          maxLines: 5,
-          keyboardType: TextInputType.multiline,
+                    ? property.lastValue.toString()
+                    : "0"));
+        break;
+      case PrimitiveType.boolean:
+        value = value == null ? false : value;
+        ret = Checkbox(
+          value: value,
           onChanged: (newValue) => _onChangeController(newValue),
-          onFieldSubmitted: (v) {
-            FocusScope.of(context).nextFocus();
-          },
+        );
+        break;
+      case PrimitiveType.timestamp:
+        DateFormat format = DateFormat("yyyy-MM-dd HH:mm");
+        value = first
+            ? (widget.action.type == app.ActionType.EditLastFrom
+            ? property.lastValue
+            : DateTime.now())
+            : value;
+        first = false;
+        ret = DateTimeField(
+          initialValue: value,
+          onChanged: _onChangeController,
+          format: format,
           decoration: InputDecoration(
               hintText: property.lastValue != null
-                  ? (property.lastValue.toString().length > 40
-                      ? "${property.lastValue.toString().substring(0, 40)}..."
-                      : property.lastValue.toString())
-                  : "Lorem ipsum..."));
-    } else if ([
-      PostgreSQLDataType.real,
-      PostgreSQLDataType.smallInteger,
-      PostgreSQLDataType.integer,
-      PostgreSQLDataType.bigInteger,
-      PostgreSQLDataType.byteArray
-    ].contains(property.type.complete)) {
-      value = value == null
-          ? ((widget.action.type == app.ActionType.EditLastFrom &&
-                  property.lastValue != null)
-              ? property.lastValue.toString()
-              : value)
-          : value;
-      ret = TextFormField(
-          keyboardAppearance: Theme.of(context).brightness,
-          initialValue: value,
-          validator: (value) {
-            if (!property.isNullable && value.isEmpty) {
-              return "Field can't be null";
+                  ? format.format(property.lastValue)
+                  : format.format(DateTime.now())),
+          onShowPicker: (context, currentValue) async {
+            final date = await showDatePicker(
+                context: context,
+                firstDate: DateTime(1900),
+                initialDate: currentValue ?? DateTime.now(),
+                lastDate: DateTime(2100));
+            if (date != null) {
+              final time = await showTimePicker(
+                context: context,
+                initialTime:
+                TimeOfDay.fromDateTime(currentValue ?? DateTime.now()),
+              );
+              return DateTimeField.combine(date, time);
+            } else {
+              return currentValue;
             }
-            return null;
           },
-          textInputAction: TextInputAction.next,
-          keyboardType: TextInputType.number,
-          onChanged: (newValue) => _onChangeController(newValue),
-          onFieldSubmitted: (v) {
-            FocusScope.of(context).nextFocus();
-          },
+        );
+        break;
+      case PrimitiveType.date:
+        DateFormat format = DateFormat("yyyy-MM-dd");
+        value = first
+            ? (widget.action.type == app.ActionType.EditLastFrom
+            ? property.lastValue
+            : DateTime.now())
+            : value;
+        first = false;
+        ret = DateTimeField(
+          initialValue: value,
+          onChanged: _onChangeController,
+          format: format,
           decoration: InputDecoration(
               hintText: property.lastValue != null
-                  ? property.lastValue.toString()
-                  : "0"));
-    } else if (property.type.complete == PostgreSQLDataType.boolean) {
-      value = value == null ? false : value;
-      ret = Checkbox(
-        value: value,
-        onChanged: (newValue) => _onChangeController(newValue),
-      );
-    } else if (property.type.complete == PostgreSQLDataType.date) {
-      DateFormat format = DateFormat("yyyy-MM-dd");
-      value = first
-          ? (widget.action.type == app.ActionType.EditLastFrom
-              ? property.lastValue
-              : DateTime.now())
-          : value;
-      first = false;
-      ret = DateTimeField(
-        initialValue: value,
-        onChanged: _onChangeController,
-        format: format,
-        decoration: InputDecoration(
-            hintText: property.lastValue != null
-                ? format.format(property.lastValue)
-                : format.format(DateTime.now())),
-        onShowPicker: (context, currentValue) {
-          return showDatePicker(
-              context: context,
-              firstDate: DateTime(1900),
-              initialDate: currentValue ?? DateTime.now(),
-              lastDate: DateTime(2100));
-        },
-      );
-    } else if ([
-      PostgreSQLDataType.timestampWithTimezone,
-      PostgreSQLDataType.timestampWithoutTimezone
-    ].contains(property.type.complete)) {
-      DateFormat format = DateFormat("yyyy-MM-dd HH:mm");
-      value = first
-          ? (widget.action.type == app.ActionType.EditLastFrom
-              ? property.lastValue
-              : DateTime.now())
-          : value;
-      first = false;
-      ret = DateTimeField(
-        initialValue: value,
-        onChanged: _onChangeController,
-        format: format,
-        decoration: InputDecoration(
-            hintText: property.lastValue != null
-                ? format.format(property.lastValue)
-                : format.format(DateTime.now())),
-        onShowPicker: (context, currentValue) async {
-          final date = await showDatePicker(
-              context: context,
-              firstDate: DateTime(1900),
-              initialDate: currentValue ?? DateTime.now(),
-              lastDate: DateTime(2100));
-          if (date != null) {
-            final time = await showTimePicker(
-              context: context,
-              initialTime:
-                  TimeOfDay.fromDateTime(currentValue ?? DateTime.now()),
-            );
-            return DateTimeField.combine(date, time);
-          } else {
-            return currentValue;
-          }
-        },
-      );
+                  ? format.format(property.lastValue)
+                  : format.format(DateTime.now())),
+          onShowPicker: (context, currentValue) {
+            return showDatePicker(
+                context: context,
+                firstDate: DateTime(1900),
+                initialDate: currentValue ?? DateTime.now(),
+                lastDate: DateTime(2100));
+          },
+        );
+        break;
+      default:
+        throw Exception("${property.type.primitive} not supported");
     }
     widget.updater(Tuple2(property, value));
     return ret;

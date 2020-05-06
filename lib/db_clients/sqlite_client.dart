@@ -1,4 +1,3 @@
-import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/utils/db_parameter.dart';
@@ -105,9 +104,36 @@ class SQLiteClient extends DbClient<Database> {
   }
 
   @override
-  pullDatabaseModel({verbose: false, getLastRows: true}) {
-    // TODO: implement updateDatabaseModel
-    return null;
+  pullDatabaseModel({verbose: false, getLastRows: true}) async {
+    /// Get tables
+    List<String> tablesNames = await getTables(verbose: verbose);
+
+    /// For each table:
+    Set<app.Table> tables = Set();
+    for (var tName in tablesNames) {
+      /// get properties...
+      Set<Property> properties = await getPropertiesFromTable(tName);
+
+      tables.add(app.Table(tName, properties, this));
+
+      /// if first time loading DB model identify the "ORDER BY field"...
+      if (this.tables == null) {
+        var orderByCandidates = properties.where((property) => [
+          PrimitiveType.date,
+          PrimitiveType.timestamp,
+        ].contains(property.type.primitive));
+        if (orderByCandidates.length == 1)
+          tables.last.orderBy = orderByCandidates.first;
+      }
+
+      /// [optionally] and get last row
+      if (getLastRows) await getLastRow(tables.last);
+    }
+
+    this.tables = tables;
+
+    /// get foreign and primary keys info
+    await getKeys();
   }
 
   @override
