@@ -14,7 +14,7 @@ class Property<T> extends Equatable {
   Table foreignKeyOf;
 
   Property(this.dbPosition, this.name, this.type, this.columnDefault,
-      this.isNullable, this.charMaxLength);
+      this.isNullable, {this.charMaxLength});
 
   @override
   String toString() {

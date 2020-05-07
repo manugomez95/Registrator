@@ -19,24 +19,37 @@ class Table extends Equatable {
 
   set orderBy(Property orderBy) {
     _orderBy = orderBy;
-    save();
+    getIt<AppData>().database.update("tables", {"order_by": _orderBy.name},
+        where: "host = ? AND port = ? AND db_name = ? AND name = ?",
+        whereArgs: [
+          client.params.host,
+          client.params.port,
+          client.params.dbName,
+          name
+        ]);
   }
 
   set visible(bool visible) {
     _visible = visible;
-    save();
+    getIt<AppData>().database.update("tables", {"visible": _visible ? 1 : 0},
+        where: "host = ? AND port = ? AND db_name = ? AND name = ?",
+        whereArgs: [
+          client.params.host,
+          client.params.port,
+          client.params.dbName,
+          name
+        ]);
   }
 
-  Table(this.name, this.properties, this.client) {
-    save(conflictAlgorithm: ConflictAlgorithm.ignore);
-  }
+  Table(this.name, this.properties, this.client);
 
   save({ConflictAlgorithm conflictAlgorithm: ConflictAlgorithm.replace}) async {
-    getIt<AppData>().database.insert(
+    await getIt<AppData>().database.insert(
           'tables',
           await toMap(),
           conflictAlgorithm: conflictAlgorithm,
         );
+    //print(await getIt<AppData>().database.query("tables"));
   }
 
   @override

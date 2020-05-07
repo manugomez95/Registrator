@@ -4,8 +4,10 @@ import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/table.dart' as app;
+import 'package:flutter_svg/svg.dart';
 import 'package:postgres/postgres.dart';
 import 'package:bitacora/utils/db_parameter.dart';
+import 'package:sqflite/sqflite.dart';
 
 /// IMPORTANT: Not using getIt<AppData> in this file, this kind of logic is better in the bloc
 /// Simplify as much as possible, good for using many dbs, the hard work will be in the general code
@@ -44,24 +46,33 @@ extension PgString on String {
     switch (this) {
       case "timestamp without time zone":
       case "timestamp with time zone":
-        return DataType(PrimitiveType.timestamp, "timestamp"+arrayStr, isArray);
+        return DataType(PrimitiveType.timestamp, "timestamp" + arrayStr,
+            isArray: isArray);
       case "character varying":
-        return DataType(PrimitiveType.varchar, "varchar"+arrayStr, isArray);
+        return DataType(PrimitiveType.varchar, "varchar" + arrayStr,
+            isArray: isArray);
       case "text":
       case "_text":
-        return DataType(PrimitiveType.text, "text"+arrayStr, isArray);
+        return DataType(PrimitiveType.text, "text" + arrayStr,
+            isArray: isArray);
       case "integer":
-        return DataType(PrimitiveType.integer, "integer"+arrayStr, isArray);
+        return DataType(PrimitiveType.integer, "integer" + arrayStr,
+            isArray: isArray);
       case "smallint":
-        return DataType(PrimitiveType.smallInt, "smallInt"+arrayStr, isArray);
+        return DataType(PrimitiveType.smallInt, "smallInt" + arrayStr,
+            isArray: isArray);
       case "boolean":
-        return DataType(PrimitiveType.boolean, "boolean"+arrayStr, isArray);
+        return DataType(PrimitiveType.boolean, "boolean" + arrayStr,
+            isArray: isArray);
       case "real":
-        return DataType(PrimitiveType.real, "real"+arrayStr, isArray);
+        return DataType(PrimitiveType.real, "real" + arrayStr,
+            isArray: isArray);
       case "date":
-        return DataType(PrimitiveType.date, "date"+arrayStr, isArray);
+        return DataType(PrimitiveType.date, "date" + arrayStr,
+            isArray: isArray);
       case "oid":
-        return DataType(PrimitiveType.byteArray, "oid"+arrayStr, isArray);
+        return DataType(PrimitiveType.byteArray, "oid" + arrayStr,
+            isArray: isArray);
       case "ARRAY":
         return udtName.toDataType(isArray: true);
       default:
@@ -84,6 +95,18 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         queryTimeoutInSeconds: queryTimeout.inSeconds);
   }
 
+  Widget logo = SvgPicture.asset(
+      'assets/images/postgresql_elephant.svg',
+      height: 75,
+      semanticsLabel: 'Postgres Logo');
+
+  @override
+  Future<Map<String, dynamic>> toMap() async {
+    Map<String, dynamic> params = await super.toMap();
+    params["brand"] = "postgres";
+    return params;
+  }
+
   /// Always call asynchronously
   @override
   connect({verbose: false}) async {
@@ -101,7 +124,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       debugPrint("connect (${this.params.alias}): Connection established");
   }
 
-  /// Not to be called everywhere
   @override
   disconnect({verbose: false}) async {
     try {
@@ -121,8 +143,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     String sql = "select 1 from information_schema.columns limit 1";
     try {
       await connection.query(sql).timeout(timeout);
-      if (verbose) debugPrint("ping (${this.params.alias}): connected");
-      databaseBloc.add(ConnectionSuccessfulEvent(this));
     } on Exception catch (e) {
       if (verbose) debugPrint("ping (${this.params.alias}): not connected");
       await disconnect();
@@ -134,6 +154,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
+  // TODO clean and improve this method
   pullDatabaseModel({verbose: false, getLastRows: true}) async {
     if (verbose) {
       if (this.tables != null)
@@ -151,8 +172,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     for (var tName in tablesNames) {
       /// get properties...
       Set<Property> properties = await getPropertiesFromTable(tName);
-
       tables.add(app.Table(tName, properties, this));
+      await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
 
       /// if first time loading DB model identify the "ORDER BY field"...
       if (this.tables == null) {
@@ -218,7 +239,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
                 res[2].toString().toDataType(udtName: res[6]),
                 res[3],
                 res[4] == 'YES' ? true : false,
-                res[5]);
+                charMaxLength: res[5]);
           })
           .toSet()
           .cast<Property>();
@@ -500,6 +521,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
+  // TODO maybe doesn't make much sense
   @override
   setConnectionParams(DbConnectionParams params, {verbose}) async {
     connection = PostgreSQLConnection(params.host, params.port, params.dbName,

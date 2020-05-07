@@ -23,7 +23,7 @@ class DbForm extends StatefulWidget {
   changeConnection(DbClient db) async {
     try{
       await db.disconnect();
-      final params = PgConnectionParams(
+      final params = DbConnectionParams(
           nameController.text,
           hostController.text,
           int.parse(portController.text),
@@ -40,7 +40,7 @@ class DbForm extends StatefulWidget {
   }
 
   void submit(BuildContext context) {
-    PostgresClient db = PostgresClient(PgConnectionParams(
+    PostgresClient db = PostgresClient(DbConnectionParams(
         nameController.text,
         hostController.text,
         int.parse(portController.text),

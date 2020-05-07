@@ -2,19 +2,50 @@ import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'db_client.dart';
 
+extension SqLiteString on String {
+  DataType toDataType() {
+    switch (this) {
+      case "TEXT":
+        return DataType(PrimitiveType.text, "text");
+      case "INTEGER":
+        return DataType(PrimitiveType.integer, "integer");
+      case "REAL":
+        return DataType(PrimitiveType.real, "real");
+      default:
+        throw UnsupportedError("$this not supported as a type");
+    }
+  }
+}
+
 // ignore: must_be_immutable
 class SQLiteClient extends DbClient<Database> {
   SQLiteClient(DbConnectionParams params) : super(params);
+
+  Widget logo = Container(
+  child: SvgPicture.asset(
+      'assets/images/SQLite.svg',
+      height: 55,
+      semanticsLabel: 'Postgres Logo'),
+  width: 75,
+  height: 75,);
 
   @override
   cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm,
       {verbose = false}) {
     // TODO: implement cancelLastInsertion
     return null;
+  }
+
+  @override
+  Future<Map<String, dynamic>> toMap() async {
+    Map<String, dynamic> params = await super.toMap();
+    params["brand"] = "sqlite_android";
+    return params;
   }
 
   @override
@@ -80,15 +111,19 @@ class SQLiteClient extends DbClient<Database> {
 
   @override
   Future<Set<Property>> getPropertiesFromTable(String table,
-      {verbose = false}) {
-    // TODO: implement getPropertiesFromTable
-    return null;
+      {verbose = false}) async {
+    List res = await connection.rawQuery("PRAGMA table_info($table);");
+    Set<Property> properties = Set();
+    res.forEach((dict) => properties.add(Property(dict["cid"], dict["name"], dict["type"].toString().toDataType(), dict["dflt_value"], dict["notnull"] == 1 ? false : true)));
+    return properties;
   }
 
   @override
-  Future<List<String>> getTables({verbose = false}) {
-    // TODO: implement getTables
-    return null;
+  Future<List<String>> getTables({verbose = false}) async {
+    List res = await connection.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name!='android_metadata'");
+    return List<String>.generate(res.length, (i) {
+      return res[i]["name"];
+    });
   }
 
   @override
@@ -115,19 +150,7 @@ class SQLiteClient extends DbClient<Database> {
       Set<Property> properties = await getPropertiesFromTable(tName);
 
       tables.add(app.Table(tName, properties, this));
-
-      /// if first time loading DB model identify the "ORDER BY field"...
-      if (this.tables == null) {
-        var orderByCandidates = properties.where((property) => [
-          PrimitiveType.date,
-          PrimitiveType.timestamp,
-        ].contains(property.type.primitive));
-        if (orderByCandidates.length == 1)
-          tables.last.orderBy = orderByCandidates.first;
-      }
-
-      /// [optionally] and get last row
-      if (getLastRows) await getLastRow(tables.last);
+      await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
     }
 
     this.tables = tables;

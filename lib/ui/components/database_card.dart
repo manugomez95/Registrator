@@ -8,13 +8,11 @@ import 'package:bitacora/model/table.dart' as app;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../main.dart';
 import 'confirm_dialog.dart';
 import 'db_form.dart';
-
 
 class DatabaseCardHeader extends StatelessWidget {
   DatabaseCardHeader(this.db);
@@ -51,8 +49,7 @@ class DatabaseCardHeader extends StatelessWidget {
               child: Row(
                 children: <Widget>[
                   Container(
-                    child: SvgPicture.asset('assets/images/postgresql_elephant.svg',
-                        height: 75, width: 75, semanticsLabel: 'Postgres Logo'),
+                    child: db.logo,
                     padding: EdgeInsets.only(left: 5, right: 25),
                   ),
                   Column(
@@ -90,13 +87,16 @@ class DatabaseCardHeader extends StatelessWidget {
                           )
                         ],
                       ),
-                      Wrap(
-                        spacing: 8,
-                        children: <Widget>[
-                          Icon(Icons.person, size: 18),
-                          Text(db.params.username,
-                              style: Theme.of(context).textTheme.subtitle)
-                        ],
+                      Visibility(
+                        child: Wrap(
+                          spacing: 8,
+                          children: <Widget>[
+                            Icon(Icons.person, size: 18),
+                            Text(db.params.username,
+                                style: Theme.of(context).textTheme.subtitle)
+                          ],
+                        ),
+                        visible: db.params.dbName != "demo.db",
                       ),
                     ],
                   ),
@@ -140,11 +140,12 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   IconButton(
-                    icon: Icon(
-                      Icons.edit,
-                      color: Colors.grey,
-                    ),
+                      icon: Icon(
+                        Icons.edit,
+                        color: Colors.grey,
+                      ),
                       onPressed: () {
+                        if (widget.db.params.dbName == "demo.db") return null;
                         showDialog(
                             context: context,
                             builder: (BuildContext context) {
@@ -154,10 +155,13 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                   actions: <Widget>[
                                     FlatButton(
                                       child: Text('Cancel',
-                                          style: Theme.of(context).textTheme.button.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .defaultTextColor)),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .button
+                                              .copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .defaultTextColor)),
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                       },
@@ -165,18 +169,22 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                     RaisedButton(
                                       child: Text('Submit'),
                                       onPressed: () async {
-                                        if (dbForm.formKey.currentState.validate()) {
-                                          await dbForm.changeConnection(widget.db); // TODO REVIEW function // it should be an event like when normal submitting
+                                        if (dbForm.formKey.currentState
+                                            .validate()) {
+                                          await dbForm.changeConnection(widget
+                                              .db); // TODO REVIEW function // it should be an event like when normal submitting
                                         }
                                       },
                                     )
                                   ]);
                             });
-                      }
-                  ),
+                      }),
                   IconButton(
                     icon: Icon(
-                        ((widget.db?.tables?.isEmpty ?? true) || (widget.db?.tables?.any((table) => table.visible) ?? true))
+                        ((widget.db?.tables?.isEmpty ?? true) ||
+                                (widget.db?.tables
+                                        ?.any((table) => table.visible) ??
+                                    true))
                             ? Icons.visibility
                             : Icons.visibility_off,
                         color: Colors.grey),
@@ -201,12 +209,18 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                       color: Colors.grey,
                     ),
                     onPressed: () async {
-                      if (await asyncConfirmDialog(context, title: 'Remove ${widget.db.params.alias}?', message: 'This will close and remove the connection.')) {
+                      if (await asyncConfirmDialog(context,
+                          title: 'Remove ${widget.db.params.alias}?',
+                          message:
+                              'This will close and remove the connection.')) {
                         setState(() {
                           // Remove the item from the data source.
-                          widget.db.databaseBloc.add(RemoveConnection((widget.db)));
+                          widget.db.databaseBloc
+                              .add(RemoveConnection((widget.db)));
                           // Then show toast.
-                          Fluttertoast.showToast(msg: "${widget.db.params.alias} connection removed");
+                          Fluttertoast.showToast(
+                              msg:
+                                  "${widget.db.params.alias} connection removed");
                         });
                       }
                     },
@@ -249,7 +263,8 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
-                                  color: Theme.of(context).colorScheme.secondary),
+                                  color:
+                                      Theme.of(context).colorScheme.secondary),
                             ),
                             DropdownButtonHideUnderline(
                               child: Container(
@@ -261,7 +276,9 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                     side: BorderSide(
                                         width: 1.5,
                                         style: BorderStyle.solid,
-                                        color: Theme.of(context).colorScheme.secondary),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .secondary),
                                     borderRadius:
                                         BorderRadius.all(Radius.circular(10.0)),
                                   ),
@@ -272,7 +289,8 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                   onChanged: (Property newProperty) {
                                     setState(() {
                                       /// the user can choose to order a table by any field, doesn't matter its type
-                                      table.client.databaseBloc.add(UpdateUIAfter(() async {
+                                      table.client.databaseBloc
+                                          .add(UpdateUIAfter(() async {
                                         table.orderBy = newProperty;
                                         await table.client.getLastRow(table);
                                       }));
@@ -292,7 +310,9 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                                                     style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color: Theme.of(context).colorScheme.secondary)))),
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .secondary)))),
                                       ),
                                     );
                                   }).toList(),

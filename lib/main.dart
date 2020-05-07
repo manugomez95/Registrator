@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import 'package:bitacora/bloc/app_data/bloc.dart';
 import 'package:bitacora/conf/style.dart';
 import 'package:flutter/cupertino.dart';

@@ -16,6 +16,17 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
 
   connectAndPull(DbClient dbClient, {bool fromForm: false}) async {
     try {
+      print("----------- connectAndPull ---------------");
+      print(await getIt<AppData>()
+          .database
+          .query('tables',
+          where: "host = ? AND port = ? AND db_name = ?",
+          whereArgs: [
+            dbClient.params.host,
+            dbClient.params.port,
+            dbClient.params.dbName
+          ]));
+
       await dbClient.connect();
       await dbClient.pullDatabaseModel(getLastRows: false);
 
@@ -34,7 +45,6 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       for (var table in dbClient.tables) {
         await dbClient.getLastRow(table);
       }
-      await getIt<AppData>().checkLocalDataStatus();
       add(ConnectionSuccessfulEvent(dbClient));
     } on Exception catch (e) {
       debugPrint("connect (${dbClient.params.alias}): ${e.toString()}");
@@ -57,7 +67,11 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
           dbClient.params.port,
           dbClient.params.dbName
         ]);
-    savedTables.forEach((savedTable) async {
+
+    print("----------- APPLY SAVED PREFERENCES ---------------");
+    print(savedTables);
+
+    for (final savedTable in savedTables) {
       app.Table t = dbClient.tables
           .firstWhere((t) => t.name == savedTable["name"], orElse: () => null);
 
@@ -72,12 +86,13 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
               savedTable["name"]
             ]);
       else {
+        debugPrint("${t.name}: ${t.visible} -> ${savedTable["visible"]}");
         t.visible = savedTable["visible"] == 0 ? false : true;
         if (savedTable["order_by"] != null)
           t.orderBy = t.properties
               .firstWhere((property) => property.name == savedTable["order_by"]);
       }
-    });
+    }
   }
 
   @override
@@ -114,6 +129,7 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       if (!await event.dbClient.ping())
         connectAndPull(event.dbClient);
       else {
+        print("hola");
         await event.dbClient.pullDatabaseModel(getLastRows: false);
         await applySavedPreferences(event.dbClient);
 
@@ -121,8 +137,8 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
         for (var table in event.dbClient.tables) {
           await event.dbClient.getLastRow(table);
         }
+        add(ConnectionSuccessfulEvent(event.dbClient));
       }
-      await getIt<AppData>().checkLocalDataStatus();
     }
 
     /// useful for general cases where we want to execute async code and then update the UI

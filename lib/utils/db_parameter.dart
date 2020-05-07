@@ -7,7 +7,7 @@ abstract class PropertyType<T> {
 }
 
 /// Defines the parameters of a connection with a DB
-abstract class DbConnectionParams extends Equatable{
+class DbConnectionParams extends Equatable{
   final String alias;
   final String host;
   final int port;
@@ -42,10 +42,6 @@ abstract class DbConnectionParams extends Equatable{
   List<Object> get props => [this.alias, this.host, this.port, this.dbName, this.username, this.password, this.useSSL];
 }
 
-class PgConnectionParams extends DbConnectionParams {
-  PgConnectionParams(String alias, String host, int port, String dbName, String username, String password, bool useSSL) : super(alias, host, port, dbName, username, password, useSSL);
-}
-
 enum PrimitiveType {
   text,
   varchar,
@@ -64,7 +60,7 @@ class DataType extends Equatable {
   final alias;
   final isArray;
 
-  const DataType(this.primitive, this.alias, this.isArray);
+  const DataType(this.primitive, this.alias, {this.isArray: false});
 
   @override
   String toString() {

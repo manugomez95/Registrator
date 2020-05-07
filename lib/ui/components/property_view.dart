@@ -86,7 +86,7 @@ class _PropertyViewState extends State<PropertyView>
     return null;
   }
 
-  // TODO shorten
+  // TODO shorten or modularize
   Widget buildInput(Property property) {
     Widget ret;
     switch (property.type.primitive) {

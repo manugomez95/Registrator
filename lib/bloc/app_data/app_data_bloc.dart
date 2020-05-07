@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/db_clients/postgres_client.dart';
+import 'package:bitacora/db_clients/sqlite_client.dart';
 import 'package:bitacora/main.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:bloc/bloc.dart';
@@ -48,18 +49,34 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
   ) async* {
     if (event is InitializeEvent) {
       await getIt<AppData>().initializeLocalDb();
+
+      // TODO end up removing
+      var demoDb = SQLiteClient(DbConnectionParams("Demo", "localhost", 1234,
+          "demo.db", "", r"abracadabra", false));
+      demoDb.databaseBloc.add(ConnectToDatabase(demoDb));
+      getIt<AppData>().dbs.add(demoDb);
+
+      // TODO change connections so it's compatible with more DBs, add another field, dbBrand
       for (var c in await getIt<AppData>().database.query('connections')) {
-        var password = await decryptString(c["password"], PRIVATE_KEY);
-        var db1 = PostgresClient(PgConnectionParams(
-            c["alias"],
-            c["host"],
-            c["port"],
-            c["db_name"],
-            c["username"],
-            password,
-            c["ssl"] == 0 ? false : true));
-        db1.databaseBloc.add(ConnectToDatabase(db1));
-        getIt<AppData>().dbs.add(db1);
+        switch(c["brand"]) {
+          case "postgres":
+            var password = await decryptString(c["password"], PRIVATE_KEY);
+            var db1 = PostgresClient(DbConnectionParams(
+                c["alias"],
+                c["host"],
+                c["port"],
+                c["db_name"],
+                c["username"],
+                password,
+                c["ssl"] == 0 ? false : true));
+            db1.databaseBloc.add(ConnectToDatabase(db1));
+            getIt<AppData>().dbs.add(db1);
+            break;
+          case "sqlite_android":
+            break;
+          default:
+            throw Exception("brand not supported");
+        }
       }
       yield InitCompleted(loadingStack);
     }
