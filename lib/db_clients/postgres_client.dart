@@ -95,7 +95,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
         queryTimeoutInSeconds: queryTimeout.inSeconds);
   }
 
-  Widget logo = SvgPicture.asset(
+  @override
+  SvgPicture getLogo(Brightness brightness) => SvgPicture.asset(
       'assets/images/postgresql_elephant.svg',
       height: 75,
       semanticsLabel: 'Postgres Logo');
@@ -175,7 +176,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       tables.add(app.Table(tName, properties, this));
       await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
 
-      /// if first time loading DB model identify the "ORDER BY field"...
+      /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
       if (this.tables == null) {
         var orderByCandidates = properties.where((property) => [
               PrimitiveType.date,

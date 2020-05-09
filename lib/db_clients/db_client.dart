@@ -4,6 +4,7 @@ import 'package:bitacora/utils/db_parameter.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/table.dart' as app;
+import 'package:flutter_svg/svg.dart';
 
 // TODO comment on Exceptions vs booleans: https://softwareengineering.stackexchange.com/questions/330824/function-returning-true-false-vs-void-when-succeeding-and-throwing-an-exception
 // commenting on previous: the bottleneck in this functions is usually the network and I/O operations so we can afford to throw exceptions
@@ -15,7 +16,7 @@ abstract class DbClient<T> extends Equatable {
   // ignore: close_sinks
   DatabaseBloc databaseBloc;
 
-  Widget logo;
+  SvgPicture getLogo(Brightness brightness);
 
   /// Database model
   DbConnectionParams params;

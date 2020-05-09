@@ -109,7 +109,7 @@ class _PropertyViewState extends State<PropertyView>
                         ? (property.lastValue.toString().length > 40
                             ? "${property.lastValue.toString().substring(0, 40)}..."
                             : property.lastValue.toString())
-                        : "Lorem ipsum...")),
+                        : "")),
             suggestionsCallback: (pattern) {
               return property.foreignKeyOf.client
                   .getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
@@ -154,7 +154,7 @@ class _PropertyViewState extends State<PropertyView>
                       ? (property.lastValue.toString().length > 40
                           ? "${property.lastValue.toString().substring(0, 40)}..."
                           : property.lastValue.toString())
-                      : "Lorem ipsum..."));
+                      : ""));
         }
         break;
       case PrimitiveType.integer:
@@ -181,7 +181,7 @@ class _PropertyViewState extends State<PropertyView>
             decoration: InputDecoration(
                 hintText: property.lastValue != null
                     ? property.lastValue.toString()
-                    : "0"));
+                    : ""));
         break;
       case PrimitiveType.boolean:
         value = value == null ? false : value;

@@ -49,7 +49,11 @@ class DatabaseCardHeader extends StatelessWidget {
               child: Row(
                 children: <Widget>[
                   Container(
-                    child: db.logo,
+                    child: Container(
+                      child: db.getLogo(Theme.of(context).brightness),
+                      width: 75,
+                      height: 75,
+                    ),
                     padding: EdgeInsets.only(left: 5, right: 25),
                   ),
                   Column(
@@ -145,7 +149,10 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                         color: Colors.grey,
                       ),
                       onPressed: () {
-                        if (widget.db.params.dbName == "demo.db") return null;
+                        if (widget.db.params.dbName == "demo.db") {
+                          Fluttertoast.showToast(msg: "Demo cannot be edited");
+                          return null;
+                        }
                         showDialog(
                             context: context,
                             builder: (BuildContext context) {
