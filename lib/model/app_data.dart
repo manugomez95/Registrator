@@ -1,6 +1,8 @@
 import 'package:bitacora/bloc/app_data/app_data_bloc.dart';
+import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/db_clients/sqlite_client.dart';
+import 'package:bitacora/main.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:path/path.dart';
@@ -30,32 +32,13 @@ class AppData {
   }
 
   initializeLocalDb() async {
+    bool firstTime = false;
     database = await openDatabase(
       // Set the path to the database.
       join(await getDatabasesPath(), 'app_data.db'),
       // When the database is first created, create a table to store app data.
       onCreate: (db, version) async {
-        // Run the CREATE TABLE statement on the database.
         // TODO substitute by batch
-        await db.execute(
-          "CREATE TABLE connections(brand TEXT,alias TEXT, host TEXT, port INTEGER, db_name TEXT, username TEXT, password TEXT, ssl INTEGER, PRIMARY KEY (host, port, db_name))",
-        );
-
-        // TODO end up removing this part
-        await db.insert(
-            "connections",
-            await SQLiteClient(DbConnectionParams("Demo", "localhost", 1234,
-                    "demo.db", "", r"abracadabra", false))
-                .toMap());
-        await db.execute(
-          "CREATE TABLE tables(name TEXT, primary_key TEXT, order_by TEXT, visible INTEGER, host TEXT, port INTEGER, db_name TEXT, PRIMARY KEY (name, host, port, db_name))",
-        );
-      },
-      onDowngrade: (db, oldV, newV) async {
-        // TODO substitute by batch
-        await db.execute("DROP TABLE connections");
-        await db.execute("DROP TABLE tables");
-
         await db.execute(
           "CREATE TABLE connections(brand TEXT, alias TEXT, host TEXT, port INTEGER, db_name TEXT, username TEXT, password TEXT, ssl INTEGER, PRIMARY KEY (host, port, db_name))",
         );
@@ -64,7 +47,7 @@ class AppData {
         await db.insert(
             "connections",
             await SQLiteClient(DbConnectionParams("Demo", "localhost", 1234,
-                    "demo.db", "", r"abracadabra", false))
+                "demo.db", "", r"abracadabra", false))
                 .toMap());
         await db.execute(
             "CREATE TABLE tables(name TEXT, primary_key TEXT, order_by TEXT, visible INTEGER, host TEXT, port INTEGER, db_name TEXT, PRIMARY KEY (name, host, port, db_name))");

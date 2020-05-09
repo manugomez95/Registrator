@@ -16,17 +16,6 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
 
   connectAndPull(DbClient dbClient, {bool fromForm: false}) async {
     try {
-      print("----------- connectAndPull ---------------");
-      print(await getIt<AppData>()
-          .database
-          .query('tables',
-          where: "host = ? AND port = ? AND db_name = ?",
-          whereArgs: [
-            dbClient.params.host,
-            dbClient.params.port,
-            dbClient.params.dbName
-          ]));
-
       await dbClient.connect();
       await dbClient.pullDatabaseModel(getLastRows: false);
 
@@ -68,9 +57,6 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
           dbClient.params.dbName
         ]);
 
-    print("----------- APPLY SAVED PREFERENCES ---------------");
-    print(savedTables);
-
     for (final savedTable in savedTables) {
       app.Table t = dbClient.tables
           .firstWhere((t) => t.name == savedTable["name"], orElse: () => null);
@@ -86,7 +72,6 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
               savedTable["name"]
             ]);
       else {
-        debugPrint("${t.name}: ${t.visible} -> ${savedTable["visible"]}");
         t.visible = savedTable["visible"] == 0 ? false : true;
         if (savedTable["order_by"] != null)
           t.orderBy = t.properties
