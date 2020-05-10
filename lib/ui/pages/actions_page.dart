@@ -166,6 +166,7 @@ class TablesDropdownState extends State<TablesDropdown> {
                   ),
                   floatingActionButton: Builder(
                     builder: (context) => FloatingActionButton(
+                      heroTag: "ActionsPageFB",
                       backgroundColor: widget.action.floatButColor,
                       tooltip: "${widget.action.title} ${selectedTable.name}",
                       child: Icon(

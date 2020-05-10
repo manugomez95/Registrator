@@ -147,7 +147,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     } on Exception catch (e) {
       if (verbose) debugPrint("ping (${this.params.alias}): not connected");
       await disconnect();
-      databaseBloc.add(ConnectionErrorEvent(e));
+      databaseBloc.add(ConnectionErrorEvent(e, this));
     } finally {
       // ignore: control_flow_in_finally
       return isConnected;

@@ -1,4 +1,3 @@
-import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/bloc/app_data/app_data_event.dart';
 import 'package:bitacora/bloc/database/bloc.dart';
 import 'package:bitacora/db_clients/db_client.dart';
@@ -124,8 +123,6 @@ class DatabaseCardBody extends StatefulWidget {
 }
 
 class DatabaseCardBodyState extends State<DatabaseCardBody> {
-  final DbForm dbForm = DbForm();
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -151,40 +148,14 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                       onPressed: () {
                         if (widget.db.params.dbName == "demo.db") {
                           Fluttertoast.showToast(msg: "Demo cannot be edited");
-                          return null;
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) =>
+                                DbForm(DbFormType.edit, db: widget.db),
+                                fullscreenDialog: true),
+                          );
                         }
-                        showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                  title: Text("Add Postgres DB"),
-                                  content: dbForm,
-                                  actions: <Widget>[
-                                    FlatButton(
-                                      child: Text('Cancel',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .button
-                                              .copyWith(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .defaultTextColor)),
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                    ),
-                                    RaisedButton(
-                                      child: Text('Submit'),
-                                      onPressed: () async {
-                                        if (dbForm.formKey.currentState
-                                            .validate()) {
-                                          await dbForm.changeConnection(widget
-                                              .db); // TODO REVIEW function // it should be an event like when normal submitting
-                                        }
-                                      },
-                                    )
-                                  ]);
-                            });
                       }),
                   IconButton(
                     icon: Icon(

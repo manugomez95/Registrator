@@ -1,8 +1,6 @@
 import 'package:bitacora/bloc/app_data/app_data_bloc.dart';
-import 'package:bitacora/bloc/database/database_event.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/db_clients/sqlite_client.dart';
-import 'package:bitacora/main.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:path/path.dart';
@@ -65,7 +63,9 @@ class AppData {
       await dbClient.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
 
+  saveTables(DbClient dbClient) async {
     /// for each table
     dbClient.tables.forEach((table) async {
       await database.insert(
@@ -93,6 +93,7 @@ class AppData {
       ],
     );
 
+    // TODO replace by id?
     await database.delete("tables",
         where: "host = ? AND port = ? AND db_name = ?",
         whereArgs: [

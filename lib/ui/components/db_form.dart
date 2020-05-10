@@ -5,9 +5,16 @@ import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'form_field_view.dart';
+import 'package:bitacora/conf/style.dart' as app;
 
+enum DbFormType {
+  connect,
+  edit
+}
+
+/// Needs to be Stateful because it contains a CheckBox
 class DbForm extends StatefulWidget {
-  final nameController = TextEditingController();
+  final aliasController = TextEditingController();
   final hostController = TextEditingController();
   final portController = TextEditingController();
   final dbNameController = TextEditingController();
@@ -16,32 +23,40 @@ class DbForm extends StatefulWidget {
   final ValueNotifier<bool> useSSL = ValueNotifier(false);
 
   final formKey = GlobalKey<FormState>();
+  final DbClient db;
+  final DbFormType type;
+
+  DbForm(this.type, {this.db}) {
+    if (db != null) {
+      aliasController.text = db.params.alias;
+      hostController.text = db.params.host;
+      portController.text = db.params.port.toString();
+      dbNameController.text = db.params.dbName;
+      userController.text = db.params.username;
+    }
+  }
 
   @override
   State<StatefulWidget> createState() => DbFormState();
 
-  changeConnection(DbClient db) async {
-    try{
-      await db.disconnect();
+  // TODO: first try to connect to the new "edition", if success remove previous
+  editConnection(DbClient db) async {
+      db.databaseBloc.add(RemoveConnection(db));
       final params = DbConnectionParams(
-          nameController.text,
+          aliasController.text,
           hostController.text,
           int.parse(portController.text),
           dbNameController.text,
           userController.text,
           passwordController.text,
           useSSL.value);
-      await db.setConnectionParams(params);
-      await db.connect();
-      await db.pullDatabaseModel(); // TODO review that works after last changes in databasebloc
-    } on Exception catch (e) {
-      throw e;
-    }
+      DbClient newDb = PostgresClient(params);
+      newDb.databaseBloc.add(ConnectToDatabase(newDb, fromForm: true));
   }
 
-  void submit(BuildContext context) {
+  void submit() {
     PostgresClient db = PostgresClient(DbConnectionParams(
-        nameController.text,
+        aliasController.text,
         hostController.text,
         int.parse(portController.text),
         dbNameController.text,
@@ -49,36 +64,70 @@ class DbForm extends StatefulWidget {
         passwordController.text,
         useSSL.value));
 
-    db.databaseBloc.add(ConnectToDatabase(db, context: context, fromForm: true));
+    db.databaseBloc
+        .add(ConnectToDatabase(db, fromForm: true));
   }
 }
 
 class DbFormState extends State<DbForm> {
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: widget.formKey,
-      child: Container(
-        width: double.maxFinite,
-        child: ListView(
-          shrinkWrap: true,
-          children: <Widget>[
-            FormFieldView(Alias(), widget.nameController),
-            FormFieldView(Host(), widget.hostController),
-            FormFieldView(Port(), widget.portController),
-            FormFieldView(DatabaseName(), widget.dbNameController),
-            FormFieldView(Username(), widget.userController),
-            FormFieldView(Password(), widget.passwordController),
-            SwitchListTile(
-              title: const Text('SSL'),
-              value: widget.useSSL.value,
-              onChanged: (value) {
-                setState(() {
-                  widget.useSSL.value = !widget.useSSL.value;
-                });
-              },
-            )
-          ],
+    var theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.type == DbFormType.connect ? "New connection" : "Edit ${widget.aliasController.text}"),
+        actions: <Widget>[
+          FlatButton(
+            child: Text(
+              "SAVE",
+              style: theme.textTheme.button
+                  .copyWith(color: theme.colorScheme.negativeDefaultTxtColor),
+            ),
+            onPressed: () {
+              if (widget.formKey.currentState.validate()) {
+                if (widget.type == DbFormType.connect) widget.submit();
+                else if (widget.type == DbFormType.edit) widget.editConnection(widget.db);
+                Navigator.of(context).pop(); // exit alertDialog
+              }
+            },
+          )
+        ],
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Form(
+            key: widget.formKey,
+            child: Column(
+              children: <Widget>[
+                FormFieldView(Alias(), widget.aliasController),
+                Row(
+                  children: <Widget>[
+                    Flexible(
+                      child: FormFieldView(Host(), widget.hostController),
+                    ),
+                    Container(
+                      width: 120,
+                      margin: EdgeInsets.only(left: 16),
+                      child: FormFieldView(Port(), widget.portController),
+                    )
+                  ],
+                ),
+                FormFieldView(DatabaseName(), widget.dbNameController),
+                FormFieldView(Username(), widget.userController),
+                FormFieldView(Password(), widget.passwordController),
+                Container(width: 150, child: CheckboxListTile(
+                  title: const Text('SSL'),
+                  value: widget.useSSL.value,
+                  onChanged: (value) {
+                    setState(() {
+                      widget.useSSL.value = !widget.useSSL.value;
+                    });
+                  },
+                ),)
+              ],
+            ),
+          ),
         ),
       ),
     );

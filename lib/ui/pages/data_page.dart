@@ -7,7 +7,6 @@ import 'package:bitacora/ui/components/database_card.dart';
 import 'package:bitacora/ui/components/db_form.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:bitacora/conf/style.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class DataPage extends StatefulWidget {
@@ -16,7 +15,6 @@ class DataPage extends StatefulWidget {
 }
 
 class DataPageState extends State<DataPage> {
-  final DbForm dbForm = DbForm();
   Map<DbClient, bool> isExpanded = {};
 
   @override
@@ -27,6 +25,7 @@ class DataPageState extends State<DataPage> {
           bloc: getIt<AppData>().bloc,
           builder: (BuildContext context, AppDataState state) {
             List<DbClient> dbs = getIt<AppData>().dbs.toList();
+            isExpanded.removeWhere((key, value) => !dbs.contains(key));
             return Scaffold(
               body: RefreshIndicator(
                 child: ListView(
@@ -62,34 +61,12 @@ class DataPageState extends State<DataPage> {
               ),
               floatingActionButton: FloatingActionButton(
                 child: Icon(Icons.add),
+                heroTag: "DataPageFB",
                 onPressed: () {
-                  showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                            title: Text("Add Postgres DB"),
-                            content: dbForm,
-                            actions: <Widget>[
-                              FlatButton(
-                                child: Text('Cancel',
-                                    style: Theme.of(context).textTheme.button.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .defaultTextColor)),
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                              RaisedButton(
-                                child: Text('Submit'),
-                                onPressed: () {
-                                  if (dbForm.formKey.currentState.validate()) {
-                                    dbForm.submit(context);
-                                  }
-                                },
-                              )
-                            ]);
-                      });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => DbForm(DbFormType.connect), fullscreenDialog: true),
+                  );
                 },
               ),
             );

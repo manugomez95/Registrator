@@ -38,7 +38,7 @@ abstract class DbClient<T> extends Equatable {
   }
 
   @override
-  List<Object> get props => [this.params];
+  List<Object> get props => [this.params.host, this.params.port, this.params.username, this.params.dbName];
 
   /// Opens the connection already defined and updates the DB model // TODO not really aligned with the name?
   connect({verbose: false});

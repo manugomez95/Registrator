@@ -9,13 +9,12 @@ abstract class DatabaseEvent extends Equatable {
 
 class ConnectToDatabase extends DatabaseEvent {
   final DbClient dbClient;
-  final BuildContext context;
   final bool fromForm;
 
-  ConnectToDatabase(this.dbClient, {this.context, this.fromForm: false});
+  ConnectToDatabase(this.dbClient, {this.fromForm: false});
 
   @override
-  List<Object> get props => [this.dbClient, this.context, this.fromForm];
+  List<Object> get props => [this.dbClient, this.fromForm];
 }
 
 class ConnectionSuccessfulEvent extends DatabaseEvent {
@@ -28,9 +27,10 @@ class ConnectionSuccessfulEvent extends DatabaseEvent {
 }
 
 class ConnectionErrorEvent extends DatabaseEvent {
-  final Exception exception;
+  final DbClient dbClient;
+  final exception;
 
-  ConnectionErrorEvent(this.exception);
+  ConnectionErrorEvent(this.exception, this.dbClient);
 
   @override
   List<Object> get props => [this.exception];

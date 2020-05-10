@@ -17,7 +17,7 @@ class ConnectionSuccessful extends DatabaseState {
 
 /// This state manifests itself as the red icon in the db panel
 class ConnectionError extends DatabaseState {
-  final Exception e;
+  final e;
 
   ConnectionError(this.e);
 
