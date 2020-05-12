@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:bitacora/bloc/database/database_event.dart';
+import 'package:bitacora/db_clients/bigquery_client.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/db_clients/postgres_client.dart';
 import 'package:bitacora/db_clients/sqlite_client.dart';
@@ -49,10 +50,12 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
     AppDataEvent event,
   ) async* {
     if (event is InitializeEvent) {
-      await getIt<AppData>().initializeLocalDb();
+      await getIt<AppData>().initLocalDb();
+
+      await BigQueryClient(DbConnectionParams("","",0,"","","",false)).connect();
 
       /// Connect to saved connections
-      for (var c in await getIt<AppData>().database.query('connections')) {
+      for (var c in await getIt<AppData>().localDb.query('connections')) {
         var password = await decryptString(c["password"], PRIVATE_KEY);
         var connectionParams = DbConnectionParams(
             c["alias"],

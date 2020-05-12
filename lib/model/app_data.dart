@@ -8,57 +8,76 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'action.dart' as app;
 
+/// Singleton app controller
 class AppData {
+  // (https://github.com/felangel/bloc/issues/587)
   // ignore: close_sinks
   final AppDataBloc bloc = AppDataBloc();
 
+  /// Runtime storage
   final Set<DbClient> dbs = Set();
+
+  /// Persistence
   Future<SharedPreferences> sharedPrefs;
-
-  Database database;
-
-  Iterable<DbClient> getDbs() {
-    return dbs.where((db) => db.isConnected);
-  }
+  Database localDb;
 
   Iterable<app.Table> getTables({bool onlyVisibles: true}) {
-    return getDbs()
+    return dbs
+        .where((db) => db.isConnected)
         .map((DbClient db) => onlyVisibles
             ? db.tables?.where((table) => table.visible) ?? []
             : db.tables ?? [])
         ?.expand((i) => i);
   }
 
-  initializeLocalDb() async {
-    bool firstTime = false;
-    database = await openDatabase(
-      // Set the path to the database.
+  // TODO [OFFLINE SUPPORT] make another table for each table with a queue of pending insertions (problem with autocomplete?)
+  /// Local DB is composed of the following tables: connections and tables
+  /// - tables: contain the orderBy and visibility configuration
+  initLocalDb() async {
+    localDb = await openDatabase(
       join(await getDatabasesPath(), 'app_data.db'),
-      // When the database is first created, create a table to store app data.
       onCreate: (db, version) async {
-        // TODO substitute by batch
-        await db.execute(
-          "CREATE TABLE connections(brand TEXT, alias TEXT, host TEXT, port INTEGER, db_name TEXT, username TEXT, password TEXT, ssl INTEGER, PRIMARY KEY (host, port, db_name))",
+        final batch = db.batch();
+        batch.execute(
+          "CREATE TABLE connections("
+          "brand TEXT, "
+          "alias TEXT, "
+          "host TEXT, "
+          "port INTEGER, "
+          "db_name TEXT, "
+          "username TEXT, "
+          "password TEXT, "
+          "ssl INTEGER, "
+          "PRIMARY KEY (host, port, db_name))",
         );
 
-        // TODO end up removing this part
-        await db.insert(
+        /// Here we define the demo connection
+        batch.insert(
             "connections",
             await SQLiteClient(DbConnectionParams("Demo", "localhost", 1234,
-                "demo.db", "", r"abracadabra", false))
+                    "demo.db", "", r"abracadabra", false))
                 .toMap());
-        await db.execute(
-            "CREATE TABLE tables(name TEXT, primary_key TEXT, order_by TEXT, visible INTEGER, host TEXT, port INTEGER, db_name TEXT, PRIMARY KEY (name, host, port, db_name))");
+
+        batch.execute(
+            "CREATE TABLE tables("
+                "name TEXT, "
+                "primary_key TEXT, "
+                "order_by TEXT, "
+                "visible INTEGER, "
+                "host TEXT, "
+                "port INTEGER, "
+                "db_name TEXT, "
+                "PRIMARY KEY (name, host, port, db_name))");
+
+        await batch.commit(noResult: true);
       },
-      // Set the version. This executes the onCreate function and provides a
-      // path to perform database upgrades and downgrades.
       version: 1,
     );
   }
 
   saveConnection(DbClient dbClient) async {
     /// insert in connections
-    await database.insert(
+    await localDb.insert(
       'connections',
       await dbClient.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -68,7 +87,7 @@ class AppData {
   saveTables(DbClient dbClient) async {
     /// for each table
     dbClient.tables.forEach((table) async {
-      await database.insert(
+      await localDb.insert(
         'tables',
         await table.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
@@ -81,7 +100,7 @@ class AppData {
     // `conflictAlgorithm` to use in case the same dog is inserted twice.
     //
     // In this case, replace any previous data.
-    await database.delete(
+    await localDb.delete(
       'connections',
       // Use a `where` clause to delete a specific dog.
       where: "host = ? AND port = ? AND db_name = ?",
@@ -94,7 +113,7 @@ class AppData {
     );
 
     // TODO replace by id?
-    await database.delete("tables",
+    await localDb.delete("tables",
         where: "host = ? AND port = ? AND db_name = ?",
         whereArgs: [
           dbClient.params.host,
@@ -105,7 +124,7 @@ class AppData {
 
   checkLocalDataStatus() async {
     // Query the table for all The Dogs.
-    print("Connections: ${await database.query('connections')}");
-    print("Tables: ${await database.query('tables')}");
+    print("Connections: ${await localDb.query('connections')}");
+    print("Tables: ${await localDb.query('tables')}");
   }
 }

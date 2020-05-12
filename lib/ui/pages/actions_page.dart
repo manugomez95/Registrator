@@ -26,7 +26,8 @@ class ActionsPage extends StatelessWidget {
         child: BlocBuilder(
           bloc: bloc,
           builder: (BuildContext context, AppDataState state) {
-            if (getIt<AppData>().getTables().isEmpty) {
+            final Iterable<app.Table> tables = getIt<AppData>().getTables();
+            if (tables.isEmpty) {
               if (state.loadingStack.isNotEmpty || state is Loading) {
                 return Center(
                   child: CircularProgressIndicator(),
@@ -36,11 +37,11 @@ class ActionsPage extends StatelessWidget {
                 return EmptyView();
               }
             } else {
-              return ActionsDropdown(actions: <app.Action>[
+              return ActionsDropdown(<app.Action>[
                 app.Action(app.ActionType.InsertInto, theme.colorScheme.insertBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.insertTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.EditLastFrom, theme.colorScheme.editBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.editTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
                 app.Action(app.ActionType.CreateWidgetFrom, theme.colorScheme.createWidgetBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.createWidgetTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
-              ]);
+              ], tables);
             }
           },
         ));
@@ -49,8 +50,9 @@ class ActionsPage extends StatelessWidget {
 
 class ActionsDropdown extends StatefulWidget implements PreferredSizeWidget {
   final List<app.Action> actions;
+  final Iterable<app.Table> tables;
 
-  const ActionsDropdown({Key key, this.actions}) : super(key: key);
+  const ActionsDropdown(this.actions, this.tables, {Key key}) : super(key: key);
 
   @override
   _ActionsDropdownState createState() => _ActionsDropdownState();
@@ -96,7 +98,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
           )),
         ),
         TablesDropdown(
-          selectedAction,
+          selectedAction, widget.tables
         )
       ],
     );
@@ -104,8 +106,10 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
 }
 
 class TablesDropdown extends StatefulWidget {
-  TablesDropdown(this.action);
-  final app.Action action;
+  final app.Action selectedAction;
+  final Iterable<app.Table> tables;
+
+  TablesDropdown(this.selectedAction, this.tables);
 
   @override
   TablesDropdownState createState() {
@@ -115,7 +119,6 @@ class TablesDropdown extends StatefulWidget {
 }
 
 class TablesDropdownState extends State<TablesDropdown> {
-  Iterable<app.Table> tables;
   app.Table selectedTable;
 
   /// necessary? YES, re-builds the form when an event is released (like editLastFrom, removeLastFrom...)
@@ -124,21 +127,19 @@ class TablesDropdownState extends State<TablesDropdown> {
   @override
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
-    /// this needs to be here to update the tables when refreshing
-    tables = getIt<AppData>().getTables();
-    if (!tables.contains(selectedTable)) selectedTable = tables.first;
+    if (!widget.tables.contains(selectedTable)) selectedTable = widget.tables.first;
     return BlocProvider(
         create: (BuildContext context) => _formBloc,
         child: BlocBuilder(
             bloc: _formBloc,
             builder: (BuildContext context, PropertiesFormState state) {
               PropertiesForm form =
-                  PropertiesForm(selectedTable, widget.action);
+                  PropertiesForm(selectedTable, widget.selectedAction);
               return Expanded(
                 child: Scaffold(
                   appBar: buildTablesDropdown(),
                   body: RefreshIndicator(
-                    child: widget.action.type == app.ActionType.EditLastFrom
+                    child: widget.selectedAction.type == app.ActionType.EditLastFrom
                         ? Dismissible(
                             child: form,
                             key: UniqueKey(),
@@ -156,6 +157,8 @@ class TablesDropdownState extends State<TablesDropdown> {
                             },
                           )
                         : form,
+                    /// Refreshing only updates the last row of the selected table and resets form [Lightweight]
+                    /// The user should understand that if he wants to update the db model he should refresh the data tab
                     onRefresh: () async {
                       await selectedTable.client.getLastRow(selectedTable);
                       setState(() {
@@ -167,27 +170,27 @@ class TablesDropdownState extends State<TablesDropdown> {
                   floatingActionButton: Builder(
                     builder: (context) => FloatingActionButton(
                       heroTag: "ActionsPageFB",
-                      backgroundColor: widget.action.floatButColor,
-                      tooltip: "${widget.action.title} ${selectedTable.name}",
+                      backgroundColor: widget.selectedAction.floatButColor,
+                      tooltip: "${widget.selectedAction.title} ${selectedTable.name}",
                       child: Icon(
                         Icons.check,
                         color: theme.colorScheme.negativeDefaultTxtColor,
                       ),
                       onPressed: () {
                         if (form.formKey.currentState.validate()) {
-                          switch (widget.action.type) {
+                          switch (widget.selectedAction.type) {
                             case app.ActionType.InsertInto:
                               _formBloc.add(InsertSubmitForm(
                                   context,
                                   form.propertiesForm,
-                                  widget.action,
+                                  widget.selectedAction,
                                   selectedTable));
                               break;
                             case app.ActionType.EditLastFrom:
                               _formBloc.add(EditSubmitForm(
                                   context,
                                   form.propertiesForm,
-                                  widget.action,
+                                  widget.selectedAction,
                                   selectedTable));
                               break;
                             default:
@@ -222,7 +225,7 @@ class TablesDropdownState extends State<TablesDropdown> {
                   selectedTable = newTable;
                 });
               },
-              items: tables.map<DropdownMenuItem<app.Table>>((app.Table table) {
+              items: widget.tables.map<DropdownMenuItem<app.Table>>((app.Table table) {
                 return DropdownMenuItem<app.Table>(
                     value: table,
                     child: Center(

@@ -3,7 +3,6 @@ import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -21,6 +20,13 @@ extension SqLiteString on String {
       default:
         throw UnsupportedError("$this not supported as a type");
     }
+  }
+
+  static fromSQLiteValue(dynamic value, DataType type) {
+    if (value.toString() == "") value = null;
+    if (PrimitiveType.text == type.primitive && value != null)
+      value = '''"${value.toString()}"''';
+    return value.toString();
   }
 }
 
@@ -53,18 +59,31 @@ class SQLiteClient extends DbClient<Database> {
   connect({verbose: false, fromForm: false}) async {
     connection = await openDatabase(
       join(await getDatabasesPath(), 'demo.db'),
-      // When the database is first created, create a table to store app data.
       onCreate: (db, version) async {
-        // Run the CREATE TABLE statement on the database.
-        await db.execute(
-          "CREATE TABLE training(type TEXT, reps INTEGER, weight INTEGER, date_time TEXT)",
+        final batch = db.batch();
+        batch.execute(
+          "CREATE TABLE tutorial(hint TEXT, timestamp INTEGER)",
         );
-        await db.execute(
-          "CREATE TABLE ufos(description TEXT, time INTEGER)",
+        batch.insert("tutorial", {
+          "hint":
+              "Welcome! Select 'EDIT LAST FROM' to let me give you a few hints on how to use this app...\n\nCool, both actions are pretty self explanatory. Order criterion is defined in the data tab. Try removing this register by swiping the whole form.",
+          "timestamp": 1445412480
+        }); // Back to the future
+
+        batch.insert("tutorial", {
+          "hint":
+              "Nice. That's pretty much it, now go connect with your DBs. Thanks for using Bitacora :)",
+          "timestamp": 1345412480
+        });
+
+        batch.execute(
+          "CREATE TABLE diary(description TEXT, time INTEGER)",
+        ); // I wish many many people will download my app and give me lots of likes, that hurt... stop deleting...  please don't remove me... you really like deleting
+        batch.execute(
+          "CREATE TABLE quotes(quote TEXT, author TEXT, year INTEGER)",
         );
+        await batch.commit(noResult: true);
       },
-      // Set the version. This executes the onCreate function and provides a
-      // path to perform database upgrades and downgrades.
       version: 1,
     );
     isConnected = true;
@@ -74,7 +93,39 @@ class SQLiteClient extends DbClient<Database> {
 
   @override
   deleteLastFrom(app.Table table, {verbose = false}) async {
-    return null;
+    Property orderBy = table.orderBy;
+
+    /// if there's no order nor last values...
+    if (orderBy == null && table.properties.every((p) => p.lastValue == null)) {
+      String exception = "No linearity nor lastValue defined";
+      if (verbose) debugPrint("deleteLastFrom (${table.name}): $exception");
+      throw Exception(exception);
+    }
+
+    /// last values
+    String where = "WHERE " +
+        table.properties.map((Property p) {
+          var valueStr = SqLiteString.fromSQLiteValue(p.lastValue, p.type);
+          return "${p.name} ${valueStr == "null" ? "is null" : "= $valueStr"}";
+        }).join(" AND ");
+
+    /// if orderBy is used
+    String order =
+        orderBy != null ? "ORDER BY ${orderBy.name} DESC" : "";
+
+    String last =
+        "SELECT ROWID FROM ${table.name} $where $order LIMIT 1";
+
+    String sql = "DELETE FROM ${table.name} WHERE ROWID IN ($last)";
+
+    if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
+
+    var results = await connection.rawDelete(sql);
+    if (results == 0) {
+      throw Exception("Table is empty");
+    }
+
+    if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
   }
 
   @override
@@ -95,8 +146,24 @@ class SQLiteClient extends DbClient<Database> {
   }
 
   @override
-  getLastRow(app.Table table, {verbose = false}) {
-    return null;
+  getLastRow(app.Table table, {verbose = false}) async {
+    Property orderBy = table.orderBy;
+    if (orderBy == null) {
+      if (verbose)
+        debugPrint("getLastRow (${table.name}): No linearity defined");
+      return;
+    }
+
+    var result = await connection.query(table.name,
+        orderBy: "${orderBy.name} DESC", limit: 1);
+
+    if (result.isNotEmpty) {
+      for (final p in table.properties) {
+        p.lastValue = result[0][p.name];
+      }
+    } else {
+      table.properties.forEach((p) => p.lastValue = null);
+    }
   }
 
   @override
@@ -152,6 +219,17 @@ class SQLiteClient extends DbClient<Database> {
       Set<Property> properties = await getPropertiesFromTable(tName);
 
       tables.add(app.Table(tName, properties, this));
+
+      /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
+      if (this.tables == null) {
+        var orderByCandidates = properties.where((property) => [
+              PrimitiveType.integer,
+              PrimitiveType.real,
+            ].contains(property.type.primitive));
+        if (orderByCandidates.length == 1)
+          tables.last.orderBy = orderByCandidates.first;
+      }
+
       await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
     }
 

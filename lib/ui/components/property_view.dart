@@ -1,17 +1,14 @@
 import 'package:bitacora/conf/style.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
+import 'package:bitacora/ui/components/inputs.dart';
 import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart';
-import 'package:postgres/postgres.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:tuple/tuple.dart';
 import 'package:recase/recase.dart';
 import 'package:bitacora/conf/style.dart' as app;
-import 'package:intl/intl.dart';
-import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
 
 class PropertyView extends StatefulWidget {
   PropertyView(this.property, this.updater, this.action, {this.definesOrder});
@@ -27,11 +24,33 @@ class PropertyView extends StatefulWidget {
   State<StatefulWidget> createState() => _PropertyViewState();
 }
 
+/// Last value and current value must be tightly related (to not depend on an index when being an array), this is the best way I could think of
+class ValueLV<T> {
+  T current;
+  final T last;
+  FocusNode focus;
+  bool firstTime = true;
+
+  ValueLV(this.last, {this.focus});
+}
+
 /// keep alive when out of view (to not lose state)
 class _PropertyViewState extends State<PropertyView>
     with AutomaticKeepAliveClientMixin {
-  var value;
-  bool first = true;
+  List<ValueLV> values = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.property.type.isArray && widget.property.lastValue != null) {
+      final lastValuesList = widget.property.lastValue as List;
+      for (var i = 0; i < lastValuesList.length; i++)
+        values.add(ValueLV(lastValuesList[i]));
+    } else if (widget.property.lastValue != null) {
+      values = [ValueLV(widget.property.lastValue)];
+    } else
+      values = [ValueLV(null)];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,14 +87,14 @@ class _PropertyViewState extends State<PropertyView>
             )
           ],
         ),
-        buildInput(widget.property)
+        generateWidget(widget.property)
       ],
     );
   }
 
-  void _onChangeController(newValue) {
+  void _onChangeController(ValueLV value, newValue) {
     setState(() {
-      value = newValue;
+      value.current = newValue;
     });
   }
 
@@ -86,174 +105,206 @@ class _PropertyViewState extends State<PropertyView>
     return null;
   }
 
-  // TODO shorten or modularize
-  Widget buildInput(Property property) {
+  Widget generateWidget(Property property) {
+    if (property.type.isArray) {
+      return Column(
+        children: values
+            .asMap()
+            .map((i, elem) => MapEntry(
+                i,
+                Dismissible(
+                  child: InkWell(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: <Widget>[
+                          Expanded(
+                            child: Container(
+                              alignment: Alignment.centerLeft,
+                              child: buildInput(values[i], property),
+                            ),
+                          ),
+                          Icon(
+                            Icons.drag_handle,
+                            color: Colors.grey,
+                          )
+                        ],
+                      ),
+                      onTap: () {
+                        if (widget.property.type.primitive ==
+                            PrimitiveType.boolean) {
+                          setState(() {
+                            switch (values[i].current) {
+                              case false:
+                                values[i].current = true;
+                                break;
+                              case true:
+                                values[i].current = null;
+                                break;
+                              default:
+                                values[i].current = false;
+                                break;
+                            }
+                          });
+                        }
+                      }),
+                  key: ValueKey(values[i]),
+                  onDismissed: (direction) {
+                    // Remove the item from the data source.
+                    setState(() {
+                      values.removeAt(i);
+
+                      /// [justification] When last one is removed, there's no build function to update the properties form
+                      widget.updater(Tuple2(widget.property,
+                          values.map((val) => val.current).toList()));
+                    });
+                  },
+                )))
+            .values
+            .cast<Widget>()
+            .followedBy([
+          Row(
+            children: <Widget>[
+              Spacer(),
+              IconButton(
+                icon: Icon(
+                  Icons.add_circle,
+                  color: Colors.grey,
+                ),
+                onPressed: () {
+                  setState(() {
+                    values.add(ValueLV(null, focus: FocusNode()));
+                  });
+                },
+              ),
+              Spacer()
+            ],
+          ),
+        ]).toList(),
+      );
+    } else {
+      return buildInput(values[0], property);
+    }
+  }
+
+  Widget buildInput(ValueLV value, Property property) {
     Widget ret;
+
+    value.current = value.current == null
+        ? ((widget.action.type == app.ActionType.EditLastFrom &&
+                value.last != null)
+            ? value.last
+            : property.type.primitive.defaultV)
+        : value.current;
+
     switch (property.type.primitive) {
       case PrimitiveType.text:
       case PrimitiveType.varchar:
-        if (property.foreignKeyOf != null) {
-          /// autocomplete
-          value = value == null
-              ? (widget.action.type == app.ActionType.EditLastFrom
-                  ? property.lastValue
-                  : "")
-              : value;
-          ret = TypeAheadFormField(
-            textFieldConfiguration: TextFieldConfiguration(
-                controller: TextEditingController(text: value),
-                textInputAction: TextInputAction.next,
-                onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                decoration: InputDecoration(
-                    hintText: property.lastValue != null
-                        ? (property.lastValue.toString().length > 40
-                            ? "${property.lastValue.toString().substring(0, 40)}..."
-                            : property.lastValue.toString())
-                        : "")),
-            suggestionsCallback: (pattern) {
-              return property.foreignKeyOf.client
-                  .getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
-            },
-            itemBuilder: (context, suggestion) {
-              return ListTile(
-                title: Text(suggestion),
-              );
-            },
-            hideOnEmpty: true,
-            transitionBuilder: (context, suggestionsBox, controller) {
-              return suggestionsBox;
-            },
-            onSuggestionSelected: (suggestion) {
-              setState(() {
-                value = suggestion;
-              });
-            },
-            validator: _validator,
-          );
+
+        /// TypeAhead if field references foreign key or enum type
+        if (widget.property.foreignKeyOf != null) {
+          ret = typeAheadFormField(
+              context: context,
+              value: value,
+              property: property,
+              onChanged: (newValue) => _onChangeController(value, newValue),
+              onSuggestionSelected: (suggestion) {
+                setState(() {
+                  value.current = suggestion;
+                });
+              },
+              validator: _validator);
+
+          /// Normal text field
         } else {
-          value = value == null
-              ? (widget.action.type == app.ActionType.EditLastFrom
-                  ? property.lastValue
-                  : value)
-              : value;
           ret = TextFormField(
+              initialValue: value.current,
               keyboardAppearance: Theme.of(context).brightness,
-              initialValue: value,
               validator: _validator,
-              maxLength: property.charMaxLength,
+              maxLength: widget.property.charMaxLength,
               textInputAction: TextInputAction.newline,
               minLines: 1,
               maxLines: 5,
               keyboardType: TextInputType.multiline,
-              onChanged: (newValue) => _onChangeController(newValue),
-              onFieldSubmitted: (v) {
-                FocusScope.of(context).nextFocus();
-              },
-              decoration: InputDecoration(
-                  hintText: property.lastValue != null
-                      ? (property.lastValue.toString().length > 40
-                          ? "${property.lastValue.toString().substring(0, 40)}..."
-                          : property.lastValue.toString())
-                      : ""));
+              focusNode: value.focus,
+              onChanged: (newValue) => _onChangeController(value, newValue),
+              onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+              decoration: textInputDecoration(value));
         }
         break;
+
+      /// Number field
       case PrimitiveType.integer:
       case PrimitiveType.smallInt:
       case PrimitiveType.bigInt:
       case PrimitiveType.real:
       case PrimitiveType.byteArray:
-        value = value == null
-            ? ((widget.action.type == app.ActionType.EditLastFrom &&
-                    property.lastValue != null)
-                ? property.lastValue.toString()
-                : value)
-            : value;
         ret = TextFormField(
+            initialValue: value.current.toString(),
             keyboardAppearance: Theme.of(context).brightness,
-            initialValue: value,
             validator: _validator,
+            focusNode: value.focus,
             textInputAction: TextInputAction.next,
             keyboardType: TextInputType.number,
-            onChanged: (newValue) => _onChangeController(newValue),
-            onFieldSubmitted: (v) {
-              FocusScope.of(context).nextFocus();
-            },
+            onChanged: (newValue) => _onChangeController(value, newValue),
+            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
             decoration: InputDecoration(
-                hintText: property.lastValue != null
-                    ? property.lastValue.toString()
-                    : ""));
+                hintText: value.last != null ? value.last.toString() : ""));
         break;
+
+      /// Boolean checkbox field
       case PrimitiveType.boolean:
-        value = value == null ? false : value;
         ret = Checkbox(
-          value: value,
-          onChanged: (newValue) => _onChangeController(newValue),
+          value: value.current,
+          focusNode: value.focus,
+          tristate: true,
+          onChanged: (newValue) => _onChangeController(value, newValue),
         );
         break;
+
+      /// Timestamp
       case PrimitiveType.timestamp:
-        DateFormat format = DateFormat("yyyy-MM-dd HH:mm");
-        value = first
-            ? (widget.action.type == app.ActionType.EditLastFrom
-            ? property.lastValue
-            : DateTime.now())
-            : value;
-        first = false;
-        ret = DateTimeField(
-          initialValue: value,
-          onChanged: _onChangeController,
-          format: format,
-          decoration: InputDecoration(
-              hintText: property.lastValue != null
-                  ? format.format(property.lastValue)
-                  : format.format(DateTime.now())),
-          onShowPicker: (context, currentValue) async {
-            final date = await showDatePicker(
-                context: context,
-                firstDate: DateTime(1900),
-                initialDate: currentValue ?? DateTime.now(),
-                lastDate: DateTime(2100));
-            if (date != null) {
-              final time = await showTimePicker(
-                context: context,
-                initialTime:
-                TimeOfDay.fromDateTime(currentValue ?? DateTime.now()),
-              );
-              return DateTimeField.combine(date, time);
-            } else {
-              return currentValue;
-            }
-          },
-        );
+        ret = dateTimeField(
+            showDate: true,
+            showTime: true,
+            context: context,
+            value: value,
+            onChanged: (newValue) => _onChangeController(value, newValue));
         break;
+
+      /// Time
+      case PrimitiveType.time:
+        ret = dateTimeField(
+            showDate: false,
+            showTime: true,
+            context: context,
+            value: value,
+            onChanged: (newValue) => _onChangeController(value, newValue));
+        break;
+
+      /// Date
       case PrimitiveType.date:
-        DateFormat format = DateFormat("yyyy-MM-dd");
-        value = first
-            ? (widget.action.type == app.ActionType.EditLastFrom
-            ? property.lastValue
-            : DateTime.now())
-            : value;
-        first = false;
-        ret = DateTimeField(
-          initialValue: value,
-          onChanged: _onChangeController,
-          format: format,
-          decoration: InputDecoration(
-              hintText: property.lastValue != null
-                  ? format.format(property.lastValue)
-                  : format.format(DateTime.now())),
-          onShowPicker: (context, currentValue) {
-            return showDatePicker(
-                context: context,
-                firstDate: DateTime(1900),
-                initialDate: currentValue ?? DateTime.now(),
-                lastDate: DateTime(2100));
-          },
-        );
+        ret = dateTimeField(
+            showDate: true,
+            showTime: false,
+            context: context,
+            value: value,
+            onChanged: (newValue) => _onChangeController(value, newValue));
         break;
       default:
         throw Exception("${property.type.primitive} not supported");
     }
-    widget.updater(Tuple2(property, value));
+
+    if (widget.property.type.isArray) {
+      if (value.focus != null && value.firstTime) {
+        FocusScope.of(context).unfocus();
+        FocusScope.of(context).requestFocus(value.focus);
+      }
+      widget.updater(
+          Tuple2(widget.property, values.map((val) => val.current).toList()));
+    } else
+      widget.updater(Tuple2(widget.property, value.current));
+
+    value.firstTime = false;
     return ret;
   }
 

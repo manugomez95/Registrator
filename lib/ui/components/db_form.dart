@@ -41,7 +41,7 @@ class DbForm extends StatefulWidget {
 
   // TODO: first try to connect to the new "edition", if success remove previous
   editConnection(DbClient db) async {
-      db.databaseBloc.add(RemoveConnection(db));
+      db.databaseBloc.removeConnection(db);
       final params = DbConnectionParams(
           aliasController.text,
           hostController.text,

@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:postgres/postgres.dart';
 import 'package:simple_rsa/simple_rsa.dart';
 
 abstract class PropertyType<T> {
@@ -51,8 +50,25 @@ enum PrimitiveType {
   real,
   boolean,
   timestamp,
+  time,
   date,
   byteArray
+}
+
+extension PrimitiveTypeExtension on PrimitiveType {
+
+  dynamic get defaultV {
+    switch (this) {
+      case PrimitiveType.boolean:
+        return null;
+      case PrimitiveType.timestamp:
+      case PrimitiveType.time:
+      case PrimitiveType.date:
+        return DateTime.now();
+      default:
+        return '';
+    }
+  }
 }
 
 class DataType extends Equatable {

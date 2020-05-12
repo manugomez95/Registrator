@@ -14,41 +14,49 @@ import 'package:sqflite/sqflite.dart';
 
 extension PgString on String {
   String pgFormat() {
-    return this.toLowerCase() == this ? this : "\"$this\"";
+    return this.toLowerCase() != this || this.contains(" ")
+        ? '''"$this"'''
+        : this;
   }
 
-  // TODO change array part, very cutre for the moment
-  static fromPgValue(dynamic value, DataType type) {
-    if (value.toString() == "") value = null;
-    if ([
-          PrimitiveType.text,
-          PrimitiveType.varchar,
-          PrimitiveType.date,
-          PrimitiveType.timestamp,
-        ].contains(type.primitive) &&
-        value != null &&
-        !type.isArray)
-      value = "'${value.toString()}'";
-    else if (type.isArray && value != null)
-      value = "ARRAY ${(value as String).split(", ").map((s) => ([
-                PrimitiveType.text,
-                PrimitiveType.varchar,
-                PrimitiveType.date,
-              ].contains(type.primitive)) ? "'$s'" : s)}"
-          .replaceAll("(", "[")
-          .replaceAll(")", "]");
-
-    return value.toString();
+  static fromPgValue(dynamic value, DataType type, {bool fromArray = false}) {
+    if (value == null || value.toString() == "")
+      return 'null';
+    else if (type.isArray && !fromArray)
+      return (value as List).isEmpty
+          ? 'null'
+          : "'{${(value as List).map((e) => PgString.fromPgValue(e, type, fromArray: true)).join(", ")}}'";
+    else {
+      if ([
+        PrimitiveType.text,
+        PrimitiveType.varchar,
+        PrimitiveType.date,
+        PrimitiveType.timestamp,
+        PrimitiveType.time,
+      ].contains(type.primitive) && !fromArray)
+        return "'${value.toString()}'";
+      else
+        return value.toString();
+    }
   }
 
   DataType toDataType({String udtName, isArray: false}) {
     String arrayStr = isArray ? "[ ]" : "";
     switch (this) {
       case "timestamp without time zone":
+      case "_timestamp":
       case "timestamp with time zone":
+      case "_timestamptz":
         return DataType(PrimitiveType.timestamp, "timestamp" + arrayStr,
             isArray: isArray);
+      case "time without time zone":
+      case "_time":
+      case "time with time zone":
+      case "_timetz":
+      return DataType(PrimitiveType.time, "time" + arrayStr,
+          isArray: isArray);
       case "character varying":
+      case "_varchar":
         return DataType(PrimitiveType.varchar, "varchar" + arrayStr,
             isArray: isArray);
       case "text":
@@ -56,23 +64,39 @@ extension PgString on String {
         return DataType(PrimitiveType.text, "text" + arrayStr,
             isArray: isArray);
       case "integer":
+      case "_int4":
         return DataType(PrimitiveType.integer, "integer" + arrayStr,
             isArray: isArray);
       case "smallint":
+      case "_int2":
         return DataType(PrimitiveType.smallInt, "smallInt" + arrayStr,
             isArray: isArray);
+      case "bigint":
+      case "_int8":
+        return DataType(PrimitiveType.bigInt, "bigInt" + arrayStr,
+            isArray: isArray);
       case "boolean":
+      case "_bool":
         return DataType(PrimitiveType.boolean, "boolean" + arrayStr,
             isArray: isArray);
       case "real":
+      case "_float4":
         return DataType(PrimitiveType.real, "real" + arrayStr,
             isArray: isArray);
       case "date":
+      case "_date":
         return DataType(PrimitiveType.date, "date" + arrayStr,
             isArray: isArray);
       case "oid":
+      case "_oid":
         return DataType(PrimitiveType.byteArray, "oid" + arrayStr,
             isArray: isArray);
+      //Todo ENUMS case "USER-DEFINED":
+      //  SELECT pg_type.typname AS enumtype,
+      //     pg_enum.enumlabel AS enumlabel
+      // FROM pg_type
+      // JOIN pg_enum
+      //     ON pg_enum.enumtypid = pg_type.oid;
       case "ARRAY":
         return udtName.toDataType(isArray: true);
       default:
@@ -96,10 +120,9 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  SvgPicture getLogo(Brightness brightness) => SvgPicture.asset(
-      'assets/images/postgresql_elephant.svg',
-      height: 75,
-      semanticsLabel: 'Postgres Logo');
+  SvgPicture getLogo(Brightness brightness) =>
+      SvgPicture.asset('assets/images/postgresql_elephant.svg',
+          height: 75, semanticsLabel: 'Postgres Logo');
 
   @override
   Future<Map<String, dynamic>> toMap() async {
@@ -155,7 +178,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  // TODO clean and improve this method
   pullDatabaseModel({verbose: false, getLastRows: true}) async {
     if (verbose) {
       if (this.tables != null)
@@ -168,22 +190,33 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     /// Get tables
     List<String> tablesNames = await getTables(verbose: verbose);
 
+    // TODO get user defined types (for enum)
+
     /// For each table:
     Set<app.Table> tables = Set();
     for (var tName in tablesNames) {
       /// get properties...
-      Set<Property> properties = await getPropertiesFromTable(tName);
-      tables.add(app.Table(tName, properties, this));
-      await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
+      try {
+        Set<Property> properties = await getPropertiesFromTable(tName);
 
-      /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
-      if (this.tables == null) {
-        var orderByCandidates = properties.where((property) => [
-              PrimitiveType.date,
-              PrimitiveType.timestamp,
-            ].contains(property.type.primitive));
-        if (orderByCandidates.length == 1)
-          tables.last.orderBy = orderByCandidates.first;
+        tables.add(app.Table(tName, properties, this));
+
+        /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
+        if (this.tables == null) {
+          var orderByCandidates = properties.where((property) => [
+                PrimitiveType.date,
+                PrimitiveType.timestamp,
+                PrimitiveType.time,
+              ].contains(property.type.primitive));
+          if (orderByCandidates.length == 1)
+            tables.last.orderBy = orderByCandidates.first;
+        }
+
+        await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
+      } on UnsupportedError catch (e) {
+        print(e);
+        continue;
+        // TODO mark table with Unsupported label? Show toast or something
       }
 
       /// [optionally] and get last row
@@ -223,37 +256,26 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   @override
   Future<Set<Property>> getPropertiesFromTable(String table,
       {verbose: false}) async {
-    try {
-      List<List<dynamic>> results = await connection.query(
-          r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length, udt_name FROM information_schema.columns "
-          r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
-          substitutionValues: {
-            "tableSchema": "public",
-            "tableName": table
-          }).timeout(timeout);
+    List<List<dynamic>> results = await connection.query(
+        r"SELECT ordinal_position, column_name, data_type, column_default, is_nullable, character_maximum_length, udt_name FROM information_schema.columns "
+        r"WHERE table_schema = @tableSchema AND table_name   = @tableName",
+        substitutionValues: {
+          "tableSchema": "public",
+          "tableName": table
+        }).timeout(timeout);
 
-      var r = results
-          .map((res) {
-            return Property(
-                res[0] - 1,
-                res[1],
-                res[2].toString().toDataType(udtName: res[6]),
-                res[3],
-                res[4] == 'YES' ? true : false,
-                charMaxLength: res[5]);
-          })
-          .toSet()
-          .cast<Property>();
-
-      if (verbose)
-        debugPrint("getPropertiesFromTable ($table): ${r.toString()}");
-
-      return r;
-    } on UnsupportedError catch (e) {
-      if (verbose)
-        debugPrint("getPropertiesFromTable ($table): ${e.toString()}");
-      throw e;
+    Set<Property> properties = Set();
+    for (final res in results) {
+      properties.add(Property(
+          res[0] - 1,
+          res[1],
+          res[2].toString().toDataType(udtName: res[6]),
+          res[3],
+          res[4] == 'YES' ? true : false,
+          charMaxLength: res[5]));
     }
+
+    return properties;
   }
 
   @override
@@ -337,8 +359,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     }
   }
 
-  /// Table properties need to be already created
-  /// Order by ctid doesn't make sense.
   getLastRow(app.Table table, {verbose: false}) async {
     Property linearityProperty = table.orderBy;
     if (linearityProperty == null) {
@@ -356,19 +376,41 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       if (verbose) debugPrint("getLastRow: $results");
       if (results.isNotEmpty) {
         for (final p in table.properties) {
-          if (p.type.primitive == PrimitiveType.byteArray) {
-            p.lastValue = fromBytesToInt32(
-                results[0][p.dbPosition][0],
-                results[0][p.dbPosition][1],
-                results[0][p.dbPosition][2],
-                results[0][p.dbPosition][3]);
-          } else {
-            p.lastValue = results[0][p.dbPosition];
-          }
-        } // TODO format accordingly to type / fix postgres plugin bug where array is retrieved badly
+          p.lastValue = resultToValue(p.type, results[0][p.dbPosition]);
+        }
+      } else {
+        table.properties.forEach((p) => p.lastValue = null);
       }
     } on PostgreSQLException catch (e) {
       print("getLastRow (${table.name}): $e");
+    }
+  }
+
+  dynamic resultToValue(DataType type, dynamic result, {bool fromArray = false}) {
+    if (type.isArray && !fromArray && result != null) {
+      List<int> codes = result.codeUnits.sublist(24);
+      codes.removeWhere((c) => c == 0);
+      List<List<int>> list = [];
+      List<int> lastElem = [];
+      for (final c in codes) {
+        if (c == 1) {
+          list.add(lastElem);
+          lastElem = [];
+        } else
+          lastElem.add(c);
+      }
+      list.add(lastElem);
+      //print(list.map((e) => String.fromCharCodes(e)));
+      return list.map((e) => resultToValue(type, String.fromCharCodes(e), fromArray: true)).toList();
+    }
+    else if (type.primitive == PrimitiveType.byteArray) {
+      return fromBytesToInt32(
+          result[0],
+          result[1],
+          result[2],
+          result[3]);
+    } else {
+      return result;
     }
   }
 
@@ -467,9 +509,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     try {
       var results = await connection.execute(sql).timeout(timeout);
 
-      /// if there's no linearity there's no lastValues
-      if (table.orderBy == null)
-        table.properties.forEach((p) => p.lastValue = null);
       if (verbose)
         debugPrint("cancelLastInsertion (${this.params.alias}): $results");
     } on PostgreSQLException catch (e) {
@@ -510,10 +549,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
     try {
       var results = await connection.execute(sql).timeout(timeout);
+      if (results == 0) {
+        throw Exception("Table is empty");
+      }
 
-      /// if there's no linearity there's no lastValues
-      if (table.orderBy == null)
-        table.properties.forEach((p) => p.lastValue = null);
       if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
     } on PostgreSQLException catch (e) {
       if (verbose)
