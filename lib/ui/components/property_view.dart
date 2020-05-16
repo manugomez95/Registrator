@@ -206,7 +206,11 @@ class _PropertyViewState extends State<PropertyView>
               context: context,
               value: value,
               property: property,
-              onChanged: (newValue) => _onChangeController(value, newValue),
+              onChanged: (newValue) {
+                /// Changing state continuously in this widget results in weird behaviour
+                value.current = newValue;
+                widget.updater(Tuple2(widget.property, value.current));
+              },
               onSuggestionSelected: (suggestion) {
                 setState(() {
                   value.current = suggestion;

@@ -1,4 +1,3 @@
-import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/ui/components/property_view.dart';
 import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
