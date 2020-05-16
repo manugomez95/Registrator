@@ -113,40 +113,16 @@ class _PropertyViewState extends State<PropertyView>
             .map((i, elem) => MapEntry(
                 i,
                 Dismissible(
-                  child: InkWell(
-                      child: Row(
+                  child: Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: <Widget>[
-                          Expanded(
-                            child: Container(
-                              alignment: Alignment.centerLeft,
-                              child: buildInput(values[i], property),
-                            ),
-                          ),
+                          Expanded(child: buildInput(values[i], property),),
                           Icon(
                             Icons.drag_handle,
                             color: Colors.grey,
                           )
                         ],
                       ),
-                      onTap: () {
-                        if (widget.property.type.primitive ==
-                            PrimitiveType.boolean) {
-                          setState(() {
-                            switch (values[i].current) {
-                              case false:
-                                values[i].current = true;
-                                break;
-                              case true:
-                                values[i].current = null;
-                                break;
-                              default:
-                                values[i].current = false;
-                                break;
-                            }
-                          });
-                        }
-                      }),
                   key: ValueKey(values[i]),
                   onDismissed: (direction) {
                     // Remove the item from the data source.
@@ -227,7 +203,7 @@ class _PropertyViewState extends State<PropertyView>
               maxLength: widget.property.charMaxLength,
               textInputAction: TextInputAction.newline,
               minLines: 1,
-              maxLines: 5,
+              maxLines: value.current == "" ? 1 : 5, /// = when showing hint max lines is 1
               keyboardType: TextInputType.multiline,
               focusNode: value.focus,
               onChanged: (newValue) => _onChangeController(value, newValue),
@@ -257,12 +233,39 @@ class _PropertyViewState extends State<PropertyView>
 
       /// Boolean checkbox field
       case PrimitiveType.boolean:
-        ret = Checkbox(
-          value: value.current,
-          focusNode: value.focus,
-          tristate: true,
-          onChanged: (newValue) => _onChangeController(value, newValue),
-        );
+        ret = InkWell(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: Container(
+                    alignment: Alignment.centerLeft,
+                    child: Checkbox(
+                      value: value.current,
+                      focusNode: value.focus,
+                      tristate: true,
+                      onChanged: (newValue) =>
+                          _onChangeController(value, newValue),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            onTap: () {
+              setState(() {
+                switch (value.current) {
+                  case false:
+                    value.current = true;
+                    break;
+                  case true:
+                    value.current = null;
+                    break;
+                  default:
+                    value.current = false;
+                    break;
+                }
+              });
+            });
         break;
 
       /// Timestamp

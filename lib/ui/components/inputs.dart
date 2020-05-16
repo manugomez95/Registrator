@@ -42,11 +42,7 @@ TypeAheadFormField typeAheadFormField(
 
 InputDecoration textInputDecoration(ValueLV value) {
   return InputDecoration(
-      hintText: value.last != null
-          ? (value.last.toString().length > 40
-              ? "${value.last.toString().substring(0, 40)}..."
-              : value.last.toString())
-          : "");
+      hintText: value.last != null ? value.last.toString() : "");
 }
 
 DateTimeField dateTimeField(
@@ -55,7 +51,6 @@ DateTimeField dateTimeField(
     BuildContext context,
     ValueLV value,
     Function(dynamic) onChanged}) {
-
   if (!showDate && !showTime) throw Exception("Nonsene dateTimeField");
   DateFormat format = DateFormat(
       "${showDate ? "yyyy-MM-dd" : ""}${showTime && showDate ? " " : ""}${showTime ? "HH:mm" : ""}");

@@ -5,7 +5,7 @@ import 'package:bitacora/utils/db_parameter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'form_field_view.dart';
-import 'package:bitacora/conf/style.dart' as app;
+import 'package:bitacora/conf/style.dart';
 
 enum DbFormType {
   connect,
