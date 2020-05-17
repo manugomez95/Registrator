@@ -388,19 +388,22 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   dynamic resultToValue(DataType type, dynamic result, {bool fromArray = false}) {
     if (type.isArray && !fromArray && result != null) {
-      List<int> codes = result.codeUnits.sublist(24);
+
+      List<int> codes;
+      if (result is String) codes = result.codeUnits.sublist(24);
+      else codes = result.toList().sublist(24);
+
       codes.removeWhere((c) => c == 0);
       List<List<int>> list = [];
       List<int> lastElem = [];
       for (final c in codes) {
-        if (c == 1) {
+        if (c < 32) {
           list.add(lastElem);
           lastElem = [];
         } else
           lastElem.add(c);
       }
       list.add(lastElem);
-      //print(list.map((e) => String.fromCharCodes(e)));
       return list.map((e) => resultToValue(type, String.fromCharCodes(e), fromArray: true)).toList();
     }
     else if (type.primitive == PrimitiveType.byteArray) {

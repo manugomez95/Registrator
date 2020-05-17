@@ -44,12 +44,15 @@ class _PropertyViewState extends State<PropertyView>
     super.initState();
     if (widget.property.type.isArray && widget.property.lastValue != null) {
       final lastValuesList = widget.property.lastValue as List;
-      for (var i = 0; i < lastValuesList.length; i++)
-        values.add(ValueLV(lastValuesList[i]));
-    } else if (widget.property.lastValue != null) {
-      values = [ValueLV(widget.property.lastValue)];
+      if (widget.action.type == app.ActionType.EditLastFrom) {
+        for (var i = 0; i < lastValuesList.length; i++)
+          values.add(ValueLV(lastValuesList[i]));
+      }
+      else {
+        values.add(ValueLV(lastValuesList.first));
+      }
     } else
-      values = [ValueLV(null)];
+      values = [ValueLV(widget.property.lastValue)];
   }
 
   @override
@@ -203,7 +206,7 @@ class _PropertyViewState extends State<PropertyView>
               maxLength: widget.property.charMaxLength,
               textInputAction: TextInputAction.newline,
               minLines: 1,
-              maxLines: value.current == "" ? 1 : 5, /// = when showing hint max lines is 1
+              maxLines: 5,
               keyboardType: TextInputType.multiline,
               focusNode: value.focus,
               onChanged: (newValue) => _onChangeController(value, newValue),

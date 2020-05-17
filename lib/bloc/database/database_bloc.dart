@@ -102,8 +102,10 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       add(ConnectionSuccessfulEvent(dbClient));
     } on Exception catch (e, stacktrace) {
       add(ConnectionErrorEvent(e, dbClient));
+      throw stacktrace;
     } on Error catch (e, stacktrace) {
       add(ConnectionErrorEvent(e, dbClient));
+      throw stacktrace;
     }
   }
 

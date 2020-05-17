@@ -52,8 +52,6 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
     if (event is InitializeEvent) {
       await getIt<AppData>().initLocalDb();
 
-      await BigQueryClient(DbConnectionParams("","",0,"","","",false)).connect();
-
       /// Connect to saved connections
       for (var c in await getIt<AppData>().localDb.query('connections')) {
         var password = await decryptString(c["password"], PRIVATE_KEY);
@@ -72,6 +70,9 @@ class AppDataBloc extends Bloc<AppDataEvent, AppDataState> {
             break;
           case "sqlite_android":
             db = SQLiteClient(connectionParams);
+            break;
+          case "bigquery":
+            db = BigQueryClient(connectionParams, "personal-analytics-270310", "my_data");
             break;
           default:
             throw Exception("brand not supported");

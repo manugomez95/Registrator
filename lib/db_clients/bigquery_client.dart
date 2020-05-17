@@ -6,12 +6,84 @@ import 'package:flutter_svg/svg.dart';
 import 'package:googleapis/bigquery/v2.dart';
 import 'package:googleapis_auth/auth.dart';
 import 'package:googleapis_auth/auth_io.dart';
+import 'package:sqflite/sqflite.dart';
 import 'db_client.dart';
 import 'package:bitacora/model/table.dart' as app;
 
+extension BQString on String {
+  String pgFormat() {
+    return this.toLowerCase() != this || this.contains(" ")
+        ? '''"$this"'''
+        : this;
+  }
+
+  static fromBQValue(dynamic value, DataType type, {bool fromArray = false}) {
+    if (value == null || value.toString() == "")
+      return 'null';
+    else if (type.isArray && !fromArray)
+      return (value as List).isEmpty
+          ? 'null'
+          : "'{${(value as List).map((e) => BQString.fromBQValue(e, type, fromArray: true)).join(", ")}}'";
+    else {
+      if ([
+        PrimitiveType.text,
+        PrimitiveType.varchar,
+        PrimitiveType.date,
+        PrimitiveType.timestamp,
+        PrimitiveType.time,
+      ].contains(type.primitive) && !fromArray)
+        return "'${value.toString()}'";
+      else
+        return value.toString();
+    }
+  }
+
+  DataType toDataType({String udtName, isArray: false}) {
+    String arrayStr = isArray ? "[ ]" : "";
+    switch (this) {
+      case "TIMESTAMP":
+        return DataType(PrimitiveType.timestamp, "timestamp" + arrayStr,
+            isArray: isArray);
+      case "TIME":
+        return DataType(PrimitiveType.time, "time" + arrayStr,
+            isArray: isArray);
+      case "STRING":
+        return DataType(PrimitiveType.text, "string" + arrayStr,
+            isArray: isArray);
+      case "INT64":
+        return DataType(PrimitiveType.integer, "integer" + arrayStr,
+            isArray: isArray);
+      case "BOOL":
+        return DataType(PrimitiveType.boolean, "boolean" + arrayStr,
+            isArray: isArray);
+      case "NUMERIC":
+      case "FLOAT64":
+        return DataType(PrimitiveType.real, "real" + arrayStr,
+            isArray: isArray);
+      case "DATE":
+        return DataType(PrimitiveType.date, "date" + arrayStr,
+            isArray: isArray);
+      case "ARRAY": // TODO check
+        return udtName.toDataType(isArray: true);
+      default:
+        throw UnsupportedError("$this not supported as a type");
+    }
+  }
+}
+
 // ignore: must_be_immutable
 class BigQueryClient extends DbClient<BigqueryApi> {
-  BigQueryClient(DbConnectionParams params) : super(params);
+  BigQueryClient(DbConnectionParams params, this.projectId, this.datasetId) : super(params);
+
+  final String projectId;
+  final String datasetId;
+
+  @override
+  Future<Map<String, dynamic>> toMap() async {
+    Map<String, dynamic> params = await super.toMap();
+    params["brand"] = "bigquery";
+    return params;
+  }
 
   @override
   cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm,
@@ -21,7 +93,7 @@ class BigQueryClient extends DbClient<BigqueryApi> {
   }
 
   @override
-  connect({verbose = false}) {
+  connect({verbose = false}) async {
     final _credentials = new ServiceAccountCredentials.fromJson(r'''{
       "type": "service_account",
       "project_id": "personal-analytics-270310",
@@ -33,14 +105,12 @@ class BigQueryClient extends DbClient<BigqueryApi> {
       "token_uri": "https://oauth2.googleapis.com/token",
       "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
       "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/androidtest%40personal-analytics-270310.iam.gserviceaccount.com"
-    }'''
-    );
+    }''');
 
     const _SCOPES = const [BigqueryApi.BigqueryScope];
-    clientViaServiceAccount(_credentials, _SCOPES).then((httpClient) async {
-      connection = new BigqueryApi(httpClient);
-      print((await connection.tables.list("personal-analytics-270310", "my_data")).tables.first.id);
-    });
+    var httpClient = await clientViaServiceAccount(_credentials, _SCOPES);
+    connection = new BigqueryApi(httpClient);
+    isConnected = true;
   }
 
   @override
@@ -88,15 +158,29 @@ class BigQueryClient extends DbClient<BigqueryApi> {
 
   @override
   Future<Set<Property>> getPropertiesFromTable(String table,
-      {verbose = false}) {
-    // TODO: implement getPropertiesFromTable
-    return null;
+      {verbose = false}) async {
+    var queryRequest = QueryRequest();
+    queryRequest.query = "SELECT * FROM $datasetId.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '$table'";
+    queryRequest.useLegacySql = false;
+    // TODO ? queryRequest.defaultDataset
+    QueryResponse res = await connection.jobs.query(queryRequest, projectId);
+
+    Set<Property> properties = Set();
+    (res.toJson()["rows"] as List).forEach((r) {
+      properties.add(Property(int.tryParse(r['f'][4]['v']), r['f'][3]['v'], r['f'][6]['v'].toString().toDataType(), null, r['f'][5]['v'] == 'YES' ? true : false));
+    });
+
+    return properties;
   }
 
   @override
-  Future<List<String>> getTables({verbose = false}) {
-    // TODO: implement getTables
-    return null;
+  Future<List<String>> getTables({verbose = false}) async {
+    var results =
+        (await connection.tables.list(projectId, datasetId))
+            .tables;
+    return List.generate(results.length, (i) {
+      return results[i].id.split(".").last;
+    });
   }
 
   @override
@@ -107,15 +191,41 @@ class BigQueryClient extends DbClient<BigqueryApi> {
   }
 
   @override
-  Future<bool> ping({verbose = false}) {
-    // TODO: implement ping
-    return null;
+  Future<bool> ping({verbose = false}) async {
+    return true;
   }
 
   @override
-  pullDatabaseModel({verbose = false, getLastRows = true}) {
-    // TODO: implement pullDatabaseModel
-    return null;
+  pullDatabaseModel({verbose = false, getLastRows = true}) async {
+    /// Get tables
+    List<String> tablesNames = await getTables(verbose: verbose);
+
+    /// For each table:
+    Set<app.Table> tables = Set();
+    for (var tName in tablesNames) {
+      /// get properties...
+      Set<Property> properties = await getPropertiesFromTable(tName);
+
+      tables.add(app.Table(tName, properties, this));
+
+      /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
+      if (this.tables == null) {
+        var orderByCandidates = properties.where((property) => [
+          PrimitiveType.date,
+          PrimitiveType.time,
+          PrimitiveType.timestamp,
+        ].contains(property.type.primitive));
+        if (orderByCandidates.length == 1)
+          tables.last.orderBy = orderByCandidates.first;
+      }
+
+      await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+
+    this.tables = tables;
+
+    /// get foreign and primary keys info
+    await getKeys();
   }
 
   @override

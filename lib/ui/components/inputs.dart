@@ -42,6 +42,7 @@ TypeAheadFormField typeAheadFormField(
 
 InputDecoration textInputDecoration(ValueLV value) {
   return InputDecoration(
+      hintMaxLines: 1,
       hintText: value.last != null ? value.last.toString() : "");
 }
 

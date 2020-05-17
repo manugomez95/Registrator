@@ -1,4 +1,5 @@
 import 'package:bitacora/bloc/app_data/app_data_bloc.dart';
+import 'package:bitacora/db_clients/bigquery_client.dart';
 import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/db_clients/sqlite_client.dart';
 import 'package:bitacora/model/table.dart' as app;
@@ -56,6 +57,12 @@ class AppData {
             "connections",
             await SQLiteClient(DbConnectionParams("Demo", "localhost", 1234,
                     "demo.db", "", r"abracadabra", false))
+                .toMap());
+
+        batch.insert(
+            "connections",
+            await BigQueryClient(DbConnectionParams("BigQuery", "Google", 0,
+                "my_data", "yo", r"alohomora", false), "personal-analytics-270310", "my_data")
                 .toMap());
 
         batch.execute(

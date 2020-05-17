@@ -204,7 +204,7 @@ class SQLiteClient extends DbClient<Database> {
 
   @override
   Future<bool> ping({verbose = false}) async {
-    return true;
+    return Future.value(true);
   }
 
   @override
