@@ -69,6 +69,7 @@ class _MyAppState extends State<MyApp> {
           return MaterialApp(
             title: 'bitacora',
             theme: theme,
+            darkTheme: Themes.darkTheme,
             home: Routing(),
             localizationsDelegates: [
               // ... app-specific localization delegate[s] here

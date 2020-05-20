@@ -31,6 +31,9 @@ class AppData {
         ?.expand((i) => i);
   }
 
+  // TODO not clean -> allowed me to fix losing progress when UI updates (db connection)
+  bool updateForm = false;
+
   // TODO [OFFLINE SUPPORT] make another table for each table with a queue of pending insertions (problem with autocomplete?)
   /// Local DB is composed of the following tables: connections and tables
   /// - tables: contain the orderBy and visibility configuration

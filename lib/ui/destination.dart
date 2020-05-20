@@ -12,6 +12,6 @@ class Destination {
 
 List<Destination> allDestinations = <Destination>[
   Destination('Actions', Icons.flash_on, ActionsPage()),
-  Destination('Dashboard', Icons.dashboard, null),
+  //Destination('Dashboard', Icons.dashboard, null),
   Destination('Data', Icons.storage, DataPage()),
 ];

@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:simple_rsa/simple_rsa.dart';
 
 abstract class PropertyType<T> {
@@ -54,6 +56,46 @@ enum PrimitiveType {
   date,
   byteArray
 }
+
+class DbInfo {
+  final Widget _logoLight;
+  final Widget _logoDark;
+  final String alias;
+  final String id;
+  //final DbConnectionParams connectionParams;
+
+  SvgPicture getLogo(Brightness brightness) => brightness == Brightness.light ? this._logoLight : this._logoDark;
+
+  const DbInfo._(this.alias, this.id, this._logoLight, this._logoDark);
+
+  factory DbInfo (String id) {
+    switch(id) {
+      case "postgres":
+        var logoLight = SvgPicture.asset('assets/images/postgresql_elephant.svg',
+            height: 75, semanticsLabel: 'Postgres Logo');
+        return DbInfo._("PostgreSQL", id, logoLight, logoLight);
+        break;
+      case "sqlite_android":
+        var logoLight = SvgPicture.asset('assets/images/SQLite.svg',
+            height: 55, semanticsLabel: 'SQLite Logo');
+
+        var logoDark = SvgPicture.asset('assets/images/SQLite_dark.svg',
+            height: 55, semanticsLabel: 'SQLite Logo');
+        return DbInfo._("SQLite", id, logoLight, logoDark);
+        break;
+      case "bigquery":
+        var logoLight = SvgPicture.asset('assets/images/BigQuery.svg',
+            height: 75, semanticsLabel: 'BigQuery Logo');
+        return DbInfo._("BigQuery", id, logoLight, logoLight);
+        break;
+      default:
+        throw Exception("Db not supported");
+    }
+  }
+}
+
+// TODO instead of string enum Databases.Postgres?
+List<DbInfo> supportedDatabases = [DbInfo("postgres")];
 
 extension PrimitiveTypeExtension on PrimitiveType {
 

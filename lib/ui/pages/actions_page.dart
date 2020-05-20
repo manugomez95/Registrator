@@ -19,7 +19,8 @@ class ActionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ignore: close_sinks
-    final bloc = getIt<AppData>().bloc; // TODO maybe in the future only listen to all the databases blocs?
+    final bloc = getIt<AppData>()
+        .bloc; // TODO maybe in the future only listen to all the databases blocs?
     ThemeData theme = Theme.of(context);
     return BlocProvider(
         create: (BuildContext context) => bloc,
@@ -32,15 +33,26 @@ class ActionsPage extends StatelessWidget {
                 return Center(
                   child: CircularProgressIndicator(),
                 );
-              }
-              else {
+              } else {
                 return EmptyView();
               }
             } else {
               return ActionsDropdown(<app.Action>[
-                app.Action(app.ActionType.InsertInto, theme.colorScheme.insertBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.insertTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
-                app.Action(app.ActionType.EditLastFrom, theme.colorScheme.editBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.editTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
-                app.Action(app.ActionType.CreateWidgetFrom, theme.colorScheme.createWidgetBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.createWidgetTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
+                app.Action(
+                    app.ActionType.InsertInto,
+                    theme.colorScheme.insertBgColor ??
+                        theme.colorScheme.actionsDropdownBg,
+                    theme.colorScheme.insertTextColor ??
+                        theme.colorScheme.actionsDropdownTextColor,
+                    theme.brightness),
+                app.Action(
+                    app.ActionType.EditLastFrom,
+                    theme.colorScheme.editBgColor ??
+                        theme.colorScheme.actionsDropdownBg,
+                    theme.colorScheme.editTextColor ??
+                        theme.colorScheme.actionsDropdownTextColor,
+                    theme.brightness),
+                //app.Action(app.ActionType.CreateWidgetFrom, theme.colorScheme.createWidgetBgColor ?? theme.colorScheme.actionsDropdownBg, theme.colorScheme.createWidgetTextColor ?? theme.colorScheme.actionsDropdownTextColor, theme.brightness),
               ], tables);
             }
           },
@@ -67,7 +79,8 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
   @override
   Widget build(BuildContext context) {
     /// to update selected action's colors. I haven't come up with a more efficient way...
-    selectedAction = widget.actions.firstWhere((a) => a == selectedAction, orElse: () => widget.actions.first);
+    selectedAction = widget.actions.firstWhere((a) => a == selectedAction,
+        orElse: () => widget.actions.first);
     ThemeData theme = Theme.of(context);
     return Column(
       children: <Widget>[
@@ -83,6 +96,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 onChanged: (app.Action newValue) {
                   setState(() {
                     selectedAction = newValue;
+                    getIt<AppData>().updateForm = true;
                   });
                 },
                 items: widget.actions
@@ -97,9 +111,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 }).toList()),
           )),
         ),
-        TablesDropdown(
-          selectedAction, widget.tables
-        )
+        TablesDropdown(selectedAction, widget.tables)
       ],
     );
   }
@@ -112,10 +124,7 @@ class TablesDropdown extends StatefulWidget {
   TablesDropdown(this.selectedAction, this.tables);
 
   @override
-  TablesDropdownState createState() {
-    TablesDropdownState state = TablesDropdownState();
-    return state;
-  }
+  TablesDropdownState createState() => TablesDropdownState();
 }
 
 class TablesDropdownState extends State<TablesDropdown> {
@@ -124,23 +133,40 @@ class TablesDropdownState extends State<TablesDropdown> {
   /// necessary? YES, re-builds the form when an event is released (like editLastFrom, removeLastFrom...)
   final _formBloc = FormBloc();
 
+  PropertiesForm form;
+
+  @override
+  void initState() {
+    super.initState();
+    form = PropertiesForm(
+        selectedTable ?? widget.tables.first, widget.selectedAction);
+  }
+
   @override
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
-    if (!widget.tables.contains(selectedTable)) selectedTable = widget.tables.first;
-    return BlocProvider(
-        create: (BuildContext context) => _formBloc,
-        child: BlocBuilder(
-            bloc: _formBloc,
-            builder: (BuildContext context, PropertiesFormState state) {
-              PropertiesForm form =
-                  PropertiesForm(selectedTable, widget.selectedAction);
-              return Expanded(
-                child: Scaffold(
-                  appBar: buildTablesDropdown(),
-                  body: RefreshIndicator(
-                    child: widget.selectedAction.type == app.ActionType.EditLastFrom
-                        ? Dismissible(
+    if (!widget.tables.contains(selectedTable))
+      selectedTable = widget.tables.first;
+
+    return Expanded(
+      child: Scaffold(
+        appBar: buildTablesDropdown(),
+        body: BlocProvider(
+            create: (BuildContext context) => _formBloc,
+            child: BlocBuilder(
+                bloc: _formBloc,
+                builder: (BuildContext context, PropertiesFormState state) {
+                  if (state.rebuildForm || getIt<AppData>().updateForm) // TODO if doesnt work use _formBloc.rebuildForm
+                    form = PropertiesForm(selectedTable, widget.selectedAction);
+                  getIt<AppData>().updateForm = false;
+                  // TODO depending on state form is rebuilt or not
+                  return Column(
+                    children: <Widget>[
+                      Expanded(
+                        child: RefreshIndicator(
+                          child: widget.selectedAction.type ==
+                              app.ActionType.EditLastFrom
+                              ? Dismissible(
                             child: form,
                             key: UniqueKey(),
                             background: Container(color: Colors.red),
@@ -156,54 +182,60 @@ class TablesDropdownState extends State<TablesDropdown> {
                                   title: "Remove last entry?");
                             },
                           )
-                        : form,
-                    /// Refreshing only updates the last row of the selected table and resets form [Lightweight]
-                    /// The user should understand that if he wants to update the db model he should refresh the data tab
-                    onRefresh: () async {
-                      await selectedTable.client.getLastRow(selectedTable);
-                      setState(() {
-                        form.formKey.currentState.reset();
-                      });
-                      return null;
-                    },
-                  ),
-                  floatingActionButton: Builder(
-                    builder: (context) => FloatingActionButton(
-                      heroTag: "ActionsPageFB",
-                      backgroundColor: widget.selectedAction.floatButColor,
-                      tooltip: "${widget.selectedAction.title} ${selectedTable.name}",
-                      child: Icon(
-                        Icons.check,
-                        color: theme.colorScheme.negativeDefaultTxtColor,
+                              : form,
+
+                          /// Refreshing only updates the last row of the selected table and resets form [Lightweight]
+                          /// The user should understand that if he wants to update the db model he should refresh the data tab
+                          onRefresh: () async {
+                            await selectedTable.client.getLastRow(selectedTable);
+                            setState(() {
+                              getIt<AppData>().updateForm = true;
+                            });
+                          },
+                        ),
                       ),
-                      onPressed: () {
-                        if (form.formKey.currentState.validate()) {
-                          switch (widget.selectedAction.type) {
-                            case app.ActionType.InsertInto:
-                              _formBloc.add(InsertSubmitForm(
-                                  context,
-                                  form.propertiesForm,
-                                  widget.selectedAction,
-                                  selectedTable));
-                              break;
-                            case app.ActionType.EditLastFrom:
-                              _formBloc.add(EditSubmitForm(
-                                  context,
-                                  form.propertiesForm,
-                                  widget.selectedAction,
-                                  selectedTable));
-                              break;
-                            default:
-                              showErrorSnackBar(context, "Not implemented yet");
-                          }
-                        } else
-                          showErrorSnackBar(context, "Check for wrong input");
-                      },
-                    ),
-                  ),
-                ),
-              );
-            }));
+                      state.loadingStack.isNotEmpty ? LinearProgressIndicator(value: null,) : SizedBox(height: 0,),
+                    ],
+                  );
+                })
+        ),
+        floatingActionButton: Builder(
+          builder: (context) => FloatingActionButton(
+            heroTag: "ActionsPageFB",
+            backgroundColor: widget.selectedAction.floatButColor,
+            tooltip:
+            "${widget.selectedAction.title} ${selectedTable.name}",
+            child: Icon(
+              Icons.check,
+              color: theme.colorScheme.negativeDefaultTxtColor,
+            ),
+            onPressed: () {
+              if (form.formKey.currentState.validate()) {
+                switch (widget.selectedAction.type) {
+                  case app.ActionType.InsertInto:
+                    _formBloc.add(InsertSubmitForm(
+                        context,
+                        form.propertiesForm,
+                        widget.selectedAction,
+                        selectedTable));
+                    break;
+                  case app.ActionType.EditLastFrom:
+                    _formBloc.add(EditSubmitForm(
+                        context,
+                        form.propertiesForm,
+                        widget.selectedAction,
+                        selectedTable));
+                    break;
+                  default:
+                    showErrorSnackBar(context, "Not implemented yet");
+                }
+              } else
+                showErrorSnackBar(context, "Check for wrong input");
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   Widget buildTablesDropdown() {
@@ -223,9 +255,11 @@ class TablesDropdownState extends State<TablesDropdown> {
               onChanged: (app.Table newTable) {
                 setState(() {
                   selectedTable = newTable;
+                  getIt<AppData>().updateForm = true;
                 });
               },
-              items: widget.tables.map<DropdownMenuItem<app.Table>>((app.Table table) {
+              items: widget.tables
+                  .map<DropdownMenuItem<app.Table>>((app.Table table) {
                 return DropdownMenuItem<app.Table>(
                     value: table,
                     child: Center(

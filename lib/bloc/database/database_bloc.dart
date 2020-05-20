@@ -5,6 +5,7 @@ import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bloc/bloc.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import './bloc.dart';
 
@@ -102,10 +103,10 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       add(ConnectionSuccessfulEvent(dbClient));
     } on Exception catch (e, stacktrace) {
       add(ConnectionErrorEvent(e, dbClient));
-      throw stacktrace;
+      debugPrint(stacktrace.toString());
     } on Error catch (e, stacktrace) {
       add(ConnectionErrorEvent(e, dbClient));
-      throw stacktrace;
+      debugPrint(stacktrace.toString());
     }
   }
 

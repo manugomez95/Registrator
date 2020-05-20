@@ -32,20 +32,15 @@ extension SqLiteString on String {
 
 // ignore: must_be_immutable
 class SQLiteClient extends DbClient<Database> {
-  SQLiteClient(DbConnectionParams params) : super(params);
+  SQLiteClient._(DbConnectionParams params, List<PrimitiveType> orderByTypes)
+      : super(params, orderByTypes);
 
-  @override
-  SvgPicture getLogo(Brightness brightness) => brightness == Brightness.light
-      ? SvgPicture.asset('assets/images/SQLite.svg',
-          height: 55, semanticsLabel: 'SQLite Logo')
-      : SvgPicture.asset('assets/images/SQLite_dark.svg',
-          height: 55, semanticsLabel: 'SQLite Logo');
-
-  @override
-  cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose = false}) {
-    // TODO: implement cancelLastInsertion
-    return null;
+  factory SQLiteClient(DbConnectionParams params) {
+    List<PrimitiveType> orderByTypes = [
+      PrimitiveType.integer,
+      PrimitiveType.real,
+    ];
+    return SQLiteClient._(params, orderByTypes);
   }
 
   @override
@@ -56,8 +51,15 @@ class SQLiteClient extends DbClient<Database> {
   }
 
   @override
-  connect({verbose: false, fromForm: false}) async {
-    connection = await openDatabase(
+  SvgPicture getLogo(Brightness brightness) => brightness == Brightness.light
+      ? SvgPicture.asset('assets/images/SQLite.svg',
+          height: 55, semanticsLabel: 'SQLite Logo')
+      : SvgPicture.asset('assets/images/SQLite_dark.svg',
+          height: 55, semanticsLabel: 'SQLite Logo');
+
+  @override
+  Future<Database> initConnection() async {
+    return await openDatabase(
       join(await getDatabasesPath(), 'demo.db'),
       onCreate: (db, version) async {
         final batch = db.batch();
@@ -77,99 +79,36 @@ class SQLiteClient extends DbClient<Database> {
         });
 
         batch.execute(
-          "CREATE TABLE diary(description TEXT, time INTEGER)",
-        ); // I wish many many people will download my app and give me lots of likes, that hurt... stop deleting...  please don't remove me... you really like deleting
-        batch.execute(
           "CREATE TABLE quotes(quote TEXT, author TEXT, year INTEGER)",
         );
+
+        batch.insert("quotes", {
+          "quote":
+              "If you're going to try, go all the way. Otherwise, don't even start. This could mean losing girlfriends, wives, relatives and maybe even your mind. It could mean not eating for three or four days. It could mean freezing on a park bench. It could mean jail. It could mean derision. It could mean mockery--isolation. Isolation is the gift. All the others are a test of your endurance, of how much you really want to do it. And, you'll do it, despite rejection and the worst odds. And it will be better than anything else you can imagine. If you're going to try, go all the way. There is no other feeling like that. You will be alone with the gods, and the nights will flame with fire. You will ride life straight to perfect laughter. It's the only good fight there is.",
+          "author": "Charles Bukowski",
+          "year": 1975
+        });
+
         await batch.commit(noResult: true);
       },
       version: 1,
     );
-    isConnected = true;
-    if (verbose)
-      debugPrint("connect (${this.params.alias}): Connection established");
   }
 
   @override
-  deleteLastFrom(app.Table table, {verbose = false}) async {
-    Property orderBy = table.orderBy;
-
-    /// if there's no order nor last values...
-    if (orderBy == null && table.properties.every((p) => p.lastValue == null)) {
-      String exception = "No linearity nor lastValue defined";
-      if (verbose) debugPrint("deleteLastFrom (${table.name}): $exception");
-      throw Exception(exception);
-    }
-
-    /// last values
-    String where = "WHERE " +
-        table.properties.map((Property p) {
-          var valueStr = SqLiteString.fromSQLiteValue(p.lastValue, p.type);
-          return "${p.name} ${valueStr == "null" ? "is null" : "= $valueStr"}";
-        }).join(" AND ");
-
-    /// if orderBy is used
-    String order =
-        orderBy != null ? "ORDER BY ${orderBy.name} DESC" : "";
-
-    String last =
-        "SELECT ROWID FROM ${table.name} $where $order LIMIT 1";
-
-    String sql = "DELETE FROM ${table.name} WHERE ROWID IN ($last)";
-
-    if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
-
-    var results = await connection.rawDelete(sql);
-    if (results == 0) {
-      throw Exception("Table is empty");
-    }
-
-    if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
-  }
+  openConnection() {}
 
   @override
-  disconnect({verbose = false}) {
-    return null;
-  }
+  closeConnection() {}
 
   @override
-  editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose = false}) {
-    return null;
-  }
-
-  @override
-  getKeys({verbose = false}) {
-    // TODO: implement getKeys
-    return null;
-  }
-
-  @override
-  getLastRow(app.Table table, {verbose = false}) async {
-    Property orderBy = table.orderBy;
-    if (orderBy == null) {
-      if (verbose)
-        debugPrint("getLastRow (${table.name}): No linearity defined");
-      return;
-    }
-
-    var result = await connection.query(table.name,
-        orderBy: "${orderBy.name} DESC", limit: 1);
-
-    if (result.isNotEmpty) {
-      for (final p in table.properties) {
-        p.lastValue = result[0][p.name];
-      }
-    } else {
-      table.properties.forEach((p) => p.lastValue = null);
-    }
-  }
-
-  @override
-  Future<List<String>> getPkDistinctValues(app.Table table,
-      {verbose = false, String pattern}) {
-    return null;
+  Future<List<String>> getTables({verbose = false}) async {
+    List res = await connection.query("sqlite_master",
+        where: "type = ? AND name != ?",
+        whereArgs: ["table", "android_metadata"]);
+    return List<String>.generate(res.length, (i) {
+      return res[i]["name"];
+    });
   }
 
   @override
@@ -187,61 +126,115 @@ class SQLiteClient extends DbClient<Database> {
   }
 
   @override
-  Future<List<String>> getTables({verbose = false}) async {
-    List res = await connection.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name!='android_metadata'");
-    return List<String>.generate(res.length, (i) {
-      return res[i]["name"];
-    });
-  }
-
-  @override
-  insertRowIntoTable(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose = false}) {
-    // TODO: implement insertRowIntoTable
-    return null;
-  }
-
-  @override
   Future<bool> ping({verbose = false}) async {
-    return Future.value(true);
+    return true;
   }
 
   @override
-  pullDatabaseModel({verbose: false, getLastRows: true}) async {
-    /// Get tables
-    List<String> tablesNames = await getTables(verbose: verbose);
-
-    /// For each table:
-    Set<app.Table> tables = Set();
-    for (var tName in tablesNames) {
-      /// get properties...
-      Set<Property> properties = await getPropertiesFromTable(tName);
-
-      tables.add(app.Table(tName, properties, this));
-
-      /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
-      if (this.tables == null) {
-        var orderByCandidates = properties.where((property) => [
-              PrimitiveType.integer,
-              PrimitiveType.real,
-            ].contains(property.type.primitive));
-        if (orderByCandidates.length == 1)
-          tables.last.orderBy = orderByCandidates.first;
-      }
-
-      await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
-    }
-
-    this.tables = tables;
-
-    /// get foreign and primary keys info
-    await getKeys();
+  Future<bool> checkConnection() async {
+    return true;
   }
 
   @override
-  setConnectionParams(DbConnectionParams params, {verbose}) {
-    // TODO: implement setConnectionParams
+  Future<List> queryLastRow(app.Table table, Property orderBy,
+      {verbose = false}) async {
+    return (await connection.query(table.name,
+            orderBy: "${orderBy.name} DESC", limit: 1))
+        .first
+        .values
+        .toList();
+  }
+
+  @override
+  dynamic resToValue(dynamic res, DataType type) {
+    return res;
+  }
+
+  @override
+  insertSQL(app.Table table, String properties, String values) {
+    return "INSERT INTO ${dbStrFormat(table.name)} ($properties) VALUES ($values)";
+  }
+
+  @override
+  Future<int> executeCancelLastInsertion(app.Table table, String whereString,
+      {verbose = false}) async {
+    var sql =
+        "DELETE FROM ${dbStrFormat(table.name)} WHERE ROWID IN (SELECT ROWID FROM ${dbStrFormat(table.name)} WHERE $whereString LIMIT 1)";
+    if (verbose) debugPrint(sql);
+    int id = await connection.rawInsert(sql);
+    return 1;
+  }
+
+  @override
+  String editLastFromSQL(app.Table table) {
+    /// last values, IMPORTANT, when null there's no question mark so...
+    String where = "WHERE " +
+        table.properties.map((Property p) {
+          return "${dbStrFormat(p.name)} ${p.lastValue == null ? "is null" : "= ?"}";
+        }).join(" AND ");
+
+    String propertiesNames = table.properties.map((e) => dbStrFormat(e.name)).join(", ");
+    String valuesString = List.filled(table.properties.length, "?").join(", ");
+
+    String last =
+        "SELECT ROWID FROM ${dbStrFormat(table.name)} $where LIMIT 1";
+
+    return "UPDATE ${table.name} SET ($propertiesNames) = ($valuesString) WHERE ROWID IN ($last)";
+  }
+
+  @override
+  getKeys({verbose = false}) {}
+
+  @override
+  Future<List<String>> getPkDistinctValues(app.Table table,
+      {verbose = false, String pattern}) {
     return null;
+  }
+
+  @override
+  fromValueToDbValue(value, DataType type, {bool fromArray: false, bool inWhere: false}) {
+    /// IMPORTANT
+    if (value == null || value.toString() == "")
+      return 'null';
+    return value;
+  }
+
+  @override
+  String dbStrFormat(String str) {
+    return str;
+  }
+
+  // TODO return number of rows affected or 1 at least
+  @override
+  Future<int> executeSQL(OpType opType, String command, List arguments) {
+    switch (opType) {
+      case OpType.insert:
+        return connection.rawInsert(command, arguments);
+        break;
+      case OpType.update:
+        return connection.rawUpdate(command, arguments);
+        break;
+      case OpType.delete:
+        return connection.rawDelete(command, arguments);
+        break;
+      default:
+    }
+  }
+
+  @override
+  query(String command, List arguments) {
+    return connection.rawQuery(command, arguments);
+  }
+
+  @override
+  String deleteLastFromSQL(app.Table table) {
+    /// last values, IMPORTANT, when null there's no question mark so...
+    String where = "WHERE " +
+        table.properties.map((Property p) {
+          return "${dbStrFormat(p.name)} ${p.lastValue == null ? "is null" : "= ?"}";
+        }).join(" AND ");
+
+    return "DELETE FROM ${dbStrFormat(table.name)} WHERE ROWID IN "
+        "(SELECT ROWID FROM ${dbStrFormat(table.name)} $where LIMIT 1)";
   }
 }

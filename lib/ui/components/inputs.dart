@@ -52,7 +52,7 @@ DateTimeField dateTimeField(
     BuildContext context,
     ValueLV value,
     Function(dynamic) onChanged}) {
-  if (!showDate && !showTime) throw Exception("Nonsene dateTimeField");
+  if (!showDate && !showTime) throw Exception("Nonsense dateTimeField");
   DateFormat format = DateFormat(
       "${showDate ? "yyyy-MM-dd" : ""}${showTime && showDate ? " " : ""}${showTime ? "HH:mm" : ""}");
 

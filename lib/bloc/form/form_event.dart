@@ -1,11 +1,10 @@
+import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:postgres/postgres.dart';
 
 abstract class FormEvent extends Equatable {
   final app.Table table;
@@ -29,17 +28,6 @@ abstract class SubmitFormEvent extends FormEvent {
 
 class InsertSubmitForm extends SubmitFormEvent {
   InsertSubmitForm(BuildContext context, Map<Property, dynamic> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
-
-  Future<void> undo() async {
-    try {
-      await table.client.cancelLastInsertion(
-          table, propertiesForm);
-      await table.client.getLastRow(table);
-      Fluttertoast.showToast(msg: "Undo");
-    } on PostgreSQLException catch (e) {
-      showErrorSnackBar(context, e.toString());
-    }
-  }
 }
 
 class EditSubmitForm extends SubmitFormEvent {
@@ -47,5 +35,7 @@ class EditSubmitForm extends SubmitFormEvent {
 }
 
 class DeleteLastEntry extends FormEvent {
-  DeleteLastEntry(app.Table table, BuildContext context) : super(table, context);
+  final bool rebuildForm;
+
+  DeleteLastEntry(app.Table table, BuildContext context, {this.rebuildForm: true}) : super(table, context);
 }

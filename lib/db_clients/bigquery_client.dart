@@ -1,45 +1,22 @@
 import 'dart:ui';
-
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/utils/db_parameter.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:googleapis/bigquery/v2.dart';
 import 'package:googleapis_auth/auth.dart';
 import 'package:googleapis_auth/auth_io.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:intl/intl.dart';
 import 'db_client.dart';
 import 'package:bitacora/model/table.dart' as app;
 
 extension BQString on String {
-  String pgFormat() {
-    return this.toLowerCase() != this || this.contains(" ")
-        ? '''"$this"'''
-        : this;
-  }
-
-  static fromBQValue(dynamic value, DataType type, {bool fromArray = false}) {
-    if (value == null || value.toString() == "")
-      return 'null';
-    else if (type.isArray && !fromArray)
-      return (value as List).isEmpty
-          ? 'null'
-          : "'{${(value as List).map((e) => BQString.fromBQValue(e, type, fromArray: true)).join(", ")}}'";
-    else {
-      if ([
-        PrimitiveType.text,
-        PrimitiveType.varchar,
-        PrimitiveType.date,
-        PrimitiveType.timestamp,
-        PrimitiveType.time,
-      ].contains(type.primitive) && !fromArray)
-        return "'${value.toString()}'";
-      else
-        return value.toString();
-    }
-  }
-
   DataType toDataType({String udtName, isArray: false}) {
     String arrayStr = isArray ? "[ ]" : "";
+    if (this.contains("ARRAY")) {
+      var type = this.replaceFirst("ARRAY", "").substring(1, this.length - 6);
+      return type.toDataType(isArray: true);
+    }
     switch (this) {
       case "TIMESTAMP":
         return DataType(PrimitiveType.timestamp, "timestamp" + arrayStr,
@@ -63,8 +40,6 @@ extension BQString on String {
       case "DATE":
         return DataType(PrimitiveType.date, "date" + arrayStr,
             isArray: isArray);
-      case "ARRAY": // TODO check
-        return udtName.toDataType(isArray: true);
       default:
         throw UnsupportedError("$this not supported as a type");
     }
@@ -73,7 +48,18 @@ extension BQString on String {
 
 // ignore: must_be_immutable
 class BigQueryClient extends DbClient<BigqueryApi> {
-  BigQueryClient(DbConnectionParams params, this.projectId, this.datasetId) : super(params);
+  BigQueryClient._(DbConnectionParams params, List<PrimitiveType> orderByTypes,
+      this.projectId, this.datasetId)
+      : super(params, orderByTypes);
+
+  factory BigQueryClient(
+      DbConnectionParams params, String projectId, String datasetId) {
+    List<PrimitiveType> orderByTypes = [
+      PrimitiveType.integer,
+      PrimitiveType.real,
+    ];
+    return BigQueryClient._(params, orderByTypes, projectId, datasetId);
+  }
 
   final String projectId;
   final String datasetId;
@@ -86,14 +72,12 @@ class BigQueryClient extends DbClient<BigqueryApi> {
   }
 
   @override
-  cancelLastInsertion(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose = false}) {
-    // TODO: implement cancelLastInsertion
-    return null;
-  }
+  SvgPicture getLogo(Brightness brightness) =>
+      SvgPicture.asset('assets/images/BigQuery.svg',
+          height: 75, semanticsLabel: 'BigQuery Logo');
 
   @override
-  connect({verbose = false}) async {
+  Future<BigqueryApi> initConnection() async {
     final _credentials = new ServiceAccountCredentials.fromJson(r'''{
       "type": "service_account",
       "project_id": "personal-analytics-270310",
@@ -109,128 +93,177 @@ class BigQueryClient extends DbClient<BigqueryApi> {
 
     const _SCOPES = const [BigqueryApi.BigqueryScope];
     var httpClient = await clientViaServiceAccount(_credentials, _SCOPES);
-    connection = new BigqueryApi(httpClient);
-    isConnected = true;
+    return BigqueryApi(httpClient);
   }
 
   @override
-  deleteLastFrom(app.Table table, {verbose = false}) {
-    // TODO: implement deleteLastFrom
-    return null;
-  }
+  openConnection() {}
 
   @override
-  disconnect({verbose = false}) {
-    // TODO: implement disconnect
-    return null;
-  }
-
-  @override
-  editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose = false}) {
-    // TODO: implement editLastFrom
-    return null;
-  }
-
-  @override
-  getKeys({verbose = false}) {
-    // TODO: implement getKeys
-    return null;
-  }
-
-  @override
-  getLastRow(app.Table table, {verbose = false}) {
-    // TODO: implement getLastRow
-    return null;
-  }
-
-  @override
-  SvgPicture getLogo(Brightness brightness) =>
-      SvgPicture.asset('assets/images/BigQuery.svg',
-          height: 75, semanticsLabel: 'BigQuery Logo');
-
-  @override
-  Future<List<String>> getPkDistinctValues(app.Table table,
-      {verbose = false, String pattern}) {
-    // TODO: implement getPkDistinctValues
-    return null;
-  }
-
-  @override
-  Future<Set<Property>> getPropertiesFromTable(String table,
-      {verbose = false}) async {
-    var queryRequest = QueryRequest();
-    queryRequest.query = "SELECT * FROM $datasetId.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '$table'";
-    queryRequest.useLegacySql = false;
-    // TODO ? queryRequest.defaultDataset
-    QueryResponse res = await connection.jobs.query(queryRequest, projectId);
-
-    Set<Property> properties = Set();
-    (res.toJson()["rows"] as List).forEach((r) {
-      properties.add(Property(int.tryParse(r['f'][4]['v']), r['f'][3]['v'], r['f'][6]['v'].toString().toDataType(), null, r['f'][5]['v'] == 'YES' ? true : false));
-    });
-
-    return properties;
-  }
+  closeConnection() {}
 
   @override
   Future<List<String>> getTables({verbose = false}) async {
-    var results =
-        (await connection.tables.list(projectId, datasetId))
-            .tables;
+    var results = (await connection.tables.list(projectId, datasetId)).tables;
     return List.generate(results.length, (i) {
       return results[i].id.split(".").last;
     });
   }
 
   @override
-  insertRowIntoTable(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose = false}) {
-    // TODO: implement insertRowIntoTable
-    return null;
+  Future<Set<Property>> getPropertiesFromTable(String table,
+      {verbose = false}) async {
+    List<dynamic> res = await execute(
+        "SELECT * FROM $datasetId.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '$table'");
+    Set<Property> properties = Set();
+    if (verbose) debugPrint(res.toString());
+    res.forEach((r) {
+      properties.add(Property(
+          int.tryParse(r['f'][4]['v']),
+          r['f'][3]['v'],
+          r['f'][6]['v'].toString().toDataType(),
+          null,
+          r['f'][5]['v'] == 'YES' ? true : false));
+    });
+    return properties;
   }
 
   @override
-  Future<bool> ping({verbose = false}) async {
-    return true;
+  Future<bool> checkConnection() async {
+    return await execute(
+            "SELECT 1 FROM $datasetId.INFORMATION_SCHEMA.COLUMNS") !=
+        null;
   }
 
   @override
-  pullDatabaseModel({verbose = false, getLastRows = true}) async {
-    /// Get tables
-    List<String> tablesNames = await getTables(verbose: verbose);
+  Future<List> queryLastRow(app.Table table, Property orderBy,
+      {verbose: false}) async {
+    String sql =
+        "SELECT * FROM $datasetId.${dbStrFormat(table.name)} WHERE ${dbStrFormat(orderBy.name)} IS NOT NULL ORDER BY ${dbStrFormat(orderBy.name)} DESC LIMIT 1";
+    if (verbose) debugPrint("getLastRow (${table.name}): $sql");
+    List<dynamic> results = await execute(sql);
+    return List.generate(
+        (results[0]['f'] as List).length, (i) => results[0]['f'][i]['v']);
+  }
 
-    /// For each table:
-    Set<app.Table> tables = Set();
-    for (var tName in tablesNames) {
-      /// get properties...
-      Set<Property> properties = await getPropertiesFromTable(tName);
-
-      tables.add(app.Table(tName, properties, this));
-
-      /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
-      if (this.tables == null) {
-        var orderByCandidates = properties.where((property) => [
-          PrimitiveType.date,
-          PrimitiveType.time,
-          PrimitiveType.timestamp,
-        ].contains(property.type.primitive));
-        if (orderByCandidates.length == 1)
-          tables.last.orderBy = orderByCandidates.first;
-      }
-
-      await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
+  @override
+  resToValue(res, DataType type, {fromArray: false}) {
+    if (type.isArray && !fromArray && res != null) {
+      var array = res as List;
+      if (array.isEmpty) return null;
+      return List.generate(array.length,
+          (i) => resToValue(array[i]['v'], type, fromArray: true));
     }
 
-    this.tables = tables;
-
-    /// get foreign and primary keys info
-    await getKeys();
+    switch (type.primitive) {
+      case PrimitiveType.date:
+        return DateFormat("yyyy-MM-dd").parse(res);
+      case PrimitiveType.timestamp:
+        return DateTime.fromMicrosecondsSinceEpoch(
+            (NumberFormat.scientificPattern().parse(res) * 1000000).toInt(),
+            isUtc: true);
+      default:
+        return res;
+    }
   }
 
   @override
-  setConnectionParams(DbConnectionParams params, {verbose}) {
-    // TODO: implement setConnectionParams
+  insertSQL(app.Table table, String properties, String values) {
+    return "INSERT INTO $datasetId.${dbStrFormat(table.name)} ($properties) VALUES ($values)";
+  }
+
+  @override
+  String editLastFromSQL(app.Table table) {
+    List<Property> properties = table.properties.toList();
+
+    String newValues =
+        List.generate(properties.length, (i) => "${properties[i].name} = ?")
+            .join(", ");
+    return "UPDATE $datasetId.${table.name} SET $newValues ${whereLastValuesSQL(table)}";
+  }
+
+  Future<List<dynamic>> execute(String sql) async {
+    var queryRequest = QueryRequest();
+    // TODO ? queryRequest.defaultDataset
+    queryRequest.query = sql;
+    queryRequest.useLegacySql = false;
+    return (await connection.jobs.query(queryRequest, projectId))
+        .toJson()['rows'];
+  }
+
+  @override
+  getKeys({verbose = false}) {}
+
+  @override
+  Future<List<String>> getPkDistinctValues(app.Table table,
+      {verbose = false, String pattern}) {
     return null;
+  }
+
+  @override
+  String fromValueToDbValue(value, DataType type,
+      {bool fromArray = false, inWhere: false}) {
+    /// IMPORTANT
+    if (value == null || value.toString() == "")
+      return 'null';
+    else if (type.isArray && !fromArray) {
+      if ((value as List).isEmpty) return null;
+      String dbValue;
+      dbValue =
+          "[${(value as List).map((e) => fromValueToDbValue(e, type, fromArray: true)).join(", ")}]";
+      if (inWhere) dbValue = "to_json_string($dbValue)";
+      return dbValue;
+    } else if (type.primitive == PrimitiveType.timestamp)
+      return "'${value.toString()}'";
+    else if (type.primitive == PrimitiveType.date)
+      return "'${DateFormat("yyyy-MM-dd").format(value)}'";
+    else if (type.primitive == PrimitiveType.text)
+      return "'$value'";
+    else
+      return value;
+  }
+
+  @override
+  String dbStrFormat(String str) {
+    return str.toLowerCase() != str || str.contains(" ") ? '''"$str"''' : str;
+  }
+
+  @override
+  Future<int> executeSQL(OpType opType, String command, List arguments) async {
+    var i = -1;
+    var sql = command.replaceAllMapped("?", (match) {
+      i++;
+      return arguments[i];
+    });
+    var queryRequest = QueryRequest();
+    queryRequest.query = sql;
+    queryRequest.useLegacySql = false;
+    return int.tryParse((await connection.jobs.query(queryRequest, projectId)).toJson()['numDmlAffectedRows']);
+  }
+
+  @override
+  String deleteLastFromSQL(app.Table table) =>
+      "DELETE FROM $datasetId.${dbStrFormat(table.name)} ${whereLastValuesSQL(table)}";
+
+  /// last values, IMPORTANT, when null there's no question mark so...
+  String whereLastValuesSQL(app.Table table) =>
+      "WHERE " +
+      table.properties.map((Property p) {
+        String fmtPName = dbStrFormat(p.name);
+        if (!p.type.isArray)
+          return "$fmtPName ${p.lastValue == null ? "is null" : "= ?"}";
+        else {
+          if (p.lastValue != null)
+            return "to_json_string($fmtPName) = to_json_string(?)";
+          else {
+            return "ARRAY_LENGTH($fmtPName) = 0";
+          }
+        }
+      }).join(" AND ");
+
+  @override
+  query(String command, List arguments) {
+    // TODO: implement query
+    throw UnimplementedError();
   }
 }
