@@ -89,6 +89,13 @@ class SQLiteClient extends DbClient<Database> {
           "year": 1975
         });
 
+        batch.insert("quotes", {
+          "quote":
+          "It's hard to do a really good job on anything you don't think about in the shower.",
+          "author": "Paul Graham",
+          "year": 2010
+        });
+
         await batch.commit(noResult: true);
       },
       version: 1,

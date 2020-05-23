@@ -206,9 +206,7 @@ class _PropertyViewState extends State<PropertyView>
               maxLength: widget.property.charMaxLength,
               textInputAction: TextInputAction.newline,
               minLines: 1,
-              maxLines: widget.property.type.isArray ? 1 : 5,
-              /// why? arrays in PostgreSQL are a though read, I have to decode a fucking weird byte array where I have to separate each element. Sometimes it's useful to separate by \n. That means I cannot let the user use this character.
-              /// extra why? apparently adding string from array with \n doesnt work in BigQuery
+              maxLines: 5,
               keyboardType: TextInputType.multiline,
               focusNode: value.focus,
               onChanged: (newValue) => _onChangeController(value, newValue),

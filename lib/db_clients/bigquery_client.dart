@@ -55,8 +55,8 @@ class BigQueryClient extends DbClient<BigqueryApi> {
   factory BigQueryClient(
       DbConnectionParams params, String projectId, String datasetId) {
     List<PrimitiveType> orderByTypes = [
-      PrimitiveType.integer,
-      PrimitiveType.real,
+      PrimitiveType.date,
+      PrimitiveType.timestamp,
     ];
     return BigQueryClient._(params, orderByTypes, projectId, datasetId);
   }
@@ -218,7 +218,7 @@ class BigQueryClient extends DbClient<BigqueryApi> {
     else if (type.primitive == PrimitiveType.date)
       return "'${DateFormat("yyyy-MM-dd").format(value)}'";
     else if (type.primitive == PrimitiveType.text)
-      return "'$value'";
+      return '''"${value.replaceAll("\n", "\\n")}"''';
     else
       return value;
   }

@@ -196,19 +196,20 @@ abstract class DbClient<T> extends Equatable {
 
   /// inserts and updates last values
   insertRowIntoTable(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose: false}) async {
+      {verbose: true}) async {
     String propertiesNames =
         propertiesForm.keys.map((Property p) => dbStrFormat(p.name)).join(", ");
 
     String qMarks = List.filled(propertiesForm.length, "?").join(", ");
 
     String command = insertSQL(table, propertiesNames, qMarks);
-
     List<Property> properties = table.properties.toList();
     List arguments = List.generate(
         propertiesForm.values.length,
         (i) => fromValueToDbValue(
             propertiesForm.values.toList()[i], properties[i].type));
+
+    if (verbose) debugPrint("insertRowIntoTable (${table.name}): $command | $arguments");
 
     try {
       var results = await executeSQL(OpType.insert, command, arguments);
