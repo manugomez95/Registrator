@@ -62,11 +62,11 @@ class AppData {
                     "demo.db", "", r"abracadabra", false))
                 .toMap());
 
-        batch.insert(
+        /*batch.insert(
             "connections",
             await BigQueryClient(DbConnectionParams("BigQuery", "Google", 0,
                 "my_data", "yo", r"alohomora", false), "personal-analytics-270310", "my_data")
-                .toMap());
+                .toMap());*/
 
         batch.execute(
             "CREATE TABLE tables("

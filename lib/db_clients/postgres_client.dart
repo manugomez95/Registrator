@@ -195,8 +195,10 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       List<int> lastElem = [];
       for (final c in codes) {
         if (c < 32) {
-          list.add(lastElem);
-          lastElem = [];
+          if (lastElem.isNotEmpty) {
+            list.add(lastElem);
+            lastElem = [];
+          }
         } else
           lastElem.add(c);
       }
@@ -323,63 +325,17 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     return await connection.execute(sql);
   }
 
-  /// https://stackoverflow.com/questions/5170546/how-do-i-delete-a-fixed-number-of-rows-with-sorting-in-postgresql
-  @override
-  deleteLastFrom(app.Table table, {verbose: false}) async {
-    Property orderBy = table.orderBy;
-
-    /// if there's no order nor last values...
-    if (orderBy == null && table.properties.every((p) => p.lastValue == null)) {
-      String exception = "No linearity nor lastValue defined";
-      if (verbose) debugPrint("deleteLastFrom (${table.name}): $exception");
-      throw Exception(exception);
-    }
-
-    /// last values
-    String where = "WHERE " +
-        table.properties.map((Property p) {
-          var valueStr = fromValueToDbValue(p.lastValue, p.type, inWhere: true);
-          return "${dbStrFormat(p.name)} ${valueStr == "null" ? "is null" : "= $valueStr"}";
-        }).join(" AND ");
-
-    /// if orderBy is used
-    String order =
-        orderBy != null ? "ORDER BY ${dbStrFormat(orderBy.name)} DESC" : "";
-
-    String last =
-        "SELECT ctid FROM ${dbStrFormat(table.name)} $where $order LIMIT 1";
-
-    String sql = "DELETE FROM ${table.name} WHERE ctid IN ($last)";
-
-    if (verbose) debugPrint("removeLastEntry (${table.name}): $sql");
-
-    try {
-      var results = await connection.execute(sql).timeout(timeout);
-      if (results == 0) {
-        throw Exception("Table is empty");
-      }
-
-      if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
-    } on PostgreSQLException catch (e) {
-      if (verbose)
-        debugPrint("removeLastEntry (${table.name}): ${e.toString()}");
-      throw e;
-    }
-  }
-
   @override
   fromValueToDbValue(dynamic value, DataType type, {bool fromArray: false, bool inWhere: false}) {
     /// IMPORTANT
     if (value == null || value.toString() == "")
-      return 'null';
+      return null;
     else if (type.isArray && !fromArray)
       return (value as List).isEmpty
-          ? 'null'
-          : "'{${(value as List).map((e) => fromValueToDbValue(e, type, fromArray: true)).join(", ")}}'";
+          ? null
+          : "{${(value as List).map((e) => fromValueToDbValue(e, type, fromArray: true)).join(", ")}}";
     else {
       if ([
-            PrimitiveType.text,
-            PrimitiveType.varchar,
             PrimitiveType.date,
             PrimitiveType.timestamp,
             PrimitiveType.time,
@@ -400,7 +356,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   executeSQL(OpType opType, String command, List arguments) async {
     var i = 0;
     var fmtString = command.replaceAllMapped("?", (match) { i++; return "@arg$i"; });
-    var substitutionValues = Map.fromIterables(List.generate(arguments.length, (index) => "arg${i+1}"), arguments);
+    var substitutionValues = Map.fromIterables(List.generate(arguments.length, (index) => "arg${index+1}"), arguments);
     return await connection.execute(fmtString, substitutionValues: substitutionValues);
   }
 
@@ -408,7 +364,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   query(String command, List arguments) async {
     var i = 0;
     var fmtString = command.replaceAllMapped("?", (match) { i++; return "@arg$i"; });
-    var substitutionValues = Map.fromIterables(List.generate(arguments.length, (index) => "arg${i+1}"), arguments);
+    var substitutionValues = Map.fromIterables(List.generate(arguments.length, (index) => "arg${index+1}"), arguments);
     return await connection.query(fmtString, substitutionValues: substitutionValues);
   }
 

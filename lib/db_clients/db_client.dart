@@ -196,7 +196,7 @@ abstract class DbClient<T> extends Equatable {
 
   /// inserts and updates last values
   insertRowIntoTable(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose: true}) async {
+      {verbose: false}) async {
     String propertiesNames =
         propertiesForm.keys.map((Property p) => dbStrFormat(p.name)).join(", ");
 
@@ -270,7 +270,7 @@ abstract class DbClient<T> extends Equatable {
   String editLastFromSQL(app.Table table);
 
   /// Always use last values, forget about order because last values depend on order
-  deleteLastFrom(app.Table table, {verbose: false}) async {
+  deleteLastFrom(app.Table table, {verbose: true}) async {
     /// if there's no last values...
     if (table.properties.every((p) => p.lastValue == null)) {
       throw Exception("No last values");

@@ -168,12 +168,13 @@ class _PropertyViewState extends State<PropertyView>
   Widget buildInput(ValueLV value, Property property) {
     Widget ret;
 
-    value.current = value.current == null
-        ? ((widget.action.type == app.ActionType.EditLastFrom &&
-                value.last != null)
-            ? value.last
-            : property.type.primitive.defaultV)
-        : value.current;
+    if (![PrimitiveType.date, PrimitiveType.timestamp, PrimitiveType.time].contains(property.type.primitive))
+      value.current = value.current == null
+          ? ((widget.action.type == app.ActionType.EditLastFrom &&
+          value.last != null)
+          ? value.last
+          : property.type.primitive.defaultV)
+          : value.current;
 
     switch (property.type.primitive) {
       case PrimitiveType.text:
@@ -273,6 +274,12 @@ class _PropertyViewState extends State<PropertyView>
 
       /// Timestamp
       case PrimitiveType.timestamp:
+        if (value.current == null && value.firstTime)
+          if (widget.action.type == app.ActionType.InsertInto)
+            value.current = property.type.primitive.defaultV;
+          else if (widget.action.type == app.ActionType.EditLastFrom)
+            value.current = value.last;
+
         ret = dateTimeField(
             showDate: true,
             showTime: true,
@@ -283,6 +290,12 @@ class _PropertyViewState extends State<PropertyView>
 
       /// Time
       case PrimitiveType.time:
+        if (value.current == null && value.firstTime)
+          if (widget.action.type == app.ActionType.InsertInto)
+            value.current = property.type.primitive.defaultV;
+          else if (widget.action.type == app.ActionType.EditLastFrom)
+            value.current = value.last;
+
         ret = dateTimeField(
             showDate: false,
             showTime: true,
@@ -293,6 +306,12 @@ class _PropertyViewState extends State<PropertyView>
 
       /// Date
       case PrimitiveType.date:
+        if (value.current == null && value.firstTime)
+          if (widget.action.type == app.ActionType.InsertInto)
+            value.current = property.type.primitive.defaultV;
+          else if (widget.action.type == app.ActionType.EditLastFrom)
+            value.current = value.last;
+
         ret = dateTimeField(
             showDate: true,
             showTime: false,
