@@ -62,7 +62,7 @@ class DatabaseCardHeader extends StatelessWidget {
                         margin: EdgeInsets.only(bottom: 5),
                         child: Text(
                           db.params.alias,
-                          style: Theme.of(context).textTheme.headline6,
+                          style: Theme.of(context).textTheme.headline,
                         ),
                       ),
                       Wrap(
@@ -76,7 +76,7 @@ class DatabaseCardHeader extends StatelessWidget {
                             db.params.host,
                             style: Theme.of(context)
                                 .textTheme
-                                .subtitle2, //TextStyle(color: style.hintColor, fontSize: 15),
+                                .subtitle, //TextStyle(color: style.hintColor, fontSize: 15),
                           )
                         ],
                       ),
@@ -86,7 +86,7 @@ class DatabaseCardHeader extends StatelessWidget {
                           Icon(Icons.storage, size: 18),
                           Text(
                             db.params.dbName,
-                            style: Theme.of(context).textTheme.subtitle2,
+                            style: Theme.of(context).textTheme.subtitle,
                           )
                         ],
                       ),
@@ -96,7 +96,7 @@ class DatabaseCardHeader extends StatelessWidget {
                           children: <Widget>[
                             Icon(Icons.person, size: 18),
                             Text(db.params.username,
-                                style: Theme.of(context).textTheme.subtitle2)
+                                style: Theme.of(context).textTheme.subtitle)
                           ],
                         ),
                         visible: db.params.dbName != "demo.db",
