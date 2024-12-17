@@ -103,8 +103,9 @@ class DataPageState extends State<DataPage> {
               (d) => d.params.alias == formData['alias'],
               orElse: () => throw Exception('Original connection not found'),
             );
-            // Disconnect old connection
+            // Disconnect old connection and clear its state
             oldDb.disconnect();
+            oldDb.databaseBloc.add(ConnectionErrorEvent(Exception('Connection closed'), oldDb));
             getIt<AppData>().dbs.remove(oldDb);
           }
           getIt<AppData>().dbs.add(db);
@@ -115,6 +116,7 @@ class DataPageState extends State<DataPage> {
         await getIt<AppData>().saveConnection(db);
 
         // Connect and load tables
+        db.databaseBloc.add(ConnectToDatabase(db));
         await db.connect(verbose: true);
         await db.pullDatabaseModel();
         await getIt<AppData>().saveTables(db);
@@ -135,15 +137,30 @@ class DataPageState extends State<DataPage> {
 
   Future<void> _refreshDatabase(DbClient db) async {
     try {
-      if (await db.ping()) {
-        await db.pullDatabaseModel(getLastRows: false);
+      // Signal start of loading
+      db.databaseBloc.add(ConnectToDatabase(db, fromForm: false));
+      
+      // Just pull the model again, no need to disconnect/reconnect
+      await db.pullDatabaseModel(getLastRows: false);
+      
+      if (db.isConnected) {
         db.databaseBloc.add(ConnectionSuccessfulEvent(db));
-      } else {
-        db.databaseBloc.add(UpdateDbStatus(db));
       }
     } catch (e) {
       debugPrint('Error refreshing ${db.params.alias}: $e');
       db.databaseBloc.add(ConnectionErrorEvent(e, db));
+      
+      // If there's an error, try to reconnect
+      try {
+        if (!db.isConnected) {
+          await db.connect(verbose: true);
+          await db.pullDatabaseModel(getLastRows: false);
+          db.databaseBloc.add(ConnectionSuccessfulEvent(db));
+        }
+      } catch (reconnectError) {
+        debugPrint('Error reconnecting: $reconnectError');
+        db.databaseBloc.add(ConnectionErrorEvent(reconnectError, db));
+      }
     }
   }
 
@@ -194,22 +211,14 @@ class DataPageState extends State<DataPage> {
                 ),
                 onRefresh: () async {
                   try {
-                    // Show refreshing toast
-                    Fluttertoast.showToast(
-                      msg: "Refreshing connections...",
-                      toastLength: Toast.LENGTH_SHORT,
-                      gravity: ToastGravity.BOTTOM,
-                    );
-
                     final dbs = getIt<AppData>().dbs.toList();
                     
                     // Refresh one database at a time
                     for (final db in dbs) {
                       // Schedule the refresh on the next frame to keep UI responsive
                       await Future.delayed(Duration.zero);
-                      db.databaseBloc.add(UpdateDbStatus(db));
+                      await _refreshDatabase(db);
                     }
-
                   } catch (e, stackTrace) {
                     debugPrint('Error during refresh: $e');
                     debugPrint(stackTrace.toString());

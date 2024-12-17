@@ -118,7 +118,8 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       case "bytea":
         return DataType(PrimitiveType.byteArray, udtName, isArray: isArray);
       default:
-        throw UnsupportedError("Type not supported: $udtName");
+        // Handle custom enum types as text
+        return DataType(PrimitiveType.text, udtName, isArray: isArray);
     }
   }
 
@@ -162,6 +163,11 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
+  Future<void> _disconnect() async {
+    await closeConnection();
+  }
+
+  @override
   Future<bool> checkConnection() async {
     final results = await connection.query("SELECT 1");
     return results.isNotEmpty;
@@ -169,17 +175,25 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   @override
   Future<List<String>> getTables({bool verbose = false}) async {
+    if (verbose) {
+      debugPrint('Getting tables from PostgreSQL...');
+    }
+
     final results = await connection.query(
-      "SELECT table_name "
-      "FROM information_schema.tables "
-      "WHERE table_schema = 'public' "
-      "AND table_type = 'BASE TABLE'",
+      """
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      AND table_type = 'BASE TABLE'
+      AND has_table_privilege(current_user, table_schema || '.' || table_name, 'SELECT')
+      ORDER BY table_name
+      """,
     );
 
     if (verbose) {
       debugPrint('Found ${results.length} tables:');
       for (final row in results) {
-        debugPrint('${row[0]}');
+        debugPrint('- ${row[0]}');
       }
     }
 
@@ -195,89 +209,131 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     bool verbose = false,
   }) async {
     if (verbose) {
-      debugPrint('Getting properties for $table');
+      debugPrint('Getting properties for table: $table');
     }
 
-    final results = await connection.query(
-      "SELECT column_name, "
-      "udt_name, "
-      "column_default, "
-      "is_nullable, "
-      "character_maximum_length, "
-      "ordinal_position "
-      "FROM information_schema.columns "
-      "WHERE table_schema = 'public' AND table_name = @table "
-      "ORDER BY ordinal_position",
-      substitutionValues: {
-        "table": table,
-      },
-    );
-
-    if (verbose) {
-      debugPrint('Found ${results.length} columns');
-    }
-
-    final properties = <Property>{};
-    for (final r in results) {
-      final udtName = r[1] as String;
-      final isArray = udtName.startsWith('_');
-      final baseType = isArray ? udtName.substring(1) : udtName;
-
-      properties.add(
-        Property(
-          r[5] as int,
-          r[0] as String,
-          toDataType(udtName: baseType, isArray: isArray),
-          r[2],
-          r[3] == 'YES',
-          charMaxLength: r[4] as int?,
-        ),
+    try {
+      final results = await connection.query(
+        """
+        SELECT column_name, 
+               udt_name, 
+               column_default, 
+               is_nullable, 
+               character_maximum_length, 
+               ordinal_position,
+               data_type
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = @table 
+        ORDER BY ordinal_position
+        """,
+        substitutionValues: {
+          "table": table,
+        },
       );
+
+      if (verbose) {
+        debugPrint('Found ${results.length} columns for table $table:');
+        for (final r in results) {
+          debugPrint('- ${r[0]} (${r[1]}, ${r[6]})');
+        }
+      }
+
+      final properties = <Property>{};
+      for (final r in results) {
+        try {
+          final udtName = r[1] as String;
+          final isArray = udtName.startsWith('_');
+          final baseType = isArray ? udtName.substring(1) : udtName;
+
+          properties.add(
+            Property(
+              r[5] as int,
+              r[0] as String,
+              toDataType(udtName: baseType, isArray: isArray),
+              r[2],
+              r[3] == 'YES',
+              charMaxLength: r[4] as int?,
+            ),
+          );
+        } catch (e) {
+          debugPrint('Error processing column ${r[0]} in table $table: $e');
+          rethrow;
+        }
+      }
+      return properties;
+    } catch (e) {
+      debugPrint('Error getting properties for table $table: $e');
+      rethrow;
     }
-    return properties;
   }
 
   @override
   Future<void> getKeys() async {
     final results = await connection.query(
-      "SELECT "
-      "tc.table_name, kcu.column_name, "
-      "ccu.table_name AS foreign_table_name, "
-      "ccu.column_name AS foreign_column_name "
-      "FROM information_schema.table_constraints AS tc "
-      "JOIN information_schema.key_column_usage AS kcu "
-      "ON tc.constraint_name = kcu.constraint_name "
-      "AND tc.table_schema = kcu.table_schema "
-      "LEFT JOIN information_schema.constraint_column_usage AS ccu "
-      "ON ccu.constraint_name = tc.constraint_name "
-      "AND ccu.table_schema = tc.table_schema "
-      "WHERE tc.table_schema = 'public' "
-      "AND (tc.constraint_type = 'PRIMARY KEY' "
-      "OR tc.constraint_type = 'FOREIGN KEY')",
+      """
+      SELECT 
+        tc.table_name, kcu.column_name,
+        ccu.table_name AS foreign_table_name,
+        ccu.column_name AS foreign_column_name 
+      FROM information_schema.table_constraints AS tc 
+      JOIN information_schema.key_column_usage AS kcu 
+        ON tc.constraint_name = kcu.constraint_name 
+        AND tc.table_schema = kcu.table_schema 
+      LEFT JOIN information_schema.constraint_column_usage AS ccu 
+        ON ccu.constraint_name = tc.constraint_name 
+        AND ccu.table_schema = tc.table_schema 
+      WHERE tc.table_schema = 'public' 
+        AND (tc.constraint_type = 'PRIMARY KEY' 
+        OR tc.constraint_type = 'FOREIGN KEY')
+        AND tc.table_name = ANY(SELECT table_name 
+                               FROM information_schema.tables 
+                               WHERE table_schema = 'public' 
+                               AND table_type = 'BASE TABLE')
+      """,
     );
 
     for (final result in results) {
-      final table = tables.firstWhere(
-        (t) => t.name == result[0],
-        orElse: () => throw Exception('Table not found: ${result[0]}'),
-      );
+      final tableName = result[0] as String;
+      final tableQuery = tables.where((t) => t.name == tableName);
+      
+      if (tableQuery.isEmpty) {
+        debugPrint('Skipping keys for table not in set: $tableName');
+        continue;
+      }
 
-      if (result[2] == null) {
-        // Primary key
-        table.primaryKey = table.properties.firstWhere(
-          (p) => p.name == result[1],
-          orElse: () => throw Exception('Primary key property not found: ${result[1]} in ${result[0]}'),
-        );
-      } else {
-        // Foreign key
-        final property = table.properties.firstWhere(
-          (p) => p.name == result[1],
-          orElse: () => throw Exception('Foreign key property not found: ${result[1]} in ${result[0]}'),
-        );
-        property.foreignKeyOf = tables.firstWhere(
-          (t) => t.name == result[2],
-          orElse: () => throw Exception('Foreign key table not found: ${result[2]}'),
-        );
+      final table = tableQuery.first;
+      final columnName = result[1] as String;
+      final foreignTableName = result[2] as String?;
+      
+      try {
+        if (foreignTableName == null) {
+          // Primary key
+          final propertyQuery = table.properties.where((p) => p.name == columnName);
+          if (propertyQuery.isEmpty) {
+            debugPrint('Primary key property not found: $columnName in $tableName');
+            continue;
+          }
+          table.primaryKey = propertyQuery.first;
+        } else {
+          // Foreign key
+          final propertyQuery = table.properties.where((p) => p.name == columnName);
+          if (propertyQuery.isEmpty) {
+            debugPrint('Foreign key property not found: $columnName in $tableName');
+            continue;
+          }
+          final property = propertyQuery.first;
+          
+          final foreignTableQuery = tables.where((t) => t.name == foreignTableName);
+          if (foreignTableQuery.isEmpty) {
+            debugPrint('Foreign key table not found: $foreignTableName');
+            continue;
+          }
+          property.foreignKeyOf = foreignTableQuery.first;
+        }
+      } catch (e) {
+        debugPrint('Error processing keys for table $tableName: $e');
+        continue;
       }
     }
   }

@@ -58,9 +58,16 @@ abstract class DbClient<T> extends Equatable {
       ];
 
   Future<void> dispose() async {
-    await closeConnection();
+    await disconnect(verbose: true);
     databaseBloc.close();
+    _clearPreparedStatements();
   }
+
+  void _clearPreparedStatements() {
+    // Override in specific clients if needed
+  }
+
+  Future<void> _disconnect();
 
   SvgPicture getLogo(Brightness brightness);
 
@@ -83,10 +90,11 @@ abstract class DbClient<T> extends Equatable {
   Future<void> openConnection();
 
   Future<void> disconnect({bool verbose = false}) async {
-    await closeConnection();
-    _connection = null;
+    if (verbose) {
+      print('Disconnecting from ${params.alias}...');
+    }
+    await _disconnect();
     isConnected = false;
-    if (verbose) debugPrint("disconnect (${params.alias})");
   }
 
   @protected
