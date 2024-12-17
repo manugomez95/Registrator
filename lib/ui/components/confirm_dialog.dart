@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:bitacora/conf/style.dart';
 
-Future<bool> asyncConfirmDialog(BuildContext context, {String title: "", String message: ""}) async {
-  return showDialog<bool>(
+Future<bool> asyncConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
+  final result = await showDialog<bool>(
     context: context,
-    barrierDismissible: false, // user must tap button for close dialog!
+    barrierDismissible: false,
     builder: (BuildContext context) {
       return AlertDialog(
         title: Text(title),
         content: Text(message),
         actions: <Widget>[
-          FlatButton(
-            child: Text('CANCEL', style: Theme.of(context).textTheme.button.copyWith(color: Theme.of(context).colorScheme.defaultTextColor),),
-            onPressed: () {
-              Navigator.of(context).pop(false);
-            },
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
           ),
-          FlatButton(
-            child: Text('ACCEPT', style: Theme.of(context).textTheme.button.copyWith(color: Theme.of(context).colorScheme.defaultTextColor)),
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-          )
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
         ],
       );
     },
   );
+  return result ?? false;
 }

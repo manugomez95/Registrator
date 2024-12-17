@@ -8,49 +8,63 @@ import '../../main.dart';
 import './bloc.dart';
 
 class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
-  Stack<FormEvent> _loadingStack = Stack();
+  FormBloc() : super(InitialFormState());
 
   @override
-  PropertiesFormState get initialState => InitialFormState(_loadingStack);
-
-  @override
-  Stream<PropertiesFormState> mapEventToState(
-    FormEvent event,
-  ) async* {
-    _loadingStack.push(event);
-    yield FormEventLoading(_loadingStack);
-    if (event is InsertSubmitForm) {
+  Stream<PropertiesFormState> mapEventToState(FormEvent event) async* {
+    if (event is SubmitFormEvent) {
+      yield LoadingState();
       try {
-        await event.table.client
+        final success = await event.table.client
             .insertRowIntoTable(event.table, event.propertiesForm);
-        submitFormSnackBar(event, "${event.action.title} ${event.table.name}",
-            undoAction: () { add(DeleteLastEntry(event.table, event.context, rebuildForm: false)); });
-      } on Exception catch (e) {
+        if (success) {
+          await event.table.client.getLastRow(event.table);
+          showSnackBar(
+            event.context,
+            "${event.action.title} ${event.table.name}",
+            undoAction: null,
+          );
+        }
+        yield SubmitSuccessState();
+      } catch (e) {
         showErrorSnackBar(event.context, e.toString());
+        yield ErrorState();
       }
-    } else if (event is EditSubmitForm) {
+    } else if (event is EditFormEvent) {
+      yield LoadingState();
       try {
-        await event.table.client
+        final success = await event.table.client
             .editLastFrom(event.table, event.propertiesForm);
-        submitFormSnackBar(event, "${event.action.title} ${event.table.name}");
-      } on Exception catch (e) {
+        if (success) {
+          await event.table.client.getLastRow(event.table);
+          showSnackBar(
+            event.context,
+            "${event.action.title} ${event.table.name}",
+            undoAction: null,
+          );
+        }
+        yield EditSuccessState();
+      } catch (e) {
         showErrorSnackBar(event.context, e.toString());
+        yield ErrorState();
       }
-    } else if (event is DeleteLastEntry) {
+    } else if (event is DeleteFormEvent) {
+      yield LoadingState();
       try {
-        /// delete last entry and...
-        await event.table.client.deleteLastFrom(event.table);
-
-        /// update last row
-        await event.table.client.getLastRow(event.table);
-        Fluttertoast.showToast(msg: "Removed last row");
-      } on Exception catch (e) {
-        Fluttertoast.showToast(msg: e.toString().replaceAll("Exception: ", ""));
+        final success = await event.table.client.deleteLastFrom(event.table);
+        if (success) {
+          await event.table.client.getLastRow(event.table);
+          showSnackBar(
+            event.context,
+            "${event.action.title} ${event.table.name}",
+            undoAction: null,
+          );
+        }
+        yield DeleteSuccessState();
+      } catch (e) {
+        showErrorSnackBar(event.context, e.toString());
+        yield ErrorState();
       }
     }
-    _loadingStack.pop();
-    if (event is DeleteLastEntry) yield DeleteLastRowState(_loadingStack, rebuildForm: event.rebuildForm);
-    else if (event is InsertSubmitForm) yield InsertRowState(_loadingStack);
-    else if (event is EditSubmitForm) yield UpdateLastRowState(_loadingStack);
   }
 }

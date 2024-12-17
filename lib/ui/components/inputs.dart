@@ -6,87 +6,120 @@ import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:intl/intl.dart';
 
-TypeAheadFormField typeAheadFormField(
-    {BuildContext context,
-    Property property,
-    ValueLV value,
-    Function(dynamic) onSuggestionSelected,
-    Function(dynamic) onChanged,
-    Function(String) validator}) {
-  return TypeAheadFormField(
-    textFieldConfiguration: TextFieldConfiguration(
-        controller: TextEditingController(text: value.current),
-        keyboardAppearance: Theme.of(context).brightness,
-        textInputAction: TextInputAction.next,
-        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-        onChanged: onChanged,
-        focusNode: value.focus,
-        decoration: textInputDecoration(value)),
-    suggestionsCallback: (pattern) {
-      return property.foreignKeyOf.client
-          .getPkDistinctValues(property.foreignKeyOf, pattern: pattern);
-    },
-    itemBuilder: (context, suggestion) {
-      return ListTile(
-        title: Text(suggestion),
-      );
-    },
-    hideOnEmpty: true,
-    transitionBuilder: (context, suggestionsBox, controller) {
-      return suggestionsBox;
-    },
-    onSuggestionSelected: onSuggestionSelected,
-    validator: validator,
-  );
-}
+class TypeAheadField extends StatelessWidget {
+  final BuildContext context;
+  final Property property;
+  final ValueLV value;
+  final Function(dynamic) onSuggestionSelected;
+  final Function(dynamic) onChanged;
+  final String? Function(String?)? validator;
 
-InputDecoration textInputDecoration(ValueLV value) {
-  return InputDecoration(
-      hintMaxLines: 1,
-      hintText: value.last != null ? value.last.toString() : "");
-}
+  const TypeAheadField({
+    Key? key,
+    required this.context,
+    required this.property,
+    required this.value,
+    required this.onSuggestionSelected,
+    required this.onChanged,
+    this.validator,
+  }) : super(key: key);
 
-DateTimeField dateTimeField(
-    {bool showDate,
-    bool showTime,
-    BuildContext context,
-    ValueLV value,
-    Function(dynamic) onChanged}) {
-  if (!showDate && !showTime) throw Exception("Nonsense dateTimeField");
-  DateFormat format = DateFormat(
-      "${showDate ? "yyyy-MM-dd" : ""}${showTime && showDate ? " " : ""}${showTime ? "HH:mm" : ""}");
-
-  return DateTimeField(
-    initialValue: value.current,
-    onChanged: onChanged,
-    format: format,
-    focusNode: value.focus,
-    decoration: InputDecoration(
-        hintText: value.last != null
-            ? format.format(value.last)
-            : format.format(DateTime.now())),
-    onShowPicker: (context, currentValue) async {
-      DateTime date;
-      TimeOfDay time;
-      if (showDate) {
-        date = await showDatePicker(
-            context: context,
-            firstDate: DateTime(1900),
-            initialDate: currentValue ?? DateTime.now(),
-            lastDate: DateTime(2100));
-      }
-      date = date ?? DateTime.now();
-
-      if (showTime) {
-        time = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay.fromDateTime(currentValue ?? DateTime.now()),
+  @override
+  Widget build(BuildContext context) {
+    return TypeAheadFormField(
+      textFieldConfiguration: TextFieldConfiguration(
+        controller: TextEditingController(text: value.last?.toString() ?? ''),
+        decoration: InputDecoration(
+          labelText: property.name,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+      suggestionsCallback: (pattern) async {
+        if (property.foreignKeyOf == null) return [];
+        return property.foreignKeyOf!.client?.getPkDistinctValues(
+              property.foreignKeyOf!,
+              pattern: pattern,
+            ) ??
+            [];
+      },
+      itemBuilder: (context, suggestion) {
+        return ListTile(
+          title: Text(suggestion.toString()),
         );
-        time = time ?? TimeOfDay.fromDateTime(currentValue ?? DateTime.now());
-        return DateTimeField.combine(date, time);
-      } else {
-        return date;
-      }
-    },
-  );
+      },
+      onSuggestionSelected: onSuggestionSelected,
+      validator: validator,
+    );
+  }
+}
+
+class DateTimeField extends StatelessWidget {
+  final bool showDate;
+  final bool showTime;
+  final BuildContext context;
+  final ValueLV value;
+  final Function(dynamic) onChanged;
+
+  const DateTimeField({
+    Key? key,
+    required this.showDate,
+    required this.showTime,
+    required this.context,
+    required this.value,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        DateTime? selectedDate = value.last as DateTime?;
+        TimeOfDay? selectedTime;
+
+        if (showDate) {
+          final date = await showDatePicker(
+            context: context,
+            initialDate: selectedDate ?? DateTime.now(),
+            firstDate: DateTime(1900),
+            lastDate: DateTime(2100),
+          );
+          if (date != null) {
+            selectedDate = date;
+          }
+        }
+
+        if (showTime && context.mounted) {
+          final time = await showTimePicker(
+            context: context,
+            initialTime: TimeOfDay.fromDateTime(selectedDate ?? DateTime.now()),
+          );
+          if (time != null) {
+            selectedTime = time;
+          }
+        }
+
+        if (selectedDate != null) {
+          if (selectedTime != null) {
+            selectedDate = DateTime(
+              selectedDate.year,
+              selectedDate.month,
+              selectedDate.day,
+              selectedTime.hour,
+              selectedTime.minute,
+            );
+          }
+          onChanged(selectedDate);
+        }
+      },
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+        ),
+        child: Text(
+          value.last?.toString() ?? '',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
+    );
+  }
 }

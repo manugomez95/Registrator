@@ -1,41 +1,59 @@
-import 'package:bitacora/model/app_data.dart';
-import 'package:bitacora/model/property.dart';
-import 'package:bitacora/ui/components/snack_bars.dart';
-import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:bitacora/model/action.dart' as app;
+import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
+import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 
 abstract class FormEvent extends Equatable {
-  final app.Table table;
-  final BuildContext context;
-
-  const FormEvent(this.table, this.context);
-
   @override
-  List<Object> get props => [table, context];
+  List<Object> get props => [];
 }
 
-abstract class SubmitFormEvent extends FormEvent {
+class SubmitFormEvent extends FormEvent {
+  final BuildContext context;
+  final app.Table table;
+  final app.Action action;
   final Map<Property, dynamic> propertiesForm;
+
+  SubmitFormEvent(
+    this.context,
+    this.table,
+    this.action,
+    this.propertiesForm,
+  );
+
+  @override
+  List<Object> get props => [table, action, propertiesForm];
+}
+
+class EditFormEvent extends FormEvent {
+  final BuildContext context;
+  final app.Table table;
+  final app.Action action;
+  final Map<Property, dynamic> propertiesForm;
+
+  EditFormEvent(
+    this.context,
+    this.table,
+    this.action,
+    this.propertiesForm,
+  );
+
+  @override
+  List<Object> get props => [table, action, propertiesForm];
+}
+
+class DeleteFormEvent extends FormEvent {
+  final BuildContext context;
+  final app.Table table;
   final app.Action action;
 
-  SubmitFormEvent(context, this.propertiesForm, this.action, table) : super(table, context);
+  DeleteFormEvent(
+    this.context,
+    this.table,
+    this.action,
+  );
 
   @override
-  List<Object> get props => [propertiesForm, action, table];
-}
-
-class InsertSubmitForm extends SubmitFormEvent {
-  InsertSubmitForm(BuildContext context, Map<Property, dynamic> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
-}
-
-class EditSubmitForm extends SubmitFormEvent {
-  EditSubmitForm(BuildContext context, Map<Property, dynamic> propertiesForm, app.Action action, app.Table table) : super(context, propertiesForm, action, table);
-}
-
-class DeleteLastEntry extends FormEvent {
-  final bool rebuildForm;
-
-  DeleteLastEntry(app.Table table, BuildContext context, {this.rebuildForm: true}) : super(table, context);
+  List<Object> get props => [table, action];
 }

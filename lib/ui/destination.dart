@@ -3,15 +3,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import './pages/actions_page.dart';
 
+@immutable
 class Destination {
-  Destination(this.title, this.icon, this.page);
+  const Destination(this.title, this.icon, this.page);
+  
   final String title;
   final IconData icon;
   final Widget page;
 }
 
-List<Destination> allDestinations = <Destination>[
+final List<Destination> allDestinations = <Destination>[
   Destination('Actions', Icons.flash_on, ActionsPage()),
-  //Destination('Dashboard', Icons.dashboard, null),
   Destination('Data', Icons.storage, DataPage()),
 ];

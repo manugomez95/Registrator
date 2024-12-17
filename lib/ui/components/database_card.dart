@@ -40,73 +40,75 @@ class DatabaseCardHeader extends StatelessWidget {
                 height: 14.0,
                 width: 14.0,
               );
-              //statusIcon = Icon(Icons.sync, size: 18, color: Colors.blueAccent,);
             }
-            return Container(
-              width: MediaQuery.of(context).size.width,
-              padding: EdgeInsets.all(15),
-              child: Row(
-                children: <Widget>[
-                  Container(
-                    child: Container(
-                      child: db.getLogo(Theme.of(context).brightness),
-                      width: 75,
-                      height: 75,
-                    ),
-                    padding: EdgeInsets.only(left: 5, right: 25),
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  child: Container(
+                    child: db.getLogo(Theme.of(context).brightness),
+                    width: 50,
+                    height: 50,
                   ),
-                  Column(
+                  padding: EdgeInsets.only(right: 15),
+                ),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Container(
-                        margin: EdgeInsets.only(bottom: 5),
-                        child: Text(
-                          db.params.alias,
-                          style: Theme.of(context).textTheme.headline,
-                        ),
+                      Text(
+                        db.params.alias,
+                        style: Theme.of(context).textTheme.titleLarge,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Wrap(
-                        spacing: 8,
+                      const SizedBox(height: 4),
+                      Row(
                         children: <Widget>[
-                          Icon(
-                            Icons.domain,
-                            size: 18,
+                          Icon(Icons.domain, size: 16),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              db.params.host,
+                              style: Theme.of(context).textTheme.titleSmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          Text(
-                            db.params.host,
-                            style: Theme.of(context)
-                                .textTheme
-                                .subtitle, //TextStyle(color: style.hintColor, fontSize: 15),
-                          )
                         ],
                       ),
-                      Wrap(
-                        spacing: 8,
+                      Row(
                         children: <Widget>[
-                          Icon(Icons.storage, size: 18),
-                          Text(
-                            db.params.dbName,
-                            style: Theme.of(context).textTheme.subtitle,
-                          )
+                          Icon(Icons.storage, size: 16),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              db.params.dbName,
+                              style: Theme.of(context).textTheme.titleSmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
-                      Visibility(
-                        child: Wrap(
-                          spacing: 8,
+                      if (db.params.dbName != "demo.db")
+                        Row(
                           children: <Widget>[
-                            Icon(Icons.person, size: 18),
-                            Text(db.params.username,
-                                style: Theme.of(context).textTheme.subtitle)
+                            Icon(Icons.person, size: 16),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                db.params.username,
+                                style: Theme.of(context).textTheme.titleSmall,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
-                        visible: db.params.dbName != "demo.db",
-                      ),
                     ],
                   ),
-                  Spacer(),
-                  statusIcon
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                statusIcon,
+              ],
             );
           },
         ));
@@ -159,10 +161,8 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                       }),
                   IconButton(
                     icon: Icon(
-                        ((widget.db?.tables?.isEmpty ?? true) ||
-                                (widget.db?.tables
-                                        ?.any((table) => table.visible) ??
-                                    true))
+                        (widget.db.tables.isEmpty ||
+                         widget.db.tables.any((table) => table.visible))
                             ? Icons.visibility
                             : Icons.visibility_off,
                         color: Colors.grey),
@@ -170,11 +170,9 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                       if (widget.db.isConnected) {
                         setState(() {
                           if (widget.db.tables.any((table) => !table.visible)) {
-                            widget.db.tables
-                                .forEach((table) => table.visible = true);
+                            widget.db.tables.forEach((table) => table.visible = true);
                           } else {
-                            widget.db.tables
-                                .forEach((table) => table.visible = false);
+                            widget.db.tables.forEach((table) => table.visible = false);
                           }
                         });
                         getIt<AppData>().bloc.add(UpdateUIEvent());
@@ -191,22 +189,51 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                           title: 'Remove ${widget.db.params.alias}?',
                           message:
                               'This will close and remove the connection.')) {
-                        setState(() {
-                          // Remove the item from the data source.
-                          widget.db.databaseBloc
-                              .add(RemoveConnection((widget.db)));
-                          // Then show toast.
+                        try {
+                          final appData = getIt<AppData>();
+                          final dbAlias = widget.db.params.alias;
+
+                          // First disconnect if connected
+                          if (widget.db.isConnected) {
+                            await widget.db.disconnect(verbose: true);
+                          }
+
+                          // Remove from runtime storage first
+                          setState(() {
+                            appData.dbs.remove(widget.db);
+                          });
+
+                          // Then remove from local storage
+                          await appData.removeConnection(widget.db);
+                          
+                          // Notify the bloc to trigger UI update
+                          getIt<AppData>().bloc.add(UpdateUIEvent());
+
+                          // Show success message
                           Fluttertoast.showToast(
-                              msg:
-                                  "${widget.db.params.alias} connection removed");
-                        });
+                            msg: "$dbAlias connection removed",
+                            toastLength: Toast.LENGTH_SHORT,
+                            gravity: ToastGravity.BOTTOM,
+                            backgroundColor: Colors.green,
+                          );
+                        } catch (e) {
+                          // Show error message if removal fails
+                          Fluttertoast.showToast(
+                            msg: "Error removing connection: ${e.toString()}",
+                            toastLength: Toast.LENGTH_LONG,
+                            gravity: ToastGravity.CENTER,
+                            backgroundColor: Colors.red,
+                            textColor: Colors.white,
+                          );
+                          print("Error removing database connection: $e"); // For debugging
+                        }
                       }
                     },
                   )
                 ],
               ),
             ),
-            if (widget.db.tables?.isEmpty == false ?? false)
+            if (!widget.db.tables.isEmpty)
               buildTablesView(widget.db.tables)
           ],
         ));
@@ -221,101 +248,101 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
         ),
         Container(
             padding: EdgeInsets.only(left: 15, right: 15, top: 10, bottom: 10),
-            child: Column(
-              children: widget.db.tables
-                  ?.map((app.Table table) => Container(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: <Widget>[
-                            SizedBox(
-                              child: Text(
-                                "${table.name}",
-                                style: TextStyle(
-                                    //fontWeight: FontWeight.bold,
-                                    fontSize: 16),
+            height: 200,
+            child: ListView(
+                shrinkWrap: true,
+                children: (tables.toList()..sort((a, b) => a.name.compareTo(b.name)))
+                    .map<Widget>((table) => Container(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: <Widget>[
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  table.name,
+                                  style: TextStyle(fontSize: 16),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              width: 90,
-                            ),
-                            Text(
-                              "ORDER BY ",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color:
-                                      Theme.of(context).colorScheme.secondary),
-                            ),
-                            // TODO use https://medium.com/flutteropen/widgets-14-popupmenubutton-1f1437bbdce2
-                            DropdownButtonHideUnderline(
-                              child: Container(
-                                height: 25,
-                                margin: EdgeInsets.all(0),
-                                padding: EdgeInsets.symmetric(horizontal: 5.0),
-                                decoration: ShapeDecoration(
-                                  shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                        width: 1.5,
-                                        style: BorderStyle.solid,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .secondary),
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(10.0)),
+                              const SizedBox(width: 8),
+                              Text(
+                                "ORDER BY",
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Theme.of(context).colorScheme.secondary),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 3,
+                                child: DropdownButtonHideUnderline(
+                                  child: Container(
+                                    height: 25,
+                                    padding: EdgeInsets.symmetric(horizontal: 5.0),
+                                    decoration: ShapeDecoration(
+                                      shape: RoundedRectangleBorder(
+                                        side: BorderSide(
+                                          width: 1.5,
+                                          style: BorderStyle.solid,
+                                          color: Theme.of(context).colorScheme.secondary,
+                                        ),
+                                        borderRadius: BorderRadius.all(Radius.circular(10.0)),
+                                      ),
+                                    ),
+                                    child: DropdownButton<Property>(
+                                      isExpanded: true,
+                                      iconSize: 16,
+                                      value: table.orderBy,
+                                      onChanged: (Property? newProperty) {
+                                        if (newProperty != null) {
+                                          setState(() {
+                                            table.client.databaseBloc
+                                                .add(UpdateUIAfter(() async {
+                                              table.orderBy = newProperty;
+                                              await table.client.getLastRow(table);
+                                            }));
+                                          });
+                                        }
+                                      },
+                                      items: table.properties
+                                          .map<DropdownMenuItem<Property>>(
+                                              (Property property) {
+                                            return DropdownMenuItem<Property>(
+                                              value: property,
+                                              child: Text(
+                                                property.name,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Theme.of(context).colorScheme.secondary,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            );
+                                          }).toList(),
+                                    ),
                                   ),
                                 ),
-                                child: DropdownButton<Property>(
-                                  iconSize: 0,
-                                  value: table.orderBy,
-                                  onChanged: (Property newProperty) {
-                                    setState(() {
-                                      /// the user can choose to order a table by any field, doesn't matter its type
-                                      table.client.databaseBloc
-                                          .add(UpdateUIAfter(() async {
-                                        table.orderBy = newProperty;
-                                        await table.client.getLastRow(table);
-                                      }));
-                                    });
-                                  },
-                                  items: table.properties
-                                      .map<DropdownMenuItem<Property>>(
-                                          (Property property) {
-                                    return DropdownMenuItem<Property>(
-                                      value: property,
-                                      child: SizedBox(
-                                        width: 100.0, // for example
-                                        child: Center(
-                                            child: FittedBox(
-                                                fit: BoxFit.fitWidth,
-                                                child: Text(property.name,
-                                                    style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: Theme.of(context)
-                                                            .colorScheme
-                                                            .secondary)))),
-                                      ),
-                                    );
-                                  }).toList(),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: Icon(
+                                  table.visible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: Colors.grey[300],
+                                  size: 20,
                                 ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                table.visible
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: Colors.grey[300],
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  table.visible = !table.visible;
-                                });
-                                getIt<AppData>().bloc.add(UpdateUIEvent());
-                              },
-                            )
-                          ],
-                        ),
-                      ))
-                  ?.toList(),
+                                onPressed: () {
+                                  setState(() {
+                                    table.visible = !table.visible;
+                                  });
+                                  getIt<AppData>().bloc.add(UpdateUIEvent());
+                                },
+                              )
+                            ],
+                          ),
+                        ))
+                    .toList(),
             ))
       ],
     );

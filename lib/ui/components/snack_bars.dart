@@ -2,24 +2,27 @@ import 'package:bitacora/bloc/form/bloc.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+void showSnackBar(
+  BuildContext context,
+  String message, {
+  required Function? undoAction,
+}) {
+  final snackBar = SnackBar(
+    content: Text(message),
+    action: undoAction != null
+        ? SnackBarAction(
+            label: 'Undo',
+            onPressed: () => undoAction(),
+          )
+        : null,
+  );
+  ScaffoldMessenger.of(context).showSnackBar(snackBar);
+}
+
 void showErrorSnackBar(BuildContext context, String message) {
   final snackBar = SnackBar(
     content: Text(message),
-    backgroundColor: Colors.red,
+    backgroundColor: Theme.of(context).colorScheme.error,
   );
-  Scaffold.of(context).showSnackBar(snackBar);
-}
-
-void submitFormSnackBar(FormEvent event, String message,
-    {Function undoAction}) {
-  final snackBar = SnackBar(
-      content: Text(message),
-      action: undoAction != null ? SnackBarAction(
-        label: "Undo",
-        onPressed: () {
-          undoAction();
-        },
-      ) : null);
-
-  Scaffold.of(event.context).showSnackBar(snackBar);
+  ScaffoldMessenger.of(context).showSnackBar(snackBar);
 }

@@ -2,57 +2,78 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 extension CustomColorScheme on ColorScheme {
-  static Color lightInsert = Colors.blue;
-  static Color lightEdit = Colors.amber[700];
-  static Color lightCreateWidget = Colors.green;
+  static const Color lightInsert = Colors.blue;
+  static final Color lightEdit = Colors.amber.shade700;
+  static const Color lightCreateWidget = Colors.green;
 
-  static Color darkInsert = Colors.cyanAccent;
-  static Color darkEdit = Colors.amberAccent;
-  static Color darkCreateWidget = Colors.greenAccent;
+  static const Color darkInsert = Colors.cyanAccent;
+  static const Color darkEdit = Colors.amberAccent;
+  static const Color darkCreateWidget = Colors.greenAccent;
 
   Color get appBarColor =>
-      this.brightness == Brightness.light ? Colors.grey[50] : Colors.grey[900];
+      brightness == Brightness.light ? Colors.grey.shade50 : Colors.grey.shade900;
+      
   Color get defaultTextColor =>
-      this.brightness == Brightness.light ? Colors.black : Colors.white;
+      brightness == Brightness.light ? Colors.black : Colors.white;
+      
   Color get negativeDefaultTxtColor =>
-      this.brightness == Brightness.light ? Colors.white : Colors.black;
-  Color get auto => this.brightness == Brightness.light
+      brightness == Brightness.light ? Colors.white : Colors.black;
+      
+  Color get auto => brightness == Brightness.light
       ? Colors.blueGrey
       : const Color(0xff517975);
 
   /// Actions Dropdown
-  Color get actionsDropdownBg => this.brightness == Brightness.light
-      ? Colors.grey[700]
-      : Colors.black87; // Colors.grey[400]
+  Color get actionsDropdownBg => brightness == Brightness.light
+      ? Colors.grey.shade700
+      : Colors.black87;
+      
   Color get actionsDropdownTextColor =>
-      this.brightness == Brightness.light ? Colors.white : Colors.black;
+      brightness == Brightness.light ? Colors.white : Colors.black;
+      
   Color get insertTextColor =>
-      this.brightness == Brightness.light ? null : darkInsert;
+      brightness == Brightness.light ? Colors.black : darkInsert;
+      
   Color get editTextColor =>
-      this.brightness == Brightness.light ? null : darkEdit;
+      brightness == Brightness.light ? Colors.black : darkEdit;
+      
   Color get createWidgetTextColor =>
-      this.brightness == Brightness.light ? null : darkCreateWidget;
+      brightness == Brightness.light ? Colors.black : darkCreateWidget;
+      
   Color get insertBgColor =>
-      this.brightness == Brightness.light ? lightInsert : null;
+      brightness == Brightness.light ? lightInsert : Colors.transparent;
+      
   Color get editBgColor =>
-      this.brightness == Brightness.light ? lightEdit : null;
+      brightness == Brightness.light ? lightEdit : Colors.transparent;
+      
   Color get createWidgetBgColor =>
-      this.brightness == Brightness.light ? lightCreateWidget : null;
+      brightness == Brightness.light ? lightCreateWidget : Colors.transparent;
 
   /// Tables Dropdown
   Color get tablesDropdownBg =>
-      this.brightness == Brightness.light ? Colors.grey[350] : Colors.grey[800];
+      brightness == Brightness.light 
+          ? Colors.grey.shade300 
+          : Colors.grey.shade800;
+      
   Color get tablesDropdownTextColor =>
-      this.brightness == Brightness.light ? Colors.black : Colors.white;
+      brightness == Brightness.light ? Colors.black : Colors.white;
 
   /// Property view
-  Color get typeBoxColor => this.brightness == Brightness.light
-      ? Colors.grey[600]
-      : Color(0xff535353);
+  Color get typeBoxColor => brightness == Brightness.light
+      ? Colors.grey.shade600
+      : const Color(0xff535353);
 }
 
 class Themes {
-  static ThemeData lightTheme = ThemeData.light();
+  static final ThemeData lightTheme = ThemeData(
+    brightness: Brightness.light,
+    colorScheme: ColorScheme.light(),
+    useMaterial3: true,
+  );
 
-  static ThemeData darkTheme = ThemeData.dark();
+  static final ThemeData darkTheme = ThemeData(
+    brightness: Brightness.dark,
+    colorScheme: ColorScheme.dark(),
+    useMaterial3: true,
+  );
 }

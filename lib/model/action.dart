@@ -1,28 +1,28 @@
-import 'dart:ui';
-
-import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
-import 'package:recase/recase.dart';
 
-enum ActionType { InsertInto, EditLastFrom, CreateWidgetFrom }
+enum ActionType {
+  insertInto,
+  editLastFrom,
+  deleteLastFrom,
+}
 
-class Action extends Equatable {
-  const Action._(this.title, this.type, this.bgColor, this.textColor, this.floatButColor);
-
-  factory Action (ActionType type, Color primaryColor, Color textColor, Brightness brightness) {
-    final title = ReCase(type.toString().split(".").last)
-        .sentenceCase
-        .toUpperCase();
-    final floatButColor = brightness == Brightness.light ? primaryColor : textColor;
-    return Action._(title, type, primaryColor, textColor, floatButColor);
-  }
-
-  final String title;
+class Action {
   final ActionType type;
-  final Color bgColor;
-  final Color textColor;
-  final Color floatButColor;
+  final String title;
+  final String name;
+  final IconData icon;
+  final Color color;
+
+  const Action(this.type, this.name, this.icon, this.color) : title = name;
 
   @override
-  List<Object> get props => [type];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Action &&
+          runtimeType == other.runtimeType &&
+          type == other.type &&
+          name == other.name;
+
+  @override
+  int get hashCode => type.hashCode ^ name.hashCode;
 }

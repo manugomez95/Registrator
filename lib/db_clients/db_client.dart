@@ -18,26 +18,31 @@ enum OpType { insert, update, delete }
 abstract class DbClient<T> extends Equatable {
   /// BLoC
   // ignore: close_sinks
-  DatabaseBloc databaseBloc;
+  late final DatabaseBloc databaseBloc;
 
   /// Database model
-  DbConnectionParams params;
-  Set<app.Table> tables;
-  final Duration timeout; // TODO make private?
-  final Duration queryTimeout; // TODO make private?
+  final DbConnectionParams params;
+  late Set<app.Table> tables;
+  final Duration timeout;
+  final Duration queryTimeout;
 
-  /// To autodectect orderBy candidates
+  /// To autodetect orderBy candidates
   final List<PrimitiveType> orderByTypes;
 
   /// Connection
-  @protected
-  T connection;
+  T? _connection;
   bool isConnected = false;
 
-  DbClient(this.params, this.orderByTypes,
-      {this.timeout: const Duration(seconds: 3),
-      this.queryTimeout: const Duration(seconds: 2)}) {
+  T get connection => _connection!;
+
+  DbClient(
+    this.params,
+    this.orderByTypes, {
+    this.timeout = const Duration(seconds: 3),
+    this.queryTimeout = const Duration(seconds: 2),
+  }) {
     databaseBloc = DatabaseBloc();
+    tables = {};
   }
 
   Future<Map<String, dynamic>> toMap() async {
@@ -46,280 +51,256 @@ abstract class DbClient<T> extends Equatable {
 
   @override
   List<Object> get props => [
-        this.params.host,
-        this.params.port,
-        this.params.username,
-        this.params.dbName
+        params.host,
+        params.port,
+        params.username,
+        params.dbName,
       ];
+
+  Future<void> dispose() async {
+    await closeConnection();
+    databaseBloc.close();
+  }
 
   SvgPicture getLogo(Brightness brightness);
 
   /// Allows connection with db (should be called async)
-  connect({verbose: false}) async {
-    if (connection == null) connection = await initConnection();
+  Future<void> connect({bool verbose = false}) async {
+    if (_connection == null) {
+      _connection = await initConnection();
+    }
     await openConnection();
     isConnected = true;
-    if (verbose)
-      debugPrint("connect (${this.params.alias}): Connection established");
+    if (verbose) {
+      debugPrint("connect (${params.alias}): Connection established");
+    }
   }
 
   @protected
   Future<T> initConnection();
-  @protected
-  openConnection();
 
-  disconnect({verbose: false}) async {
+  @protected
+  Future<void> openConnection();
+
+  Future<void> disconnect({bool verbose = false}) async {
     await closeConnection();
-    connection = null;
+    _connection = null;
     isConnected = false;
-    if (verbose) debugPrint("disconnect (${this.params.alias})");
+    if (verbose) debugPrint("disconnect (${params.alias})");
   }
 
   @protected
-  closeConnection();
+  Future<void> closeConnection();
 
-  pullDatabaseModel({verbose: false, getLastRows: true}) async {
+  Future<void> pullDatabaseModel({
+    bool verbose = false,
+    bool getLastRows = true,
+  }) async {
     if (verbose) {
-      if (this.tables != null)
-        debugPrint("pullDatabaseModel (${this.params.alias}): Updating model");
-      else
-        debugPrint(
-            "pullDatabaseModel (${this.params.alias}): Getting model for the first time");
+      debugPrint(
+        "pullDatabaseModel (${params.alias}): ${tables.isEmpty ? 'Getting model for the first time' : 'Updating model'}",
+      );
     }
 
-    /// Get tables
-    List<String> tablesNames = await getTables(verbose: verbose);
+    final tablesNames = await getTables(verbose: verbose);
+    final newTables = <app.Table>{};
 
-    // TODO [future] get user defined types (for enum)
-
-    /// For each table:
-    Set<app.Table> tables = Set();
-    for (var tName in tablesNames) {
-      /// get properties...
+    for (final tName in tablesNames) {
       try {
-        Set<Property> properties =
-            await getPropertiesFromTable(tName, verbose: verbose);
+        final properties = await getPropertiesFromTable(tName, verbose: verbose);
+        final table = app.Table(tName, properties, this);
+        newTables.add(table);
 
-        tables.add(app.Table(tName, properties, this));
-
-        /// if first time loading DB model identify the "ORDER BY field", since Postgres has a date and timestamp type
-        if (this.tables == null) {
-          var orderByCandidates = properties.where(
-              (property) => orderByTypes.contains(property.type.primitive));
-          if (orderByCandidates.length == 1)
-            tables.last.orderBy = orderByCandidates.first;
+        if (tables.isEmpty) {
+          final orderByCandidates = properties.where(
+            (property) => orderByTypes.contains(property.type.primitive),
+          );
+          if (orderByCandidates.length == 1) {
+            table.orderBy = orderByCandidates.first;
+          }
         }
 
-        /// Save table information in local SQLite
-        await tables.last.save(conflictAlgorithm: ConflictAlgorithm.ignore);
+        await table.save(conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        if (getLastRows) {
+          await getLastRow(table);
+        }
       } on UnsupportedError catch (e) {
         if (verbose) debugPrint(e.toString());
         continue;
-        // TODO mark table with Unsupported label? Show toast or something
       }
-
-      /// and [optionally] get last row
-      if (getLastRows) await getLastRow(tables.last);
     }
 
-    this.tables = tables;
-
-    /// get foreign and primary keys info
+    tables = newTables;
     await getKeys();
   }
 
-  /// Returns list of table names
   @protected
-  Future<List<String>> getTables({verbose: false});
+  Future<List<String>> getTables({bool verbose = false});
+
   @protected
-  Future<Set<Property>> getPropertiesFromTable(String table, {verbose: false});
+  Future<Set<Property>> getPropertiesFromTable(
+    String table, {
+    bool verbose = false,
+  });
 
   /// Checks connection
-  Future<bool> ping({verbose: false}) async {
-    if (connection == null) return false;
+  Future<bool> ping({bool verbose = false}) async {
+    if (_connection == null) return false;
     try {
       await checkConnection().timeout(timeout);
-    } on Exception catch (e) {
-      if (verbose) debugPrint("ping (${this.params.alias}): ${e.toString()}");
-      await disconnect();
-    } finally {
-      // ignore: control_flow_in_finally
       return isConnected;
+    } on Exception catch (e) {
+      if (verbose) {
+        debugPrint("ping (${params.alias}): ${e.toString()}");
+      }
+      await disconnect();
+      return false;
     }
   }
 
   @protected
   Future<bool> checkConnection();
 
-  /// updates last values based on OrderBy
-  getLastRow(app.Table table, {verbose: false}) async {
-    Property orderBy = table.orderBy;
+  Future<void> getLastRow(app.Table table, {bool verbose = false}) async {
+    final orderBy = table.orderBy;
     if (orderBy == null) {
-      if (verbose)
+      if (verbose) {
         debugPrint("getLastRow (${table.name}): No linearity defined");
+      }
       return;
     }
 
-    List<dynamic> results = [];
     try {
-      results =
-          await queryLastRow(table, orderBy, verbose: verbose).timeout(timeout);
+      final results = await queryLastRow(
+        table,
+        orderBy,
+        verbose: verbose,
+      ).timeout(timeout);
 
       if (verbose) debugPrint("getLastRow: $results");
+
+      if (results.isNotEmpty) {
+        if (results.length != table.properties.length) {
+          throw Exception("Results different than expected");
+        }
+
+        for (var i = 0; i < table.properties.length; i++) {
+          final property = table.properties.elementAt(i);
+          property.lastValue = resToValue(results[i], property.type);
+        }
+      } else {
+        for (final property in table.properties) {
+          property.lastValue = null;
+        }
+      }
     } on Exception catch (e) {
       if (verbose) debugPrint("getLastRow (${table.name}): $e");
-    } on Error catch (e) {
-      if (verbose) debugPrint("getLastRow (${table.name}): $e");
-    }
-
-    if (results.isNotEmpty) {
-      var i = 0;
-      if (results.length != table.properties.length)
-        throw Exception("Results different than expected");
-      for (final p in table.properties) {
-        /// Why not use saved index position instead of i? Because index position might not make much sense (after fields have been deleted for example)
-        p.lastValue = resToValue(results[i], p.type);
-        i++;
-      }
-    } else {
-      table.properties.forEach((p) => p.lastValue = null);
     }
   }
 
   @protected
-  Future<List<dynamic>> queryLastRow(app.Table table, Property orderBy,
-      {verbose: false});
-  @protected
+  Future<List<dynamic>> queryLastRow(
+    app.Table table,
+    Property orderBy, {
+    bool verbose = false,
+  });
 
-  /// result of querying table -> value
+  /// Convert database result to typed value
+  @protected
   dynamic resToValue(dynamic res, DataType type);
 
-  /// inserts and updates last values
-  insertRowIntoTable(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose: false}) async {
-    String propertiesNames =
-        propertiesForm.keys.map((Property p) => dbStrFormat(p.name)).join(", ");
+  Future<bool> insertRowIntoTable(
+    app.Table table,
+    Map<Property, dynamic> propertiesForm, {
+    bool verbose = false,
+  }) async {
+    final propertiesNames = propertiesForm.keys
+        .map((Property p) => dbStrFormat(p.name))
+        .join(", ");
 
-    String qMarks = List.filled(propertiesForm.length, "?").join(", ");
+    final qMarks = List.filled(propertiesForm.length, "?").join(", ");
+    final command = insertSQL(table, propertiesNames, qMarks);
+    
+    final properties = table.properties.toList();
+    final arguments = List.generate(
+      propertiesForm.values.length,
+      (i) => fromValueToDbValue(
+        propertiesForm.values.toList()[i],
+        properties[i].type,
+      ),
+    );
 
-    String command = insertSQL(table, propertiesNames, qMarks);
-    List<Property> properties = table.properties.toList();
-    List arguments = List.generate(
-        propertiesForm.values.length,
-        (i) => fromValueToDbValue(
-            propertiesForm.values.toList()[i], properties[i].type));
-
-    if (verbose) debugPrint("insertRowIntoTable (${table.name}): $command | $arguments");
+    if (verbose) {
+      debugPrint("insertRowIntoTable (${table.name}): $command | $arguments");
+    }
 
     try {
-      var results = await executeSQL(OpType.insert, command, arguments);
+      final results = await executeSQL(OpType.insert, command, arguments);
       if (verbose) debugPrint("insertRowIntoTable: $results");
+      
       if (results == 1) {
-        /// Update official last row
-        table.properties.forEach((p) => p.lastValue = propertiesForm[p]);
+        for (final property in table.properties) {
+          property.lastValue = propertiesForm[property];
+        }
         return true;
-      } else
-        return false;
+      }
+      return false;
     } on Exception catch (e) {
       if (verbose) debugPrint(e.toString());
-      throw e;
+      rethrow;
     }
   }
 
   @protected
-  insertSQL(app.Table table, String properties, String values);
+  String insertSQL(app.Table table, String properties, String values);
 
-  /// Always use last values, forget about order because last values depend on order
-  editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm,
-      {verbose: false}) async {
-    /// if there's no last values...
-    if (table.properties.every((p) => p.lastValue == null)) {
-      throw Exception("No last values");
-    }
+  @protected
+  String dbStrFormat(String str);
 
-    /// this are the new values
-    List newValues = propertiesForm.keys
+  @protected
+  dynamic fromValueToDbValue(dynamic value, DataType type);
+
+  @protected
+  Future<int> executeSQL(OpType opType, String command, List<dynamic> arguments);
+
+  @protected
+  Future<void> getKeys();
+
+  Future<bool> editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm) async {
+    final command = editLastFromSQL(table);
+    final arguments = table.properties
         .map((p) => fromValueToDbValue(propertiesForm[p], p.type))
         .toList();
+    
+    try {
+      final results = await executeSQL(OpType.update, command, arguments);
+      return results > 0;
+    } catch (e) {
+      debugPrint(e.toString());
+      rethrow;
+    }
+  }
 
-    var sql = editLastFromSQL(table);
-
-    var oldValues = table.properties
+  Future<bool> deleteLastFrom(app.Table table) async {
+    final command = deleteLastFromSQL(table);
+    final arguments = table.properties
         .where((p) => p.lastValue != null)
         .map((p) => fromValueToDbValue(p.lastValue, p.type))
         .toList();
-    if (verbose) debugPrint("editLastFrom (${table.name}): $sql | $oldValues");
-
+    
     try {
-      var results = await executeSQL(
-          OpType.update, sql, newValues.followedBy(oldValues).toList());
-      debugPrint("editLastFrom (${table.name}): $results");
-      if (results == 1) {
-        /// Update official last row
-        table.properties.forEach((p) => p.lastValue = propertiesForm[p]);
-        return true;
-      } else
-        return false;
-    } on Exception catch (e) {
-      if (verbose) debugPrint("editLastFrom (${table.name}): ${e.toString()}");
-      throw e;
+      final results = await executeSQL(OpType.delete, command, arguments);
+      return results > 0;
+    } catch (e) {
+      debugPrint(e.toString());
+      rethrow;
     }
   }
 
   @protected
   String editLastFromSQL(app.Table table);
 
-  /// Always use last values, forget about order because last values depend on order
-  deleteLastFrom(app.Table table, {verbose: true}) async {
-    /// if there's no last values...
-    if (table.properties.every((p) => p.lastValue == null)) {
-      throw Exception("No last values");
-    }
-
-    var sql = deleteLastFromSQL(table);
-    var arguments = table.properties
-        .where((p) => p.lastValue != null)
-        .map((p) => fromValueToDbValue(p.lastValue, p.type))
-        .toList();
-    if (verbose)
-      debugPrint("removeLastEntry (${table.name}): $sql | $arguments");
-
-    try {
-      /// ...so, we only include as arguments the non null values
-      var results = await executeSQL(OpType.delete, sql, arguments);
-      if (verbose) debugPrint("removeLastEntry (${table.name}): $results");
-
-      // TODO necessary, there's a first check at the begining
-      if (results == 0) {
-        throw Exception("Table is empty");
-      }
-    } on Exception catch (e) {
-      if (verbose)
-        debugPrint("removeLastEntry (${table.name}): ${e.toString()}");
-      throw e;
-    }
-  }
-
   @protected
   String deleteLastFromSQL(app.Table table);
-
-  /// Table properties need to be already created and also the rest of the tables
-  getKeys({verbose: false});
-
-  Future<List<String>> getPkDistinctValues(app.Table table,
-      {verbose: false, String pattern});
-
-  /// ------------ SQL helpers -------------------
-  /// ? are replaced by arguments
-  /// return number of rows affected
-  Future<int> executeSQL(OpType opType, String command, List arguments);
-
-  query(String command, List arguments);
-
-  /// ----------- STRING related ------------- TODO move to another class?
-
-  /// properties form value -> str of insert order
-  fromValueToDbValue(dynamic value, DataType type, {bool fromArray: false});
-
-  String dbStrFormat(String str);
 }

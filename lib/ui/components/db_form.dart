@@ -6,165 +6,282 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'form_field_view.dart';
 import 'package:bitacora/conf/style.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
-enum DbFormType { connect, edit }
+enum DbFormType { 
+  connect, 
+  edit,
+  create 
+}
 
 /// Needs to be Stateful because it contains a CheckBox
 class DbForm extends StatefulWidget {
-  final aliasController = TextEditingController();
-  final hostController = TextEditingController();
-  final portController = TextEditingController();
-  final dbNameController = TextEditingController();
-  final userController = TextEditingController();
-  final passwordController = TextEditingController();
-  final ValueNotifier<bool> useSSL = ValueNotifier(false);
-
-  final formKey = GlobalKey<FormState>();
-  final DbClient db;
   final DbFormType type;
+  final DbClient? db;
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
-  DbForm(this.type, {this.db}) {
-    if (db != null) {
-      aliasController.text = db.params.alias;
-      hostController.text = db.params.host;
-      portController.text = db.params.port.toString();
-      dbNameController.text = db.params.dbName;
-      userController.text = db.params.username;
+  DbForm(this.type, {Key? key, this.db}) : super(key: key);
+
+  @override
+  State<DbForm> createState() => DbFormState();
+}
+
+class DbFormState extends State<DbForm> {
+  late String selectedDbType;
+  final Map<String, dynamic> formData = {};
+  final TextEditingController aliasController = TextEditingController();
+  final TextEditingController hostController = TextEditingController();
+  final TextEditingController portController = TextEditingController();
+  final TextEditingController databaseController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool useSSL = false;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedDbType = widget.db?.params.brand ?? 'postgres';
+    if (widget.db != null) {
+      aliasController.text = widget.db!.params.alias;
+      hostController.text = widget.db!.params.host;
+      portController.text = widget.db!.params.port.toString();
+      databaseController.text = widget.db!.params.dbName;
+      usernameController.text = widget.db!.params.username;
+      passwordController.text = widget.db!.params.password;
+      useSSL = widget.db!.params.useSSL;
     }
   }
 
   @override
-  State<StatefulWidget> createState() => DbFormState();
-
-  editConnection(DbClient db) async {
-    db.databaseBloc.removeConnection(db);
-    final params = DbConnectionParams(
-        aliasController.text,
-        hostController.text,
-        int.parse(portController.text),
-        dbNameController.text,
-        userController.text,
-        passwordController.text,
-        useSSL.value);
-    DbClient newDb = PostgresClient(params);
-    newDb.databaseBloc.add(ConnectToDatabase(newDb, fromForm: true));
+  void dispose() {
+    aliasController.dispose();
+    hostController.dispose();
+    portController.dispose();
+    databaseController.dispose();
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
-  void submitConnection() {
-    PostgresClient db = PostgresClient(DbConnectionParams(
-        aliasController.text,
-        hostController.text,
-        int.parse(portController.text),
-        dbNameController.text,
-        userController.text,
-        passwordController.text,
-        useSSL.value));
+  List<Widget> _buildFormFields() {
+    final fields = <Widget>[
+      TextFormField(
+        controller: aliasController,
+        decoration: const InputDecoration(
+          labelText: 'Connection Name',
+          border: OutlineInputBorder(),
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter a connection name';
+          }
+          return null;
+        },
+      ),
+      const SizedBox(height: 16),
+    ];
 
-    db.databaseBloc.add(ConnectToDatabase(db, fromForm: true));
+    if (selectedDbType == 'sqlite') {
+      fields.addAll([
+        TextFormField(
+          controller: databaseController,
+          decoration: const InputDecoration(
+            labelText: 'Database File Path',
+            border: OutlineInputBorder(),
+            hintText: 'Path to your SQLite database file',
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter the database file path';
+            }
+            return null;
+          },
+        ),
+      ]);
+    } else {
+      fields.addAll([
+        TextFormField(
+          controller: hostController,
+          decoration: const InputDecoration(
+            labelText: 'Host',
+            border: OutlineInputBorder(),
+            hintText: 'localhost or host address',
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter the host';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: portController,
+          decoration: const InputDecoration(
+            labelText: 'Port',
+            border: OutlineInputBorder(),
+            hintText: '5432',
+          ),
+          keyboardType: TextInputType.number,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter the port';
+            }
+            final port = int.tryParse(value);
+            if (port == null) {
+              return 'Please enter a valid port number';
+            }
+            if (port <= 0 || port > 65535) {
+              return 'Port must be between 1 and 65535';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: databaseController,
+          decoration: const InputDecoration(
+            labelText: 'Database Name',
+            border: OutlineInputBorder(),
+            hintText: 'Name of your database',
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter the database name';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: usernameController,
+          decoration: const InputDecoration(
+            labelText: 'Username',
+            border: OutlineInputBorder(),
+            hintText: 'Database user',
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter the username';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: passwordController,
+          decoration: const InputDecoration(
+            labelText: 'Password',
+            border: OutlineInputBorder(),
+            hintText: 'Database password',
+          ),
+          obscureText: true,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter the password';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        CheckboxListTile(
+          title: const Text('Use SSL'),
+          subtitle: const Text('Enable secure connection'),
+          value: useSSL,
+          onChanged: (bool? value) {
+            setState(() {
+              useSSL = value ?? false;
+            });
+          },
+        ),
+      ]);
+    }
+
+    return fields;
   }
-}
 
-class DbFormState extends State<DbForm> {
-  DbInfo selectedDb;
+  void _saveForm() {
+    try {
+      if (widget.formKey.currentState?.validate() ?? false) {
+        formData['brand'] = selectedDbType;
+        formData['alias'] = aliasController.text.trim();
+        formData['host'] = selectedDbType == 'sqlite' ? '' : hostController.text.trim();
+        formData['port'] = selectedDbType == 'sqlite' ? 0 : int.parse(portController.text.trim());
+        formData['db_name'] = databaseController.text.trim();
+        formData['username'] = selectedDbType == 'sqlite' ? '' : usernameController.text.trim();
+        formData['password'] = selectedDbType == 'sqlite' ? '' : passwordController.text.trim();
+        formData['useSSL'] = selectedDbType == 'sqlite' ? false : useSSL;
+        
+        Navigator.of(context).pop(formData);
+      } else {
+        Fluttertoast.showToast(
+          msg: "Please fix the errors in the form",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.CENTER,
+        );
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: "Error saving form: ${e.toString()}",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.CENTER,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    selectedDb = selectedDb ?? supportedDatabases.first;
-    var theme = Theme.of(context);
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.type == DbFormType.connect
-            ? "New connection"
-            : "Edit ${widget.aliasController.text}"),
-        actions: <Widget>[
-          FlatButton(
+        title: Text(widget.type == DbFormType.create ? 'New Connection' : 'Edit Connection'),
+        actions: [
+          TextButton(
             child: Text(
-              "SAVE",
-              style: theme.textTheme.button
-                  .copyWith(color: Colors.white),
+              'Save',
+              style: TextStyle(color: theme.colorScheme.onPrimary),
             ),
-            onPressed: () {
-              if (widget.formKey.currentState.validate()) {
-                if (widget.type == DbFormType.connect)
-                  widget.submitConnection();
-                else if (widget.type == DbFormType.edit)
-                  widget.editConnection(widget.db);
-                Navigator.of(context).pop(); // exit alertDialog
-              }
-            },
-          )
+            onPressed: _saveForm,
+          ),
         ],
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Form(
-            key: widget.formKey,
-            child: Column(
-              children: <Widget>[
-                DropdownButtonHideUnderline(
-                    child: Container(
-                  //color: selectedDb.bgColor,
-                  child: DropdownButton<DbInfo>(
-                      value: selectedDb,
-                      iconSize: 0,
-                      isExpanded: true,
-                      onChanged: (DbInfo newValue) {
-                        setState(() {
-                          selectedDb = newValue;
-                        });
-                      },
-                      items: supportedDatabases
-                          .map<DropdownMenuItem<DbInfo>>((DbInfo dbInfo) {
-                        return DropdownMenuItem<DbInfo>(
-                            value: dbInfo,
-                              child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: <Widget>[
-                                Container(
-                                  child: dbInfo.getLogo(Theme.of(context).brightness),
-                                  height: 40,
-                                  padding: EdgeInsets.only(right: 3),
-                                ),
-                                Text(dbInfo.alias,
-                                    style: TextStyle(
-                                      //color: action.textColor,
-                                        fontWeight: FontWeight.w600))
-                              ],
-                            ),);
-                      }).toList()),
-                )),
-                FormFieldView(Alias(), widget.aliasController),
-                Row(
-                  children: <Widget>[
-                    Flexible(
-                      child: FormFieldView(Host(), widget.hostController),
-                    ),
-                    Container(
-                      width: 120,
-                      margin: EdgeInsets.only(left: 16),
-                      child: FormFieldView(Port(), widget.portController),
-                    )
-                  ],
-                ),
-                FormFieldView(DatabaseName(), widget.dbNameController),
-                FormFieldView(Username(), widget.userController),
-                FormFieldView(Password(), widget.passwordController),
-                Container(
-                  width: 150,
-                  child: CheckboxListTile(
-                    title: const Text('SSL'),
-                    value: widget.useSSL.value,
-                    onChanged: (value) {
-                      setState(() {
-                        widget.useSSL.value = !widget.useSSL.value;
-                      });
-                    },
-                  ),
-                )
-              ],
+      body: Form(
+        key: widget.formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            DropdownButtonFormField<String>(
+              value: selectedDbType,
+              items: ['postgres', 'sqlite', 'bigquery'].map((String type) {
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(type),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    selectedDbType = newValue;
+                    // Clear form fields when changing database type
+                    if (widget.db == null) {
+                      hostController.clear();
+                      portController.clear();
+                      databaseController.clear();
+                      usernameController.clear();
+                      passwordController.clear();
+                      useSSL = false;
+                    }
+                  });
+                }
+              },
+              decoration: const InputDecoration(
+                labelText: 'Database Type',
+                border: OutlineInputBorder(),
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            ..._buildFormFields(),
+          ],
         ),
       ),
     );
