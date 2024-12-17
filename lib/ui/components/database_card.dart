@@ -4,6 +4,7 @@ import 'package:bitacora/db_clients/db_client.dart';
 import 'package:bitacora/model/app_data.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
+import 'package:bitacora/ui/pages/data_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -147,16 +148,23 @@ class DatabaseCardBodyState extends State<DatabaseCardBody> {
                         Icons.edit,
                         color: Colors.grey,
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (widget.db.params.dbName == "demo.db") {
                           Fluttertoast.showToast(msg: "Demo cannot be edited");
                         } else {
-                          Navigator.push(
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) =>
                                 DbForm(DbFormType.edit, db: widget.db),
                                 fullscreenDialog: true),
                           );
+                          if (result != null) {
+                            // Get the parent DataPage's state to handle the form result
+                            final dataPageState = context.findAncestorStateOfType<DataPageState>();
+                            if (dataPageState != null) {
+                              await dataPageState.handleFormResult(result as Map<String, dynamic>);
+                            }
+                          }
                         }
                       }),
                   IconButton(

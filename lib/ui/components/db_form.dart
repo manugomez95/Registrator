@@ -36,10 +36,12 @@ class DbFormState extends State<DbForm> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool useSSL = false;
+  bool isEditMode = false;
 
   @override
   void initState() {
     super.initState();
+    isEditMode = widget.db != null;
     selectedDbType = widget.db?.params.brand ?? 'postgres';
     if (widget.db != null) {
       aliasController.text = widget.db!.params.alias;
@@ -47,7 +49,7 @@ class DbFormState extends State<DbForm> {
       portController.text = widget.db!.params.port.toString();
       databaseController.text = widget.db!.params.dbName;
       usernameController.text = widget.db!.params.username;
-      passwordController.text = widget.db!.params.password;
+      passwordController.text = '';
       useSSL = widget.db!.params.useSSL;
     }
   }
@@ -170,14 +172,14 @@ class DbFormState extends State<DbForm> {
         const SizedBox(height: 16),
         TextFormField(
           controller: passwordController,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Password',
             border: OutlineInputBorder(),
-            hintText: 'Database password',
+            hintText: isEditMode ? 'Leave empty to keep current password' : 'Database password',
           ),
           obscureText: true,
           validator: (value) {
-            if (value == null || value.isEmpty) {
+            if (value == null || value.isEmpty && !isEditMode) {
               return 'Please enter the password';
             }
             return null;
@@ -209,7 +211,15 @@ class DbFormState extends State<DbForm> {
         formData['port'] = selectedDbType == 'sqlite' ? 0 : int.parse(portController.text.trim());
         formData['db_name'] = databaseController.text.trim();
         formData['username'] = selectedDbType == 'sqlite' ? '' : usernameController.text.trim();
-        formData['password'] = selectedDbType == 'sqlite' ? '' : passwordController.text.trim();
+        formData['isEditing'] = isEditMode;
+        
+        final password = passwordController.text.trim();
+        if (isEditMode && password.isEmpty && widget.db != null) {
+          formData['password'] = widget.db!.params.password;
+        } else {
+          formData['password'] = password;
+        }
+        
         formData['useSSL'] = selectedDbType == 'sqlite' ? false : useSSL;
         
         Navigator.of(context).pop(formData);

@@ -36,7 +36,7 @@ class DataPageState extends State<DataPage> {
     super.didChangeDependencies();
   }
 
-  Future<void> _handleFormResult(Map<String, dynamic>? formData) async {
+  Future<void> handleFormResult(Map<String, dynamic>? formData) async {
     if (formData != null) {
       try {
         // Validate required fields
@@ -79,7 +79,7 @@ class DataPageState extends State<DataPage> {
           gravity: ToastGravity.BOTTOM,
         );
 
-        // Create the database client
+        // Create or update the database client
         late final DbClient db;
         switch (formData['brand']) {
           case 'postgres':
@@ -95,8 +95,18 @@ class DataPageState extends State<DataPage> {
             throw Exception('Database type ${formData['brand']} not supported');
         }
 
-        // Add the database to the list immediately to show it in the UI
+        // Add or update the database in the list
         setState(() {
+          // Remove old connection if editing
+          if (formData['isEditing'] == true) {
+            final oldDb = getIt<AppData>().dbs.firstWhere(
+              (d) => d.params.alias == formData['alias'],
+              orElse: () => throw Exception('Original connection not found'),
+            );
+            // Disconnect old connection
+            oldDb.disconnect();
+            getIt<AppData>().dbs.remove(oldDb);
+          }
           getIt<AppData>().dbs.add(db);
           expandedItems.add(db.params.alias);
         });
@@ -104,18 +114,21 @@ class DataPageState extends State<DataPage> {
         // Save the connection parameters
         await getIt<AppData>().saveConnection(db);
 
-        // Connect and load tables in the background
-        db.databaseBloc.add(ConnectToDatabase(db));
+        // Connect and load tables
+        await db.connect(verbose: true);
+        await db.pullDatabaseModel();
+        await getIt<AppData>().saveTables(db);
+        db.databaseBloc.add(ConnectionSuccessfulEvent(db));
 
       } catch (e) {
         Fluttertoast.showToast(
-          msg: "Error creating connection: ${e.toString()}",
+          msg: "Error with connection: ${e.toString()}",
           toastLength: Toast.LENGTH_LONG,
           gravity: ToastGravity.CENTER,
-          backgroundColor: Colors.red,
+          backgroundColor: const Color(0xFFD32F2F),
           textColor: Colors.white,
         );
-        print("Error creating database connection: $e");
+        debugPrint("Error with database connection: $e");
       }
     }
   }
@@ -217,7 +230,7 @@ class DataPageState extends State<DataPage> {
                     context,
                     MaterialPageRoute(builder: (context) => DbForm(DbFormType.connect), fullscreenDialog: true),
                   );
-                  await _handleFormResult(result as Map<String, dynamic>?);
+                  await handleFormResult(result as Map<String, dynamic>?);
                 },
               ),
             );
