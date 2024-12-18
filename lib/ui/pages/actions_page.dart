@@ -15,28 +15,48 @@ import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 
-class ActionsPage extends StatelessWidget {
+class ActionsPage extends StatefulWidget {
   const ActionsPage({Key? key}) : super(key: key);
 
   @override
+  State<ActionsPage> createState() => _ActionsPageState();
+}
+
+class _ActionsPageState extends State<ActionsPage> {
+  PropertiesForm? form;
+
+  void updateForm(PropertiesForm? newForm) {
+    setState(() {
+      form = newForm;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<AppData>(
-      builder: (context, appData, child) {
-        print("\n=== ActionsPage Build ===");
-        appData.debugDatabaseState();
-        print("Tables available to Actions page: ${appData.tables.length}");
-        print("======================\n");
-        
-        return Scaffold(
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(kToolbarHeight),
-            child: ActionsDropdown(actions: appData.actions, tables: appData.tables),
-          ),
-          body: const Center(
-            child: Text('Select an action and table to begin'),
-          ),
-        );
-      },
+    return BlocProvider(
+      create: (context) => FormBloc(),
+      child: Consumer<AppData>(
+        builder: (context, appData, child) {
+          print("\n=== ActionsPage Build ===");
+          appData.debugDatabaseState();
+          print("Tables available to Actions page: ${appData.tables.length}");
+          print("======================\n");
+          
+          return Scaffold(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: ActionsDropdown(
+                actions: appData.actions,
+                tables: appData.tables,
+                onFormUpdated: updateForm,
+              ),
+            ),
+            body: form ?? const Center(
+              child: Text('Select an action and table to begin'),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -44,10 +64,12 @@ class ActionsPage extends StatelessWidget {
 class ActionsDropdown extends StatefulWidget {
   final List<app.Action> actions;
   final List<app.Table> tables;
+  final Function(PropertiesForm?) onFormUpdated;
 
   const ActionsDropdown({
     required this.actions,
     required this.tables,
+    required this.onFormUpdated,
     super.key,
   });
 
@@ -58,7 +80,18 @@ class ActionsDropdown extends StatefulWidget {
 class _ActionsDropdownState extends State<ActionsDropdown> {
   app.Action? selectedAction;
   app.Table? selectedTable;
-  PropertiesForm? form;
+
+  void _updateForm() {
+    if (selectedAction != null && selectedTable != null) {
+      widget.onFormUpdated(PropertiesForm(
+        formKey: GlobalKey<FormState>(),
+        properties: selectedTable!.properties.toList(),
+        action: selectedAction!,
+      ));
+    } else {
+      widget.onFormUpdated(null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,13 +110,11 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                   );
                 }).toList(),
                 onChanged: (app.Action? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      selectedAction = newValue;
-                      selectedTable = null;
-                      form = null;
-                    });
-                  }
+                  setState(() {
+                    selectedAction = newValue;
+                    selectedTable = null;
+                  });
+                  _updateForm();
                 },
                 hint: const Text('Select an action'),
               ),
@@ -100,16 +131,10 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                     );
                   }).toList(),
                   onChanged: (app.Table? newTable) {
-                    if (newTable != null) {
-                      setState(() {
-                        selectedTable = newTable;
-                        form = PropertiesForm(
-                          formKey: GlobalKey<FormState>(),
-                          properties: selectedTable!.properties.toList(),
-                          action: selectedAction!,
-                        );
-                      });
-                    }
+                    setState(() {
+                      selectedTable = newTable;
+                    });
+                    _updateForm();
                   },
                   hint: const Text('Select a table'),
                 ),
