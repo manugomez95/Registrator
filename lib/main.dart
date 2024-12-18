@@ -9,6 +9,7 @@ import 'model/app_data.dart';
 import 'ui/destination.dart';
 import 'ui/destination_view.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
 
 final GetIt getIt = GetIt.instance;
 
@@ -16,17 +17,24 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   getIt.registerSingleton<AppData>(AppData());
   await getIt<AppData>().initLocalDb();
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => getIt<AppData>(),
+      child: const AppInitializer(child: MyApp()),
+    ),
+  );
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+class AppInitializer extends StatefulWidget {
+  final Widget child;
+  
+  const AppInitializer({Key? key, required this.child}) : super(key: key);
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<AppInitializer> createState() => _AppInitializerState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _AppInitializerState extends State<AppInitializer> {
   @override
   void initState() {
     super.initState();
@@ -44,6 +52,15 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+  
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

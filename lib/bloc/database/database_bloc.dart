@@ -34,6 +34,9 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       await event.dbClient.pullDatabaseModel();
       await getIt<AppData>().saveTables(event.dbClient);
       
+      // Update AppData state to notify UI
+      getIt<AppData>().updateDatabaseState(event.dbClient);
+      
       add(ConnectionSuccessfulEvent(event.dbClient));
 
       // Show success message
@@ -101,6 +104,10 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
         for (final table in event.dbClient.tables) {
           await event.dbClient.getLastRow(table);
         }
+        
+        // Update AppData state to notify UI
+        getIt<AppData>().updateDatabaseState(event.dbClient);
+        
         add(ConnectionSuccessfulEvent(event.dbClient));
       }
     } catch (e, stackTrace) {
@@ -144,6 +151,10 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       for (final table in dbClient.tables) {
         await dbClient.getLastRow(table);
       }
+      
+      // Update AppData state to notify UI
+      getIt<AppData>().updateDatabaseState(dbClient);
+      
       add(ConnectionSuccessfulEvent(dbClient));
     } on Exception catch (e, stacktrace) {
       add(ConnectionErrorEvent(e, dbClient));

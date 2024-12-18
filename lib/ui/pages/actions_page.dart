@@ -13,24 +13,30 @@ import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:get_it/get_it.dart';
+import 'package:provider/provider.dart';
 
 class ActionsPage extends StatelessWidget {
   const ActionsPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final appData = GetIt.I<AppData>();
-    final actions = appData.actions;
-    final tables = appData.dbs.expand((db) => db.tables).toList();
-
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: ActionsDropdown(actions: actions, tables: tables),
-      ),
-      body: const Center(
-        child: Text('Select an action and table to begin'),
-      ),
+    return Consumer<AppData>(
+      builder: (context, appData, child) {
+        print("\n=== ActionsPage Build ===");
+        appData.debugDatabaseState();
+        print("Tables available to Actions page: ${appData.tables.length}");
+        print("======================\n");
+        
+        return Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: ActionsDropdown(actions: appData.actions, tables: appData.tables),
+          ),
+          body: const Center(
+            child: Text('Select an action and table to begin'),
+          ),
+        );
+      },
     );
   }
 }

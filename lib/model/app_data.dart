@@ -12,13 +12,15 @@ import 'action.dart' as app;
 import 'package:flutter/material.dart';
 
 /// Singleton app controller
-class AppData {
+class AppData extends ChangeNotifier {
   // (https://github.com/felangel/bloc/issues/587)
   // ignore: close_sinks
   final AppDataBloc bloc = AppDataBloc();
 
   /// Runtime storage
-  final Set<DbClient> dbs = {};
+  final Set<DbClient> _dbs = {};
+
+  Set<DbClient> get dbs => _dbs;
 
   /// Persistence
   late Future<SharedPreferences> _sharedPrefs;
@@ -29,14 +31,6 @@ class AppData {
 
   void initSharedPrefs() {
     _sharedPrefs = SharedPreferences.getInstance();
-  }
-
-  Iterable<app.Table> getTables({bool onlyVisibles = true}) {
-    return dbs
-        .where((db) => db.isConnected)
-        .expand((db) => onlyVisibles
-            ? db.tables.where((table) => table.visible)
-            : db.tables);
   }
 
   bool updateForm = false;
@@ -165,5 +159,44 @@ class AppData {
     for (final db in dbs) {
       db.dispose();
     }
+  }
+
+  // Update the tables getter to use the database connections
+  List<app.Table> get tables {
+    final connectedTables = dbs
+        .where((db) => db.isConnected)
+        .expand((db) => db.tables)
+        .toList();
+    print("AppData.tables getter - Connected DBs: ${dbs.length}");
+    print("AppData.tables getter - Connected DBs with tables: ${dbs.where((db) => db.isConnected).length}");
+    print("AppData.tables getter - Total tables: ${connectedTables.length}");
+    return connectedTables;
+  }
+
+  // Add this method to help with debugging
+  void debugDatabaseState() {
+    print("\n=== Database State ===");
+    for (final db in dbs) {
+      print("DB: ${db.params.alias}");
+      print("Connected: ${db.isConnected}");
+      print("Tables count: ${db.tables.length}");
+      print("Tables: ${db.tables.map((t) => t.name).join(', ')}");
+      print("-------------------");
+    }
+    print("=====================\n");
+  }
+
+  // Add method to add database
+  void addDatabase(DbClient db) {
+    _dbs.add(db);
+    notifyListeners();
+  }
+
+  // Add method to update database state
+  void updateDatabaseState(DbClient db) {
+    // If the db is already in the set, it will be updated
+    _dbs.remove(db);
+    _dbs.add(db);
+    notifyListeners();
   }
 }

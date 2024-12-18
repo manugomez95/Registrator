@@ -7,6 +7,8 @@ import 'package:bitacora/model/table.dart' as app;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:get_it/get_it.dart';
+import 'package:bitacora/model/app_data.dart';
 
 /// Exceptions vs booleans: https://softwareengineering.stackexchange.com/questions/330824/function-returning-true-false-vs-void-when-succeeding-and-throwing-an-exception
 /// The bottleneck in this functions is usually the network and I/O operations so we can afford to throw exceptions
@@ -81,6 +83,43 @@ abstract class DbClient<T> extends Equatable {
     if (verbose) {
       debugPrint("connect (${params.alias}): Connection established");
     }
+    await loadTables();
+    GetIt.I<AppData>().updateDatabaseState(this);
+  }
+
+  Future<void> loadTables({bool verbose = false, bool getLastRows = true}) async {
+    final tablesNames = await getTables(verbose: verbose);
+    final newTables = <app.Table>{};
+
+    for (final tName in tablesNames) {
+      try {
+        final properties = await getPropertiesFromTable(tName, verbose: verbose);
+        final table = app.Table(tName, properties, this);
+        newTables.add(table);
+
+        if (tables.isEmpty) {
+          final orderByCandidates = properties.where(
+            (property) => orderByTypes.contains(property.type.primitive),
+          );
+          if (orderByCandidates.length == 1) {
+            table.orderBy = orderByCandidates.first;
+          }
+        }
+
+        await table.save(conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        if (getLastRows) {
+          await getLastRow(table);
+        }
+      } on UnsupportedError catch (e) {
+        if (verbose) debugPrint(e.toString());
+        continue;
+      }
+    }
+
+    tables = newTables;
+    await getKeys();
+    GetIt.I<AppData>().updateDatabaseState(this);
   }
 
   @protected
