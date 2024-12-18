@@ -8,8 +8,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bitacora/bloc/form/bloc.dart';
+import 'package:bitacora/bloc/form/form_bloc.dart';
+import 'package:bitacora/bloc/form/form_event.dart';
+import 'package:bitacora/bloc/form/form_state.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
+import 'package:bitacora/model/property.dart';
 import 'package:bitacora/ui/components/properties_form.dart';
 import 'package:bitacora/ui/components/snack_bars.dart';
 import 'package:get_it/get_it.dart';
@@ -24,6 +28,19 @@ class ActionsPage extends StatefulWidget {
 
 class _ActionsPageState extends State<ActionsPage> {
   PropertiesForm? form;
+  late FormBloc formBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    formBloc = FormBloc();
+  }
+
+  @override
+  void dispose() {
+    formBloc.close();
+    super.dispose();
+  }
 
   void updateForm(PropertiesForm? newForm) {
     setState(() {
@@ -33,29 +50,54 @@ class _ActionsPageState extends State<ActionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => FormBloc(),
-      child: Consumer<AppData>(
-        builder: (context, appData, child) {
-          print("\n=== ActionsPage Build ===");
-          appData.debugDatabaseState();
-          print("Tables available to Actions page: ${appData.tables.length}");
-          print("======================\n");
-          
-          return Scaffold(
-            appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(kToolbarHeight),
-              child: ActionsDropdown(
-                actions: appData.actions,
-                tables: appData.tables,
-                onFormUpdated: updateForm,
+    return BlocProvider.value(
+      value: formBloc,
+      child: BlocListener<FormBloc, PropertiesFormState>(
+        listener: (context, state) {
+          if (state is ErrorState) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('An error occurred'),
+                backgroundColor: Colors.red,
               ),
-            ),
-            body: form ?? const Center(
-              child: Text('Select an action and table to begin'),
-            ),
-          );
+            );
+          } else if (state is SubmitSuccessState || 
+                     state is EditSuccessState || 
+                     state is DeleteSuccessState) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Operation completed successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            // Reset form after successful submission
+            setState(() {
+              form = null;
+            });
+          }
         },
+        child: Consumer<AppData>(
+          builder: (context, appData, child) {
+            print("\n=== ActionsPage Build ===");
+            appData.debugDatabaseState();
+            print("Tables available to Actions page: ${appData.tables.length}");
+            print("======================\n");
+            
+            return Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: ActionsDropdown(
+                  actions: appData.actions,
+                  tables: appData.tables,
+                  onFormUpdated: updateForm,
+                ),
+              ),
+              body: form ?? const Center(
+                child: Text('Select an action and table to begin'),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -81,12 +123,33 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
   app.Action? selectedAction;
   app.Table? selectedTable;
 
+  Map<Property, dynamic> _convertFormData(Map<String, dynamic> formData, List<Property> properties) {
+    final result = <Property, dynamic>{};
+    for (final property in properties) {
+      if (formData.containsKey(property.name)) {
+        result[property] = formData[property.name];
+      }
+    }
+    return result;
+  }
+
   void _updateForm() {
     if (selectedAction != null && selectedTable != null) {
+      final formBloc = context.read<FormBloc>();
+      final properties = selectedTable!.properties.toList();
       widget.onFormUpdated(PropertiesForm(
         formKey: GlobalKey<FormState>(),
-        properties: selectedTable!.properties.toList(),
+        properties: properties,
         action: selectedAction!,
+        onSubmit: (values) {
+          final convertedValues = _convertFormData(values, properties);
+          formBloc.add(SubmitFormEvent(
+            context,
+            selectedTable!,
+            selectedAction!,
+            convertedValues,
+          ));
+        },
       ));
     } else {
       widget.onFormUpdated(null);

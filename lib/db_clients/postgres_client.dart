@@ -379,6 +379,12 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       case PrimitiveType.time:
       case PrimitiveType.date:
         return value is DateTime ? value : DateTime.parse(value.toString());
+      case PrimitiveType.integer:
+      case PrimitiveType.smallInt:
+      case PrimitiveType.bigInt:
+        return int.parse(value.toString());
+      case PrimitiveType.real:
+        return double.parse(value.toString());
       default:
         return value;
     }
@@ -390,9 +396,20 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     String command,
     List<dynamic> arguments,
   ) async {
-    final results = await connection.execute(command, substitutionValues: {
-      for (var i = 0; i < arguments.length; i++) 'arg$i': arguments[i]
-    });
+    // Create a map of named parameters
+    final substitutionValues = <String, dynamic>{};
+    for (var i = 0; i < arguments.length; i++) {
+      substitutionValues['arg$i'] = arguments[i];
+    }
+    
+    debugPrint("Executing SQL with substitutions:");
+    debugPrint("Command: $command");
+    debugPrint("Values: $substitutionValues");
+    
+    final results = await connection.execute(
+      command,
+      substitutionValues: substitutionValues,
+    );
     return results;
   }
 
@@ -462,7 +479,14 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   @override
   insertSQL(app.Table table, String properties, String values) {
-  return "INSERT INTO ${dbStrFormat(table.name)} ($properties) VALUES ($values)";
+    // Replace ? placeholders with @argN parameters
+    final parameterizedValues = values.split(',')
+        .asMap()
+        .entries
+        .map((e) => '@arg${e.key}')
+        .join(', ');
+        
+    return "INSERT INTO ${dbStrFormat(table.name)} ($properties) VALUES ($parameterizedValues)";
   }
 
   @override

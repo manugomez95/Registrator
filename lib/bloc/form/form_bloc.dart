@@ -8,63 +8,86 @@ import '../../main.dart';
 import './bloc.dart';
 
 class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
-  FormBloc() : super(InitialFormState());
+  FormBloc() : super(InitialFormState()) {
+    on<SubmitFormEvent>(_onSubmitForm);
+    on<EditFormEvent>(_onEditForm);
+    on<DeleteFormEvent>(_onDeleteForm);
+  }
 
-  @override
-  Stream<PropertiesFormState> mapEventToState(FormEvent event) async* {
-    if (event is SubmitFormEvent) {
-      yield LoadingState();
-      try {
-        final success = await event.table.client
-            .insertRowIntoTable(event.table, event.propertiesForm);
-        if (success) {
-          await event.table.client.getLastRow(event.table);
-          showSnackBar(
-            event.context,
-            "${event.action.title} ${event.table.name}",
-            undoAction: null,
-          );
-        }
-        yield SubmitSuccessState();
-      } catch (e) {
-        showErrorSnackBar(event.context, e.toString());
-        yield ErrorState();
+  Future<void> _onSubmitForm(
+    SubmitFormEvent event,
+    Emitter<PropertiesFormState> emit,
+  ) async {
+    emit(LoadingState());
+    try {
+      print("Submitting form data:");
+      print("Table: ${event.table.name}");
+      print("Properties form data:");
+      event.propertiesForm.forEach((property, value) {
+        print("  ${property.name}: $value (${value?.runtimeType})");
+      });
+
+      final success = await event.table.client
+          .insertRowIntoTable(event.table, event.propertiesForm);
+      if (success) {
+        await event.table.client.getLastRow(event.table);
+        showSnackBar(
+          event.context,
+          "${event.action.title} ${event.table.name}",
+          undoAction: null,
+        );
       }
-    } else if (event is EditFormEvent) {
-      yield LoadingState();
-      try {
-        final success = await event.table.client
-            .editLastFrom(event.table, event.propertiesForm);
-        if (success) {
-          await event.table.client.getLastRow(event.table);
-          showSnackBar(
-            event.context,
-            "${event.action.title} ${event.table.name}",
-            undoAction: null,
-          );
-        }
-        yield EditSuccessState();
-      } catch (e) {
-        showErrorSnackBar(event.context, e.toString());
-        yield ErrorState();
+      emit(SubmitSuccessState());
+    } catch (e, stackTrace) {
+      print("Error submitting form: $e");
+      print("Stack trace: $stackTrace");
+      showErrorSnackBar(event.context, e.toString());
+      emit(ErrorState());
+    }
+  }
+
+  Future<void> _onEditForm(
+    EditFormEvent event,
+    Emitter<PropertiesFormState> emit,
+  ) async {
+    emit(LoadingState());
+    try {
+      final success = await event.table.client
+          .editLastFrom(event.table, event.propertiesForm);
+      if (success) {
+        await event.table.client.getLastRow(event.table);
+        showSnackBar(
+          event.context,
+          "${event.action.title} ${event.table.name}",
+          undoAction: null,
+        );
       }
-    } else if (event is DeleteFormEvent) {
-      yield LoadingState();
-      try {
-        final success = await event.table.client.deleteLastFrom(event.table);
-        if (success) {
-          await event.table.client.getLastRow(event.table);
-          showSnackBar(
-            event.context,
-            "${event.action.title} ${event.table.name}",
-            undoAction: null,
-          );
-        }
-        yield DeleteSuccessState();
-      } catch (e) {
-        showErrorSnackBar(event.context, e.toString());
-        yield ErrorState();
+      emit(EditSuccessState());
+    } catch (e) {
+      showErrorSnackBar(event.context, e.toString());
+      emit(ErrorState());
+    }
+  }
+
+  Future<void> _onDeleteForm(
+    DeleteFormEvent event,
+    Emitter<PropertiesFormState> emit,
+  ) async {
+    emit(LoadingState());
+    try {
+      final success = await event.table.client.deleteLastFrom(event.table);
+      if (success) {
+        await event.table.client.getLastRow(event.table);
+        showSnackBar(
+          event.context,
+          "${event.action.title} ${event.table.name}",
+          undoAction: null,
+        );
       }
+      emit(DeleteSuccessState());
+    } catch (e) {
+      showErrorSnackBar(event.context, e.toString());
+      emit(ErrorState());
     }
   }
 }

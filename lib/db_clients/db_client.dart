@@ -260,31 +260,42 @@ abstract class DbClient<T> extends Equatable {
   Future<bool> insertRowIntoTable(
     app.Table table,
     Map<Property, dynamic> propertiesForm, {
-    bool verbose = false,
+    bool verbose = true,
   }) async {
-    final propertiesNames = propertiesForm.keys
-        .map((Property p) => dbStrFormat(p.name))
+    // Filter out null values
+    final nonNullProperties = propertiesForm.entries
+        .where((entry) => entry.value != null)
+        .toList();
+
+    final propertiesNames = nonNullProperties
+        .map((entry) => dbStrFormat(entry.key.name))
         .join(", ");
 
-    final qMarks = List.filled(propertiesForm.length, "?").join(", ");
+    final qMarks = List.filled(nonNullProperties.length, "?").join(", ");
     final command = insertSQL(table, propertiesNames, qMarks);
     
-    final properties = table.properties.toList();
-    final arguments = List.generate(
-      propertiesForm.values.length,
-      (i) => fromValueToDbValue(
-        propertiesForm.values.toList()[i],
-        properties[i].type,
-      ),
-    );
+    final arguments = nonNullProperties
+        .map((entry) => fromValueToDbValue(entry.value, entry.key.type))
+        .toList();
 
-    if (verbose) {
-      debugPrint("insertRowIntoTable (${table.name}): $command | $arguments");
+    debugPrint("\n=== Insert Operation Debug ===");
+    debugPrint("Table: ${table.name}");
+    debugPrint("Properties Names: $propertiesNames");
+    debugPrint("Question Marks: $qMarks");
+    debugPrint("Command: $command");
+    debugPrint("Arguments: $arguments");
+    debugPrint("Properties Details:");
+    for (var entry in nonNullProperties) {
+      debugPrint("  ${entry.key.name}:");
+      debugPrint("    Value: ${entry.value}");
+      debugPrint("    Type: ${entry.value?.runtimeType}");
+      debugPrint("    DB Type: ${entry.key.type.primitive}");
     }
+    debugPrint("===========================\n");
 
     try {
       final results = await executeSQL(OpType.insert, command, arguments);
-      if (verbose) debugPrint("insertRowIntoTable: $results");
+      debugPrint("Insert results: $results");
       
       if (results == 1) {
         for (final property in table.properties) {
@@ -294,7 +305,7 @@ abstract class DbClient<T> extends Equatable {
       }
       return false;
     } on Exception catch (e) {
-      if (verbose) debugPrint(e.toString());
+      debugPrint("Error in insertRowIntoTable: $e");
       rethrow;
     }
   }
