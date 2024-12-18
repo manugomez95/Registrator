@@ -1,8 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:encrypt/encrypt.dart';
-import 'package:pointycastle/asymmetric/api.dart';
 
 abstract class PropertyType<T> {
   late T value;
@@ -19,29 +17,14 @@ class DbConnectionParams extends Equatable {
   final bool useSSL;
   final String brand;
 
-  static const String _publicKeyPem = '''
------BEGIN PUBLIC KEY-----
-MIIBITANBgkqhkiG9w0BAQEFAAOCAQ4AMIIBCQKCAQBuAGGBgg9nuf6D2c5AIHc8
-vZ6KoVwd0imeFVYbpMdgv4yYi5obtB/VYqLryLsucZLFeko+q1fi871ZzGjFtYXY
-9Hh1Q5e10E5hwN1Tx6nIlIztrh5S9uV4uzAR47k2nng7hh6vuZ33kak2hY940RSL
-H5l9E5cKoUXuQNtrIKTS4kPZ5IOUSxZ5xfWBXWoldhe+Nk7VIxxL97Tk0BjM0fJ3
-8rBwv3++eAZxwZoLNmHx9wF92XKG+26I+gVGKKagyToU/xEjIqlpuZ90zesYdjV+
-u0iQjowgbzt3ASOnvJSpJu/oJ6XrWR3egPoTSx+HyX1dKv9+q7uLl6pXqGVVNs+/
-AgMBAAE=
------END PUBLIC KEY-----''';
-
   Future<Map<String, dynamic>> toMap() async {
-    final parser = RSAKeyParser();
-    final publicKey = parser.parse(_publicKeyPem) as RSAPublicKey;
-    final encrypter = Encrypter(RSA(publicKey: publicKey));
-    
     return {
       'alias': alias,
       'host': host,
       'port': port,
       'db_name': dbName,
       'username': username,
-      'password': encrypter.encrypt(password).base64,
+      'password': password,
       'ssl': useSSL ? 1 : 0,
       'brand': brand,
     };

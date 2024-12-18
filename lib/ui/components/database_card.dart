@@ -27,13 +27,14 @@ class DatabaseCardHeader extends StatelessWidget {
           bloc: db.databaseBloc,
           builder: (BuildContext context, DatabaseState state) {
             Widget statusIcon;
-            if (state is ConnectionSuccessful) {
+            if (state is ConnectionSuccessful || db.isConnected) {
               statusIcon = Icon(Icons.check,
                   size: 18, color: Theme.of(context).colorScheme.secondary);
             } else if (state is ConnectionError) {
               statusIcon = Icon(Icons.error_outline,
                   size: 18, color: Theme.of(context).colorScheme.error);
             } else {
+              // Show loading for any other state (including initial and checking)
               statusIcon = SizedBox(
                 child: CircularProgressIndicator(
                   strokeWidth: 1,
