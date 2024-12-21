@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/utils/db_parameter.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class PropertiesForm extends StatefulWidget {
   final GlobalKey<FormState> formKey;
@@ -28,9 +29,11 @@ class _PropertiesFormState extends State<PropertiesForm> {
     if (value.isEmpty) return null;
     switch (type.primitive) {
       case PrimitiveType.integer:
-        return int.tryParse(value);
+      case PrimitiveType.smallInt:
+      case PrimitiveType.bigInt:
+        return int.parse(value);
       case PrimitiveType.real:
-        return double.tryParse(value);
+        return double.parse(value);
       case PrimitiveType.boolean:
         return value.toLowerCase() == 'true';
       case PrimitiveType.timestamp:
@@ -75,6 +78,60 @@ class _PropertiesFormState extends State<PropertiesForm> {
   }
 
   Widget _buildFormField(Property property) {
+    // Handle foreign key fields with TypeAheadFormField
+    if (property.foreignKeyOf != null) {
+      debugPrint("\n=== TypeAhead Debug ===");
+      debugPrint("Property: ${property.name}");
+      debugPrint("Foreign Key Table: ${property.foreignKeyOf?.name}");
+      
+      return TypeAheadFormField<String>(
+        textFieldConfiguration: TextFieldConfiguration(
+          decoration: InputDecoration(
+            labelText: property.name,
+            border: const OutlineInputBorder(),
+            errorStyle: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          controller: TextEditingController(text: _formData[property.name]?.toString() ?? ''),
+        ),
+        suggestionsCallback: (pattern) async {
+          debugPrint("TypeAhead pattern: $pattern");
+          final suggestions = await property.foreignKeyOf!.client?.getPkDistinctValues(
+            property.foreignKeyOf!,
+            pattern: pattern,
+            verbose: true,
+          ) ?? [];
+          debugPrint("TypeAhead suggestions received: $suggestions");
+          debugPrint("=======================\n");
+          return suggestions;
+        },
+        itemBuilder: (context, suggestion) {
+          return ListTile(
+            title: Text(suggestion.toString()),
+          );
+        },
+        onSuggestionSelected: (suggestion) {
+          debugPrint("Selected suggestion: $suggestion");
+          setState(() {
+            _formData[property.name] = suggestion;
+          });
+        },
+        noItemsFoundBuilder: (context) => ListTile(
+          title: Text('No matching ${property.name} found'),
+        ),
+        validator: (value) {
+          if (!property.isNullable && (value == null || value.isEmpty)) {
+            return '${property.name} is required';
+          }
+          return null;
+        },
+        suggestionsBoxDecoration: SuggestionsBoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      );
+    }
+
     switch (property.type.primitive) {
       case PrimitiveType.boolean:
         return CheckboxListTile(
@@ -106,6 +163,9 @@ class _PropertiesFormState extends State<PropertiesForm> {
             decoration: InputDecoration(
               labelText: property.name,
               border: const OutlineInputBorder(),
+              errorStyle: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
             child: Text(
               _formData[property.name]?.toString() ?? '',
@@ -118,6 +178,9 @@ class _PropertiesFormState extends State<PropertiesForm> {
           decoration: InputDecoration(
             labelText: property.name,
             border: const OutlineInputBorder(),
+            errorStyle: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+            ),
           ),
           initialValue: _formData[property.name]?.toString() ?? '',
           onChanged: (value) {

@@ -9,6 +9,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:get_it/get_it.dart';
 import 'package:bitacora/model/app_data.dart';
+import 'package:postgres/postgres.dart';
 
 /// Exceptions vs booleans: https://softwareengineering.stackexchange.com/questions/330824/function-returning-true-false-vs-void-when-succeeding-and-throwing-an-exception
 /// The bottleneck in this functions is usually the network and I/O operations so we can afford to throw exceptions
@@ -361,4 +362,33 @@ abstract class DbClient<T> extends Equatable {
 
   @protected
   String deleteLastFromSQL(app.Table table);
+
+  /// Get distinct values from a table's primary key that match a pattern
+  Future<List<String>> getPkDistinctValues(
+    app.Table table, {
+    bool verbose = false,
+    String? pattern,
+  }) async {
+    if (pattern == null || pattern.isEmpty) {
+      return [];
+    }
+
+    try {
+      if (_connection is PostgreSQLConnection) {
+        final conn = _connection as PostgreSQLConnection;
+        final pk = dbStrFormat(table.primaryKey?.name ?? '');
+        final command = "SELECT DISTINCT $pk FROM ${dbStrFormat(table.name)} WHERE $pk LIKE @pattern ORDER BY $pk LIMIT 10";
+        
+        final results = await conn.query(
+          command,
+          substitutionValues: {"pattern": "%$pattern%"},
+        );
+        return results.map((row) => row[0].toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Error getting distinct values: $e");
+      return [];
+    }
+  }
 }

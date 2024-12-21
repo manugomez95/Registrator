@@ -270,12 +270,14 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   @override
   Future<void> getKeys() async {
+    debugPrint("\n=== Getting Keys Debug ===");
     final results = await connection.query(
       """
       SELECT 
         tc.table_name, kcu.column_name,
         ccu.table_name AS foreign_table_name,
-        ccu.column_name AS foreign_column_name 
+        ccu.column_name AS foreign_column_name,
+        tc.constraint_type
       FROM information_schema.table_constraints AS tc 
       JOIN information_schema.key_column_usage AS kcu 
         ON tc.constraint_name = kcu.constraint_name 
@@ -290,52 +292,74 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
                                FROM information_schema.tables 
                                WHERE table_schema = 'public' 
                                AND table_type = 'BASE TABLE')
+      ORDER BY tc.table_name, tc.constraint_type DESC
       """,
     );
 
+    debugPrint("Found ${results.length} key constraints");
+    
     for (final result in results) {
       final tableName = result[0] as String;
+      final columnName = result[1] as String;
+      final foreignTableName = result[2] as String?;
+      final constraintType = result[4] as String;
+      
+      debugPrint("\nProcessing constraint:");
+      debugPrint("  Table: $tableName");
+      debugPrint("  Column: $columnName");
+      debugPrint("  Type: $constraintType");
+      debugPrint("  Foreign Table: $foreignTableName");
+
       final tableQuery = tables.where((t) => t.name == tableName);
       
       if (tableQuery.isEmpty) {
-        debugPrint('Skipping keys for table not in set: $tableName');
+        debugPrint('  Skipping keys for table not in set: $tableName');
         continue;
       }
 
       final table = tableQuery.first;
-      final columnName = result[1] as String;
-      final foreignTableName = result[2] as String?;
+      debugPrint("  Found table in set: ${table.name}");
       
       try {
-        if (foreignTableName == null) {
-          // Primary key
+        if (constraintType == 'PRIMARY KEY') {
+          debugPrint("  Processing primary key");
           final propertyQuery = table.properties.where((p) => p.name == columnName);
           if (propertyQuery.isEmpty) {
-            debugPrint('Primary key property not found: $columnName in $tableName');
+            debugPrint('  Primary key property not found: $columnName in $tableName');
             continue;
           }
           table.primaryKey = propertyQuery.first;
-        } else {
-          // Foreign key
+          debugPrint("  Set primary key: ${table.primaryKey?.name}");
+        } else if (foreignTableName != null) {
+          debugPrint("  Processing foreign key");
           final propertyQuery = table.properties.where((p) => p.name == columnName);
           if (propertyQuery.isEmpty) {
-            debugPrint('Foreign key property not found: $columnName in $tableName');
+            debugPrint('  Foreign key property not found: $columnName in $tableName');
             continue;
           }
           final property = propertyQuery.first;
           
           final foreignTableQuery = tables.where((t) => t.name == foreignTableName);
           if (foreignTableQuery.isEmpty) {
-            debugPrint('Foreign key table not found: $foreignTableName');
+            debugPrint('  Foreign key table not found: $foreignTableName');
             continue;
           }
           property.foreignKeyOf = foreignTableQuery.first;
+          debugPrint("  Set foreign key reference: ${property.foreignKeyOf?.name}");
         }
       } catch (e) {
-        debugPrint('Error processing keys for table $tableName: $e');
+        debugPrint('  Error processing keys for table $tableName: $e');
         continue;
       }
     }
+    
+    debugPrint("\nFinal table keys status:");
+    for (final table in tables) {
+      debugPrint("Table ${table.name}:");
+      debugPrint("  Primary Key: ${table.primaryKey?.name}");
+      debugPrint("  Foreign Keys: ${table.properties.where((p) => p.foreignKeyOf != null).map((p) => '${p.name} -> ${p.foreignKeyOf?.name}').join(', ')}");
+    }
+    debugPrint("=======================\n");
   }
 
   @override
@@ -344,28 +368,50 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
     bool verbose = false,
     String? pattern,
   }) async {
-    if (pattern == null || pattern.isEmpty) {
+    debugPrint("\n=== Autocomplete Debug ===");
+    debugPrint("Table: ${table.name}");
+    debugPrint("Primary Key: ${table.primaryKey?.name}");
+    debugPrint("Search Pattern: $pattern");
+
+    if (pattern == null || pattern.isEmpty || table.primaryKey == null) {
+      debugPrint("Early return - Pattern is empty or no primary key");
+      debugPrint("=======================\n");
       return [];
     }
 
-    final pk = dbStrFormat(table.primaryKey?.name ?? '');
-    final results = await connection.query(
-      "SELECT DISTINCT $pk "
-      "FROM ${dbStrFormat(table.name)} "
-      "WHERE $pk LIKE @pattern "
-      "ORDER BY $pk "
-      "LIMIT 10",
-      substitutionValues: {"pattern": "%$pattern%"},
-    );
+    try {
+      final tableName = dbStrFormat(table.name);
+      final columnName = dbStrFormat(table.primaryKey!.name);
+      final query = "SELECT DISTINCT $columnName "
+          "FROM $tableName "
+          "WHERE CAST($columnName AS TEXT) ILIKE @pattern "
+          "ORDER BY $columnName "
+          "LIMIT 10";
+      
+      debugPrint("SQL Query: $query");
+      debugPrint("Pattern value: %$pattern%");
 
-    if (results.isEmpty) {
+      final results = await connection.query(
+        query,
+        substitutionValues: {
+          "pattern": "%$pattern%",
+        },
+      );
+
+      debugPrint("Query results count: ${results.length}");
+      debugPrint("Raw results: $results");
+      
+      final suggestions = results.map((row) => row[0].toString()).toList();
+      debugPrint("Processed suggestions: $suggestions");
+      debugPrint("=======================\n");
+      
+      return suggestions;
+    } catch (e, stackTrace) {
+      debugPrint("Error in getPkDistinctValues: $e");
+      debugPrint("Stack trace: $stackTrace");
+      debugPrint("=======================\n");
       return [];
     }
-
-    return List.generate(
-      results.length,
-      (i) => results[i][0].toString(),
-    );
   }
 
   @override

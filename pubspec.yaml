@@ -32,7 +32,7 @@ dependencies:
   intl: ^0.19.0
   flutter_svg: ^2.0.9
   stack: ^0.2.1
-  flutter_typeahead: ^4.3.1
+  flutter_typeahead: 4.6.2
   sqflite: ^2.3.2
   path: ^1.8.3
   encrypt: ^5.0.3
