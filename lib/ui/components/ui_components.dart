@@ -178,6 +178,21 @@ class PropertyFormField extends StatelessWidget {
   Widget _buildDateTimePicker(BuildContext context) {
     final bool showDate = property.type.primitive != PrimitiveType.time;
     final bool showTime = property.type.primitive != PrimitiveType.date;
+
+    // Use Future.microtask to schedule the initialization after the build
+    if (value == null && onChanged != null) {
+      Future.microtask(() {
+        final now = DateTime.now();
+        final defaultValue = DateTime(
+          now.year,
+          now.month, 
+          now.day,
+          showTime ? now.hour : 0,
+          showTime ? now.minute : 0
+        );
+        onChanged!(defaultValue);
+      });
+    }
     
     return InkWell(
       onTap: readOnly ? null : () async {
