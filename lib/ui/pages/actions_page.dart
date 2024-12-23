@@ -1,9 +1,4 @@
-import 'package:bitacora/bloc/app_data/app_data_state.dart';
-import 'package:bitacora/conf/style.dart';
-import 'package:bitacora/main.dart';
 import 'package:bitacora/model/app_data.dart';
-import 'package:bitacora/ui/components/confirm_dialog.dart';
-import 'package:bitacora/ui/components/empty_view.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,8 +10,6 @@ import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/ui/components/properties_form.dart';
-import 'package:bitacora/ui/components/snack_bars.dart';
-import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 
 class ActionsPage extends StatefulWidget {
@@ -48,6 +41,12 @@ class _ActionsPageState extends State<ActionsPage> {
     });
   }
 
+  Future<void> _handleRefresh() async {
+    setState(() {
+      form?.reset();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -61,9 +60,9 @@ class _ActionsPageState extends State<ActionsPage> {
                 backgroundColor: Colors.red,
               ),
             );
-          } else if (state is SubmitSuccessState || 
-                     state is EditSuccessState || 
-                     state is DeleteSuccessState) {
+          } else if (state is SubmitSuccessState ||
+              state is EditSuccessState ||
+              state is DeleteSuccessState) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Operation completed successfully'),
@@ -82,7 +81,7 @@ class _ActionsPageState extends State<ActionsPage> {
             appData.debugDatabaseState();
             print("Tables available to Actions page: ${appData.tables.length}");
             print("======================\n");
-            
+
             return Scaffold(
               appBar: PreferredSize(
                 preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -92,8 +91,12 @@ class _ActionsPageState extends State<ActionsPage> {
                   onFormUpdated: updateForm,
                 ),
               ),
-              body: form ?? const Center(
-                child: Text('Select an action and table to begin'),
+              body: RefreshIndicator(
+                onRefresh: _handleRefresh,
+                child: form ??
+                    const Center(
+                      child: Text('Select an action and table to begin'),
+                    ),
               ),
             );
           },
@@ -123,7 +126,8 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
   app.Action? selectedAction;
   app.Table? selectedTable;
 
-  Map<Property, dynamic> _convertFormData(Map<String, dynamic> formData, List<Property> properties) {
+  Map<Property, dynamic> _convertFormData(
+      Map<String, dynamic> formData, List<Property> properties) {
     final result = <Property, dynamic>{};
     for (final property in properties) {
       if (formData.containsKey(property.name)) {

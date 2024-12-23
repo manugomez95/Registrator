@@ -17,12 +17,24 @@ class PropertiesForm extends StatefulWidget {
     this.onSubmit,
   }) : super(key: key);
 
+  void reset() {
+    formKey.currentState?.reset();
+    final state = (formKey.currentState?.context.findAncestorStateOfType<_PropertiesFormState>());
+    state?.resetData();
+  }
+
   @override
   State<PropertiesForm> createState() => _PropertiesFormState();
 }
 
 class _PropertiesFormState extends State<PropertiesForm> {
   final Map<String, List<dynamic>> _formData = {};
+
+  void resetData() {
+    setState(() {
+      _formData.clear();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
