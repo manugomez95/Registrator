@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:bitacora/utils/db_parameter.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class CustomDropdownButton<T> extends StatelessWidget {
   final T? value;
@@ -91,6 +92,9 @@ class PropertyFormField extends StatelessWidget {
   final ValueChanged<dynamic>? onChanged;
   final String? Function(String?)? validator;
   final bool readOnly;
+  final bool isArray;
+  final VoidCallback? onRemove;
+  final bool showRemoveButton;
 
   const PropertyFormField({
     Key? key,
@@ -99,13 +103,40 @@ class PropertyFormField extends StatelessWidget {
     this.onChanged,
     this.validator,
     this.readOnly = false,
+    this.isArray = false,
+    this.onRemove,
+    this.showRemoveButton = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildMainInput(context),
+        ),
+        if (showRemoveButton && onRemove != null) ...[
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.remove_circle_outline),
+            onPressed: onRemove,
+            color: Colors.red,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMainInput(BuildContext context) {
+    // Handle foreign key fields with TypeAheadFormField
+    if (property.foreignKeyOf != null) {
+      return _buildTypeAheadField(context);
+    }
+
     switch (property.type.primitive) {
       case PrimitiveType.timestamp:
       case PrimitiveType.date:
+      case PrimitiveType.time:
         return _buildDateTimePicker(context);
       case PrimitiveType.boolean:
         return _buildCheckbox();
@@ -114,21 +145,75 @@ class PropertyFormField extends StatelessWidget {
     }
   }
 
+  Widget _buildTypeAheadField(BuildContext context) {
+    return TypeAheadFormField<String>(
+      textFieldConfiguration: TextFieldConfiguration(
+        decoration: InputDecoration(
+          labelText: property.name,
+          border: const OutlineInputBorder(),
+        ),
+        controller: TextEditingController(text: value?.toString() ?? ''),
+        enabled: !readOnly,
+      ),
+      suggestionsCallback: (pattern) async {
+        return await property.foreignKeyOf!.client?.getPkDistinctValues(
+          property.foreignKeyOf!,
+          pattern: pattern,
+        ) ?? [];
+      },
+      itemBuilder: (context, suggestion) {
+        return ListTile(
+          title: Text(suggestion.toString()),
+        );
+      },
+      onSuggestionSelected: (suggestion) {
+        if (onChanged != null) {
+          onChanged!(suggestion);
+        }
+      },
+      validator: validator ?? _defaultValidator,
+    );
+  }
+
   Widget _buildDateTimePicker(BuildContext context) {
+    final bool showDate = property.type.primitive != PrimitiveType.time;
+    final bool showTime = property.type.primitive != PrimitiveType.date;
+    
     return InkWell(
-      onTap: readOnly
-          ? null
-          : () async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: value as DateTime? ?? DateTime.now(),
-                firstDate: DateTime(1900),
-                lastDate: DateTime(2100),
-              );
-              if (date != null && onChanged != null) {
-                onChanged!(date);
-              }
-            },
+      onTap: readOnly ? null : () async {
+        DateTime? selectedDate;
+        TimeOfDay? selectedTime;
+        
+        if (showDate) {
+          selectedDate = await showDatePicker(
+            context: context,
+            initialDate: (value as DateTime?) ?? DateTime.now(),
+            firstDate: DateTime(1900),
+            lastDate: DateTime(2100),
+          );
+          if (selectedDate == null) return;
+        }
+        
+        if (showTime) {
+          selectedTime = await showTimePicker(
+            context: context,
+            initialTime: value != null ? TimeOfDay.fromDateTime(value as DateTime) : TimeOfDay.now(),
+          );
+          if (selectedTime == null && showDate == false) return;
+        }
+
+        if (onChanged != null) {
+          final DateTime now = DateTime.now();
+          final DateTime result = DateTime(
+            selectedDate?.year ?? now.year,
+            selectedDate?.month ?? now.month,
+            selectedDate?.day ?? now.day,
+            selectedTime?.hour ?? (showTime ? now.hour : 0),
+            selectedTime?.minute ?? (showTime ? now.minute : 0),
+          );
+          onChanged!(result);
+        }
+      },
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: property.name,
@@ -136,7 +221,9 @@ class PropertyFormField extends StatelessWidget {
         ),
         child: Text(
           value?.toString() ?? '',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: readOnly ? Theme.of(context).disabledColor : null,
+          ),
         ),
       ),
     );
@@ -155,16 +242,48 @@ class PropertyFormField extends StatelessWidget {
   }
 
   Widget _buildTextField() {
+    final bool isNumeric = [
+      PrimitiveType.integer,
+      PrimitiveType.smallInt,
+      PrimitiveType.bigInt,
+      PrimitiveType.real,
+      PrimitiveType.byteArray,
+    ].contains(property.type.primitive);
+
     return TextFormField(
       decoration: InputDecoration(
         labelText: property.name,
         border: const OutlineInputBorder(),
       ),
       initialValue: value?.toString() ?? '',
-      onChanged: onChanged != null ? (String value) => onChanged!(value) : null,
-      validator: validator,
+      keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+      maxLength: property.charMaxLength,
+      maxLines: property.type.primitive == PrimitiveType.text ? null : 1,
       readOnly: readOnly,
+      onChanged: onChanged != null ? (String value) {
+        dynamic parsedValue = value;
+        if (isNumeric && value.isNotEmpty) {
+          try {
+            if (property.type.primitive == PrimitiveType.real) {
+              parsedValue = double.parse(value);
+            } else {
+              parsedValue = int.parse(value);
+            }
+          } catch (_) {
+            // Keep as string if parsing fails
+          }
+        }
+        onChanged!(parsedValue);
+      } : null,
+      validator: validator ?? _defaultValidator,
     );
+  }
+
+  String? _defaultValidator(String? value) {
+    if (!property.isNullable && (value == null || value.isEmpty)) {
+      return '${property.name} is required';
+    }
+    return null;
   }
 }
 
