@@ -37,7 +37,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
           undoAction: null,
         );
       }
-      emit(SubmitSuccessState());
+      emit(InitialFormState());
     } catch (e, stackTrace) {
       print("Error submitting form: $e");
       print("Stack trace: $stackTrace");
@@ -62,7 +62,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
           undoAction: null,
         );
       }
-      emit(EditSuccessState());
+      emit(InitialFormState());
     } catch (e) {
       showErrorSnackBar(event.context, e.toString());
       emit(ErrorState());
@@ -84,7 +84,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
           undoAction: null,
         );
       }
-      emit(DeleteSuccessState());
+      emit(InitialFormState());
     } catch (e) {
       showErrorSnackBar(event.context, e.toString());
       emit(ErrorState());

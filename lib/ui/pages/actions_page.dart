@@ -53,26 +53,9 @@ class _ActionsPageState extends State<ActionsPage> {
       value: formBloc,
       child: BlocListener<FormBloc, PropertiesFormState>(
         listener: (context, state) {
-          if (state is ErrorState) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('An error occurred'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          } else if (state is SubmitSuccessState ||
-              state is EditSuccessState ||
-              state is DeleteSuccessState) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Operation completed successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            // Reset form after successful submission
-            setState(() {
-              form = null;
-            });
+          if (state is InitialFormState) {
+            // Form will handle its own reset
+            form?.reset();
           }
         },
         child: Consumer<AppData>(
