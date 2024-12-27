@@ -213,9 +213,7 @@ abstract class DbClient<T> extends Equatable {
   Future<void> getLastRow(app.Table table, {bool verbose = false}) async {
     final orderBy = table.orderBy;
     if (orderBy == null) {
-      if (verbose) {
-        debugPrint("getLastRow (${table.name}): No linearity defined");
-      }
+      if (verbose) debugPrint("getLastRow: No orderBy property");
       return;
     }
 
@@ -226,21 +224,20 @@ abstract class DbClient<T> extends Equatable {
         verbose: verbose,
       ).timeout(timeout);
 
+      if (results == null) {
+        if (verbose) debugPrint("getLastRow: No results found");
+        return;
+      }
+
       if (verbose) debugPrint("getLastRow: $results");
 
-      if (results.isNotEmpty) {
-        if (results.length != table.properties.length) {
-          throw Exception("Results different than expected");
-        }
+      if (results.length != table.properties.length) {
+        throw Exception("Results different than expected");
+      }
 
-        for (var i = 0; i < table.properties.length; i++) {
-          final property = table.properties.elementAt(i);
-          property.lastValue = resToValue(results[i], property.type);
-        }
-      } else {
-        for (final property in table.properties) {
-          property.lastValue = null;
-        }
+      for (var i = 0; i < table.properties.length; i++) {
+        final property = table.properties.elementAt(i);
+        property.lastValue = resToValue(results[i], property.type);
       }
     } on Exception catch (e) {
       if (verbose) debugPrint("getLastRow (${table.name}): $e");
@@ -248,7 +245,7 @@ abstract class DbClient<T> extends Equatable {
   }
 
   @protected
-  Future<List<dynamic>> queryLastRow(
+  Future<List?> queryLastRow(
     app.Table table,
     Property orderBy, {
     bool verbose = false,

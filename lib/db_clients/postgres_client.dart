@@ -472,12 +472,13 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
           height: 75, semanticsLabel: 'Postgres Logo');
 
   @override
-  Future<List> queryLastRow(app.Table table, Property orderBy,
+  Future<List?> queryLastRow(app.Table table, Property orderBy,
       {verbose = false}) async {
     String sql =
         "SELECT * FROM ${dbStrFormat(table.name)} WHERE ${dbStrFormat(orderBy.name)} IS NOT NULL ORDER BY ${dbStrFormat(orderBy.name)} DESC LIMIT 1";
     if (verbose) debugPrint("getLastRow (${table.name}): $sql");
-    return (await connection.query(sql).timeout(timeout))[0];
+    final results = await connection.query(sql).timeout(timeout);
+    return results.isEmpty ? null : results[0].toList();
   }
 
   @override
