@@ -110,6 +110,7 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
       case "bool":
         return DataType(PrimitiveType.boolean, udtName, isArray: isArray);
       case "timestamp":
+      case "timestamptz":
         return DataType(PrimitiveType.timestamp, udtName, isArray: isArray);
       case "time":
         return DataType(PrimitiveType.time, udtName, isArray: isArray);
