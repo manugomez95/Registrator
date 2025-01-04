@@ -157,7 +157,7 @@ class AppData extends ChangeNotifier {
   void dispose() {
     bloc.close();
     for (final db in dbs) {
-      db.dispose();
+      db.dispose(keepAlive: true);
     }
   }
 

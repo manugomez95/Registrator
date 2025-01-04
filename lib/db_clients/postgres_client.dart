@@ -164,11 +164,6 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
   }
 
   @override
-  Future<void> _disconnect() async {
-    await closeConnection();
-  }
-
-  @override
   Future<bool> checkConnection() async {
     final results = await connection.query("SELECT 1");
     return results.isNotEmpty;

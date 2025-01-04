@@ -60,8 +60,10 @@ abstract class DbClient<T> extends Equatable {
         params.dbName,
       ];
 
-  Future<void> dispose() async {
-    await disconnect(verbose: true);
+  Future<void> dispose({bool keepAlive = false}) async {
+    if (!keepAlive) {
+      await disconnect(verbose: true);
+    }
     databaseBloc.close();
     _clearPreparedStatements();
   }
@@ -70,13 +72,15 @@ abstract class DbClient<T> extends Equatable {
     // Override in specific clients if needed
   }
 
-  Future<void> _disconnect();
+  Future<void> _disconnect() async {
+    await closeConnection();
+  }
 
   SvgPicture getLogo(Brightness brightness);
 
   /// Allows connection with db (should be called async)
   Future<void> connect({bool verbose = false}) async {
-    if (_connection == null) {
+    if (_connection == null || !isConnected) {
       _connection = await initConnection();
     }
     await openConnection();
