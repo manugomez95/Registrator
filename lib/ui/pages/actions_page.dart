@@ -130,12 +130,27 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
         action: selectedAction!,
         onSubmit: (values) {
           final convertedValues = _convertFormData(values, properties);
-          formBloc.add(SubmitFormEvent(
-            context,
-            selectedTable!,
-            selectedAction!,
-            convertedValues,
-          ));
+          switch (selectedAction!.type) {
+            case app.ActionType.editLastFrom:
+              formBloc.add(EditFormEvent(
+                context,
+                selectedTable!,
+                convertedValues,
+              ));
+              break;
+            case app.ActionType.deleteLastFrom:
+              formBloc.add(DeleteFormEvent(
+                context,
+                selectedTable!,
+              ));
+              break;
+            default:
+              formBloc.add(SubmitFormEvent(
+                context,
+                selectedTable!,
+                convertedValues,
+              ));
+          }
         },
       ));
     } else {

@@ -33,7 +33,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
         await event.table.client.getLastRow(event.table);
         showSnackBar(
           event.context,
-          "${event.action.title} ${event.table.name}",
+          "Inserted into ${event.table.name}",
           undoAction: null,
         );
       }
@@ -58,7 +58,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
         await event.table.client.getLastRow(event.table);
         showSnackBar(
           event.context,
-          "${event.action.title} ${event.table.name}",
+          "Updated last row in ${event.table.name}",
           undoAction: null,
         );
       }
@@ -80,7 +80,7 @@ class FormBloc extends Bloc<FormEvent, PropertiesFormState> {
         await event.table.client.getLastRow(event.table);
         showSnackBar(
           event.context,
-          "${event.action.title} ${event.table.name}",
+          "Deleted last row from ${event.table.name}",
           undoAction: null,
         );
       }

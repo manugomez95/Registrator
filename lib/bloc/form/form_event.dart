@@ -1,4 +1,3 @@
-import 'package:bitacora/model/action.dart' as app;
 import 'package:bitacora/model/property.dart';
 import 'package:bitacora/model/table.dart' as app;
 import 'package:equatable/equatable.dart';
@@ -12,48 +11,42 @@ abstract class FormEvent extends Equatable {
 class SubmitFormEvent extends FormEvent {
   final BuildContext context;
   final app.Table table;
-  final app.Action action;
   final Map<Property, dynamic> propertiesForm;
 
   SubmitFormEvent(
     this.context,
     this.table,
-    this.action,
     this.propertiesForm,
   );
 
   @override
-  List<Object> get props => [table, action, propertiesForm];
+  List<Object> get props => [table, propertiesForm];
 }
 
 class EditFormEvent extends FormEvent {
   final BuildContext context;
   final app.Table table;
-  final app.Action action;
   final Map<Property, dynamic> propertiesForm;
 
   EditFormEvent(
     this.context,
     this.table,
-    this.action,
     this.propertiesForm,
   );
 
   @override
-  List<Object> get props => [table, action, propertiesForm];
+  List<Object> get props => [table, propertiesForm];
 }
 
 class DeleteFormEvent extends FormEvent {
   final BuildContext context;
   final app.Table table;
-  final app.Action action;
 
   DeleteFormEvent(
     this.context,
     this.table,
-    this.action,
   );
 
   @override
-  List<Object> get props => [table, action];
+  List<Object> get props => [table];
 }

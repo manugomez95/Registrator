@@ -329,9 +329,19 @@ abstract class DbClient<T> extends Equatable {
 
   Future<bool> editLastFrom(app.Table table, Map<Property, dynamic> propertiesForm) async {
     final command = editLastFromSQL(table);
-    final arguments = table.properties
+    
+    // First add the new values for SET clause
+    final newValues = table.properties
         .map((p) => fromValueToDbValue(propertiesForm[p], p.type))
         .toList();
+    
+    // Then add the old values for WHERE clause
+    final oldValues = table.properties
+        .where((p) => p.lastValue != null)
+        .map((p) => fromValueToDbValue(p.lastValue, p.type))
+        .toList();
+    
+    final arguments = [...newValues, ...oldValues];
     
     try {
       final results = await executeSQL(OpType.update, command, arguments);

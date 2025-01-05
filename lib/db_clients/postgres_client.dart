@@ -534,19 +534,26 @@ class PostgresClient extends DbClient<PostgreSQLConnection> {
 
   @override
   String editLastFromSQL(app.Table table) {
-    String propertiesNames = table.properties.map((e) => dbStrFormat(e.name)).join(", ");
-    String valuesString = List.filled(table.properties.length, "?").join(", ");
-
+    final properties = table.properties.toList();
+    final propertiesWithLastValue = properties.where((p) => p.lastValue != null).toList();
+    
     /// last values, IMPORTANT, when null there's no question mark so...
     String where = "WHERE " +
-        table.properties.map((Property p) {
-          return "${dbStrFormat(p.name)} ${p.lastValue == null ? "is null" : "= ?"}";
+        properties.map((Property p) {
+          final lastValueIndex = propertiesWithLastValue.indexOf(p);
+          return "${dbStrFormat(p.name)} ${p.lastValue == null ? "is null" : "= @arg${properties.length + lastValueIndex}"}";
         }).join(" AND ");
 
     String last =
         "SELECT ctid FROM ${dbStrFormat(table.name)} $where LIMIT 1";
 
-    return "UPDATE ${table.name} SET ($propertiesNames) = ($valuesString) WHERE ctid IN ($last)";
+    return "UPDATE ${dbStrFormat(table.name)} SET " +
+        properties
+            .asMap()
+            .entries
+            .map((e) => "${dbStrFormat(e.value.name)} = @arg${e.key}")
+            .join(", ") +
+        " WHERE ctid IN ($last)";
   }
 
   @override

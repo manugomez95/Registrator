@@ -30,6 +30,21 @@ class PropertiesForm extends StatefulWidget {
 class _PropertiesFormState extends State<PropertiesForm> {
   final Map<String, List<dynamic>> _formData = {};
 
+  @override
+  void initState() {
+    super.initState();
+    // Initialize form data with last values if in edit mode
+    if (widget.action.type == app.ActionType.editLastFrom) {
+      for (final property in widget.properties) {
+        if (property.type.isArray && property.lastValue != null) {
+          _formData[property.name] = List<dynamic>.from(property.lastValue as List);
+        } else {
+          _formData[property.name] = [property.lastValue];
+        }
+      }
+    }
+  }
+
   void resetData() {
     setState(() {
       _formData.clear();
