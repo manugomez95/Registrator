@@ -30,9 +30,7 @@ class PropertiesForm extends StatefulWidget {
 class _PropertiesFormState extends State<PropertiesForm> {
   final Map<String, List<dynamic>> _formData = {};
 
-  @override
-  void initState() {
-    super.initState();
+  void _initializeFormData() {
     // Initialize form data with last values if in edit mode
     if (widget.action.type == app.ActionType.editLastFrom) {
       for (final property in widget.properties) {
@@ -42,6 +40,27 @@ class _PropertiesFormState extends State<PropertiesForm> {
           _formData[property.name] = [property.lastValue];
         }
       }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFormData();
+  }
+
+  @override
+  void didUpdateWidget(PropertiesForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If properties have changed (e.g., after a refresh), reinitialize form data
+    if (oldWidget.properties != widget.properties || 
+        oldWidget.properties.any((p) => p.lastValue != widget.properties[oldWidget.properties.indexOf(p)].lastValue)) {
+      debugPrint("\n=== Updating Form Data ===");
+      debugPrint("Properties changed or values updated");
+      setState(() {
+        _formData.clear();
+        _initializeFormData();
+      });
     }
   }
 

@@ -32,6 +32,7 @@ class DatabaseBloc extends Bloc<DatabaseEvent, DatabaseState> {
       // Connect and pull data in the background
       await event.dbClient.connect(verbose: true);
       await event.dbClient.pullDatabaseModel();
+      await _applySavedPreferences(event.dbClient);
       await getIt<AppData>().saveTables(event.dbClient);
       
       // Update AppData state to notify UI

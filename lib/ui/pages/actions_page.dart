@@ -22,6 +22,7 @@ class ActionsPage extends StatefulWidget {
 class _ActionsPageState extends State<ActionsPage> {
   PropertiesForm? form;
   late FormBloc formBloc;
+  final _actionsDropdownKey = GlobalKey<_ActionsDropdownState>();
 
   @override
   void initState() {
@@ -42,6 +43,19 @@ class _ActionsPageState extends State<ActionsPage> {
   }
 
   Future<void> _handleRefresh() async {
+    // TODO: probably this can be optimized
+    debugPrint("\n=== Handling Refresh ===");
+    if (form != null) {
+      final actionsDropdownState = _actionsDropdownKey.currentState;
+      if (actionsDropdownState != null && actionsDropdownState.selectedTable != null) {
+        debugPrint("Re-fetching last row for table: ${actionsDropdownState.selectedTable!.name}");
+        // Re-fetch the last row
+        await actionsDropdownState.selectedTable!.client.getLastRow(actionsDropdownState.selectedTable!);
+        // Update the form
+        actionsDropdownState.updateForm();
+      }
+    }
+    // TODO: Do I need this?
     setState(() {
       form?.reset();
     });
@@ -69,6 +83,7 @@ class _ActionsPageState extends State<ActionsPage> {
               appBar: PreferredSize(
                 preferredSize: const Size.fromHeight(kToolbarHeight),
                 child: ActionsDropdown(
+                  key: _actionsDropdownKey,
                   actions: appData.actions,
                   tables: appData.tables,
                   onFormUpdated: updateForm,
@@ -120,8 +135,8 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
     return result;
   }
 
-  void _updateForm() {
-    if (selectedAction != null && selectedTable != null) {
+  void updateForm() {
+    if (selectedAction != null && selectedTable != null) { 
       final formBloc = context.read<FormBloc>();
       final properties = selectedTable!.properties.toList();
       widget.onFormUpdated(PropertiesForm(
@@ -179,7 +194,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                     selectedAction = newValue;
                     selectedTable = null;
                   });
-                  _updateForm();
+                  updateForm();
                 },
                 hint: const Text('Select an action'),
               ),
@@ -199,7 +214,7 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                     setState(() {
                       selectedTable = newTable;
                     });
-                    _updateForm();
+                    updateForm();
                   },
                   hint: const Text('Select a table'),
                 ),
