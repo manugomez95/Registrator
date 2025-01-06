@@ -124,6 +124,20 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
   app.Action? selectedAction;
   app.Table? selectedTable;
 
+  @override
+  void initState() {
+    super.initState();
+    // Set default action to insertInto
+    selectedAction = widget.actions.firstWhere(
+      (action) => action.type == app.ActionType.insertInto,
+    );
+    // Set default table to first available if any exist
+    if (widget.tables.isNotEmpty) {
+      selectedTable = widget.tables.first;
+      updateForm();
+    }
+  }
+
   Map<Property, dynamic> _convertFormData(
       Map<String, dynamic> formData, List<Property> properties) {
     final result = <Property, dynamic>{};
@@ -192,34 +206,29 @@ class _ActionsDropdownState extends State<ActionsDropdown> {
                 onChanged: (app.Action? newValue) {
                   setState(() {
                     selectedAction = newValue;
-                    selectedTable = null;
                   });
                   updateForm();
                 },
-                hint: const Text('Select an action'),
               ),
             ),
-            if (selectedAction != null) ...[
-              const SizedBox(width: 16),
-              Expanded(
-                child: DropdownButton<app.Table>(
-                  value: selectedTable,
-                  items: widget.tables.map((app.Table table) {
-                    return DropdownMenuItem<app.Table>(
-                      value: table,
-                      child: Text(table.name),
-                    );
-                  }).toList(),
-                  onChanged: (app.Table? newTable) {
-                    setState(() {
-                      selectedTable = newTable;
-                    });
-                    updateForm();
-                  },
-                  hint: const Text('Select a table'),
-                ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: DropdownButton<app.Table>(
+                value: selectedTable,
+                items: widget.tables.map((app.Table table) {
+                  return DropdownMenuItem<app.Table>(
+                    value: table,
+                    child: Text(table.name),
+                  );
+                }).toList(),
+                onChanged: (app.Table? newTable) {
+                  setState(() {
+                    selectedTable = newTable;
+                  });
+                  updateForm();
+                },
               ),
-            ],
+            ),
           ],
         ),
       ),
